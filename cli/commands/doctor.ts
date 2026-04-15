@@ -1,11 +1,14 @@
 import fs from 'fs';
+import path from 'path';
 import {
   configExists,
+  createDefaultConfig,
   getConfigPath,
   getRepoRoot,
   readArsConfig,
   type ArsConfig,
 } from '../lib/ars-config';
+import { getEngineVersionPath } from '../lib/install';
 
 interface CheckResult {
   label: string;
@@ -16,7 +19,7 @@ interface CheckResult {
 const HELP = `
 Usage: npx ars doctor
 
-Validates .ars/config.json and required environment variables.
+Validates .ars/config.json, engine install status, and provider credentials.
 `;
 
 export async function run(args: string[]) {
@@ -60,10 +63,11 @@ export async function run(args: string[]) {
   }
 
   validateLlm(config, results);
+  validateEngine(root, results);
   validateTts(config, results);
-  validatePublish(config, results);
+  validatePublish(config, root, results);
   validateExtensions(config, results);
-  validateReview(config, results);
+  validateReview(root, config, results);
 
   printResults(results);
 
@@ -81,6 +85,26 @@ function validateLlm(config: ArsConfig, results: CheckResult[]): void {
   });
 }
 
+function validateEngine(root: string, results: CheckResult[]): void {
+  const engineVersionPath = getEngineVersionPath(root);
+  results.push({
+    label: 'engine-version',
+    status: fs.existsSync(engineVersionPath) ? 'pass' : 'warn',
+    detail: fs.existsSync(engineVersionPath)
+      ? `Loaded ${engineVersionPath}`
+      : `Missing ${engineVersionPath}. Run "npx ars setup" or "npx ars update" to record the installed engine version.`,
+  });
+
+  const registryPath = path.join(root, 'src', 'engine', 'cards', 'registry.ts');
+  results.push({
+    label: 'engine.registry',
+    status: fs.existsSync(registryPath) ? 'pass' : 'fail',
+    detail: fs.existsSync(registryPath)
+      ? `Found ${registryPath}`
+      : `Missing ${registryPath}. Reinstall the engine with "npx ars setup --force" or "npx ars update".`,
+  });
+}
+
 function validateTts(config: ArsConfig, results: CheckResult[]): void {
   if (config.tts.provider === 'none') {
     results.push({
@@ -91,23 +115,20 @@ function validateTts(config: ArsConfig, results: CheckResult[]): void {
     return;
   }
 
-  const missing = [
-    !process.env.MINIMAX_API_KEY && 'MINIMAX_API_KEY',
-    !process.env.MINIMAX_GROUP_ID && 'MINIMAX_GROUP_ID',
-    !process.env.MINIMAX_VOICE_ID && !process.env.MINIMAX_CLONE_ID && 'MINIMAX_VOICE_ID or MINIMAX_CLONE_ID',
-  ].filter(Boolean);
-
   results.push({
     label: 'tts',
-    status: missing.length === 0 ? 'pass' : 'fail',
-    detail:
-      missing.length === 0
-        ? 'MiniMax credentials are configured.'
-        : `MiniMax credentials missing: ${missing.join(', ')}`,
+    status: process.env.MINIMAX_API_KEY ? 'pass' : 'fail',
+    detail: process.env.MINIMAX_API_KEY
+      ? 'MiniMax API key is configured.'
+      : 'MiniMax enabled but MINIMAX_API_KEY is missing.',
   });
 }
 
-function validatePublish(config: ArsConfig, results: CheckResult[]): void {
+function validatePublish(
+  config: ArsConfig,
+  root: string,
+  results: CheckResult[],
+): void {
   if (!config.publish.youtube.enabled) {
     results.push({
       label: 'publish.youtube',
@@ -117,19 +138,31 @@ function validatePublish(config: ArsConfig, results: CheckResult[]): void {
     return;
   }
 
+  const defaults = createDefaultConfig();
+  const credentialsPath = path.resolve(
+    root,
+    config.publish.youtube.credentialsPath ??
+      defaults.publish.youtube.credentialsPath ??
+      '.ars/credentials/youtube/credentials.json',
+  );
+  const clientSecretPath = path.resolve(
+    root,
+    config.publish.youtube.clientSecretPath ??
+      defaults.publish.youtube.clientSecretPath ??
+      '.ars/credentials/youtube/client_secret.json',
+  );
   const missing = [
-    !process.env.YOUTUBE_CLIENT_ID && 'YOUTUBE_CLIENT_ID',
-    !process.env.YOUTUBE_CLIENT_SECRET && 'YOUTUBE_CLIENT_SECRET',
-    !process.env.YOUTUBE_REFRESH_TOKEN && 'YOUTUBE_REFRESH_TOKEN',
-  ].filter(Boolean);
+    !fs.existsSync(credentialsPath) && credentialsPath,
+    !fs.existsSync(clientSecretPath) && clientSecretPath,
+  ].filter(Boolean) as string[];
 
   results.push({
     label: 'publish.youtube',
     status: missing.length === 0 ? 'pass' : 'fail',
     detail:
       missing.length === 0
-        ? 'YouTube OAuth credentials are configured.'
-        : `YouTube credentials missing: ${missing.join(', ')}`,
+        ? `YouTube OAuth files found: ${credentialsPath}, ${clientSecretPath}`
+        : `YouTube OAuth files missing: ${missing.join(', ')}`,
   });
 }
 
@@ -149,8 +182,12 @@ function validateExtensions(config: ArsConfig, results: CheckResult[]): void {
   });
 }
 
-function validateReview(config: ArsConfig, results: CheckResult[]): void {
-  const reviewDir = `${getRepoRoot()}/.ars/review-intents`;
+function validateReview(
+  root: string,
+  config: ArsConfig,
+  results: CheckResult[],
+): void {
+  const reviewDir = `${root}/.ars/review-intents`;
   results.push({
     label: 'review',
     status: 'pass',
