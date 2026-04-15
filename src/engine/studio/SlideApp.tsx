@@ -9,6 +9,7 @@ import { useSlideNavigation } from './hooks/useSlideNavigation';
 import { episodeToSlides, getEpisodeInfo } from './adapters/episodeToSlides';
 import { ThemeProvider } from '../shared/ThemeContext';
 import { ActionBar } from './components/ActionBar';
+import { FixListSidebar } from './components/FixListSidebar';
 import { SlideComposition, type SlideCompositionProps } from './SlideComposition';
 
 import './styles/studio.css';
@@ -79,6 +80,7 @@ export const SlideApp: React.FC<StudioAppProps> = ({ episode }) => {
   const canvasRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<PlayerRef>(null);
   const [fixAppliedBanner, setFixAppliedBanner] = useState<FixAppliedEntry | null>(null);
+  const [showFixList, setShowFixList] = useState(false);
   const latestFixTimestampRef = useRef<string | null>(null);
   const fixInitializedRef = useRef(false);
 
@@ -206,7 +208,7 @@ export const SlideApp: React.FC<StudioAppProps> = ({ episode }) => {
         style={themeStyles}
       >
         {/* Main viewport */}
-        <div className="studio-viewport">
+        <div className="studio-viewport" style={{ position: 'relative' }}>
           <div className="studio-scale-wrapper">
             {/* Fixed-resolution canvas scaled to fit */}
             <div
@@ -246,6 +248,10 @@ export const SlideApp: React.FC<StudioAppProps> = ({ episode }) => {
             </div>
           </div>
 
+          {/* Fix list sidebar */}
+          {showFixList && (
+            <FixListSidebar onClose={() => setShowFixList(false)} />
+          )}
         </div>
 
         {/* Fix-applied banner */}
@@ -291,6 +297,13 @@ export const SlideApp: React.FC<StudioAppProps> = ({ episode }) => {
           <div className="nav-center" />
 
           <div className="nav-right">
+            <button
+              className="nav-btn"
+              onClick={() => setShowFixList((v) => !v)}
+              title="Toggle Fix List"
+            >
+              📋
+            </button>
             <button
               className="nav-btn"
               onClick={handleToggleFullscreen}

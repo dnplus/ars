@@ -127,6 +127,36 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
               return;
             }
 
+            if (url.pathname === '/__ars/review-intents') {
+              if (req.method !== 'GET') {
+                writeJson(res, 405, { ok: false, error: 'Method not allowed' });
+                return;
+              }
+
+              try {
+                const reviewDir = path.join(rootDir, '.ars', 'review-intents');
+                if (!fs.existsSync(reviewDir)) {
+                  writeJson(res, 200, { ok: true, intents: [] });
+                  return;
+                }
+
+                const fileNames = fs.readdirSync(reviewDir)
+                  .filter((fileName) => fileName.endsWith('.json'))
+                  .sort((a, b) => b.localeCompare(a));
+
+                const intents = fileNames.map((fileName) => {
+                  const raw = fs.readFileSync(path.join(reviewDir, fileName), 'utf-8');
+                  return JSON.parse(raw) as unknown;
+                });
+
+                writeJson(res, 200, { ok: true, intents });
+              } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                writeJson(res, 500, { ok: false, error: message });
+              }
+              return;
+            }
+
             if (url.pathname === '/__ars/fix-applied') {
               if (req.method === 'POST') {
                 try {
