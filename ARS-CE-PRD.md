@@ -386,19 +386,19 @@ Timeboxed spike，不把 V1 成敗綁在上面。
 - [x] 做 public/private split audit，列出每個 component 的歸屬
 - [x] 從上游私有 repo 萃出公開 engine、schema、CLI、cards（現 ARS CE repo）
 - [x] 清掉私有頻道內容、私有 prompts、私有資產耦合
-- [ ] 定義並實作 `ITTSAdapter`, `IPublishAdapter` TypeScript interface（LLM 走 Claude Code，不做 adapter）
-- [ ] 附 reference implementation（Minimax TTS / YouTube Publish）+ `NoOpTTSAdapter` stub
-- [ ] 實作 `ars setup` 新行為：複製 `src/engine/` 到 target repo、建立 `.ars/config.json`、patch `CLAUDE.md`、註冊 plugin skills
-- [ ] 實作 `ars update`：重新複製 engine，舊版 backup 到 `.ars/backups/<timestamp>/`
+- [x] 定義並實作 `ITTSAdapter`, `IPublishAdapter` TypeScript interface（LLM 走 Claude Code，不做 adapter）— `src/adapters/types.ts`
+- [x] 附 reference implementation（Minimax TTS / YouTube Publish）+ `NoOpTTSAdapter` stub — `src/adapters/tts/{minimax,noop}.ts`、`src/adapters/publish/youtube.ts`
+- [ ] 實作 `ars setup` 新行為：複製 `src/engine/` 到 target repo、建立 `.ars/config.json`、patch `CLAUDE.md`、註冊 plugin skills（目前只建 config，未複製 engine）
+- [ ] 實作 `ars update`：重新複製 engine，舊版 backup 到 `.ars/backups/<timestamp>/`（指令尚未存在）
 - [ ] 更新 `ars doctor`：檢查 engine 版本、config schema、TTS/Publish provider env
 
 ### Milestone 2：Claude Code Plugin
 
-- [ ] 建立 `plugin/hooks/hooks.json`（3 個 hooks）
-- [ ] 建立 `plugin/scripts/`（keyword-detector, session-start, review-intent-stop）
-- [ ] 建立 `plugin/agents/planner.md` + `publisher.md`
-- [ ] 建立所有 `plugin/skills/*/SKILL.md`（10 個 skill）
-- [ ] `/ars:setup`、`/ars:doctor`、`/ars:scene-plan`、`/ars:scene-fix`、`/ars:prepare-youtube`、`/ars:publish-youtube` 在 `ars setup` 初始化過的空白 repo 端對端跑通
+- [x] 建立 `plugin/hooks/hooks.json`（3 個 hooks，路徑用 `$CLAUDE_PLUGIN_ROOT`）
+- [x] 建立 `plugin/scripts/`（keyword-detector, session-start, review-intent-stop）
+- [x] 建立 `plugin/agents/planner.md` + `publisher.md`
+- [x] 建立所有 `plugin/skills/*/SKILL.md`（實裝 12 個：setup / doctor / episode-create / scene-plan / scene-build / scene-polish / scene-fix / review-open / prepare-youtube / publish-youtube / theme / new-card）
+- [ ] `/ars:setup`、`/ars:doctor`、`/ars:scene-plan`、`/ars:scene-fix`、`/ars:prepare-youtube`、`/ars:publish-youtube` 在 `ars setup` 初始化過的空白 repo 端對端跑通（阻塞於 `ars setup` 未實作 engine-copy）
 
 ### Milestone 3：Review Loop
 
@@ -420,6 +420,10 @@ Timeboxed spike，不把 V1 成敗綁在上面。
 - [ ] `studio-exp` feasibility spike（timeboxed）
 - [ ] 成功 → 標 experimental，新增 `--ui studio-exp` flag
 - [ ] 失敗 → 文件化 fallback，不延後 V1
+
+### Known Blockers（跨 milestone）
+
+- [ ] **Dual card system**：`src/engine/components/cards/` 仍有 15 個舊 cards（MermaidCard、SummaryCard、StatsCard、CompareCard、ContextCard、TickerCard、TimelineCard、FlowchartCard、MockAppCard、ThumbnailCard、ScrollableCard、CoverCard、CodeCard、ImageCard、MarkdownCard、BaseCard），WebinarScene / Root / Composition 仍在 import。必須決定：保留 switch-case 架構（舊 cards 也改走 CardSpec 包一層）或全面移轉到 registry-based rendering、砍除不在 whitelist 的舊 cards。沒解決會導致 `ars setup` 複製 engine 時一起帶出舊系統。
 
 ---
 
