@@ -64,9 +64,9 @@
     "upgrade": "remotion upgrade",
     "lint": "eslint src && tsc",
     "test": "vitest run",
-    "dev:slides": "vite --config vite.slides.config.ts",
-    "build:slides": "vite build --config vite.slides.config.ts",
-    "preview:slides": "vite preview --config vite.slides.config.ts"
+    "dev:studio": "vite --config vite.studio.config.ts",
+    "build:studio": "vite build --config vite.studio.config.ts",
+    "preview:studio": "vite preview --config vite.studio.config.ts"
   },
   "sideEffects": [
     "*.css"

@@ -1,0 +1,471 @@
+/**
+ * @stylesheet studio.css
+ * @description ARS Studio UI styles
+ */
+
+:root {
+  --transition-fast: 0.2s ease;
+  --transition-normal: 0.3s ease;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  font-family: var(--font-main, system-ui, sans-serif);
+  background: #000;
+  color: var(--color-text-inverse, #fff);
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ========================================
+   App Container
+   ======================================== */
+.studio-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: #000;
+}
+
+.studio-app:fullscreen {
+  width: 100vw;
+  height: 100vh;
+}
+
+.studio-app-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ========================================
+   Viewport
+   ======================================== */
+.studio-viewport {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.studio-scale-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/*
+  Fixed-resolution canvas (e.g. 1920x1080).
+  Width/height set inline via JS. Scaled via CSS transform to fit viewport.
+*/
+.studio-canvas {
+  position: relative;
+  transform-origin: center center;
+  overflow: hidden;
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+  flex-shrink: 0;
+}
+
+/* ========================================
+   Fix Banner
+   ======================================== */
+.studio-fix-banner {
+  position: absolute;
+  top: 22px;
+  right: 24px;
+  z-index: 220;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: min(580px, calc(100vw - 48px));
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(10, 95, 58, 0.94);
+  color: #f5fffb;
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.28);
+  animation: fadeIn 0.2s ease-out;
+}
+
+.studio-fix-banner-message {
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.studio-fix-banner-btn {
+  min-height: 38px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.studio-fix-banner-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* ========================================
+   Narration Overlay
+   ======================================== */
+.studio-narration {
+  position: absolute;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 90%;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 16px 24px;
+  background: rgba(0, 0, 0, 0.9);
+  border: 1px solid var(--color-primary);
+  border-radius: 12px;
+  color: var(--color-text-inverse);
+  font-size: 16px;
+  line-height: 1.6;
+  z-index: 100;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.studio-narration p {
+  white-space: pre-wrap;
+}
+
+/* ========================================
+   Navigation Bar
+   ======================================== */
+.studio-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: rgba(0, 0, 0, 0.8);
+  position: relative;
+  z-index: 200;
+}
+
+.nav-left,
+.nav-center,
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nav-center {
+  flex: 1;
+}
+
+.nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 12px;
+  background: var(--color-card-bg, #3a3530);
+  color: var(--color-text-inverse, #fff);
+  border: 1px solid var(--color-border, #5c5347);
+  border-radius: 8px;
+  font-size: 16px;
+  font-family: var(--font-main, system-ui, sans-serif);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.nav-btn:hover:not(:disabled) {
+  background: var(--color-card-header-bg, #2d2823);
+  border-color: var(--color-primary);
+}
+
+.nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.nav-btn.active {
+  background: var(--color-primary);
+  color: var(--color-bg-dark);
+  border-color: var(--color-primary);
+}
+
+.nav-progress {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  font-family: var(--font-code);
+  min-width: 80px;
+  text-align: center;
+}
+
+.nav-progress-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--color-border);
+}
+
+.nav-progress-fill {
+  height: 100%;
+  background: var(--color-primary);
+  transition: width var(--transition-normal);
+}
+
+/* ========================================
+   Fullscreen Mode
+   ======================================== */
+.studio-app.fullscreen .studio-navigation {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  opacity: 0;
+  transition: opacity var(--transition-normal);
+}
+
+.studio-app.fullscreen:hover .studio-navigation {
+  opacity: 1;
+}
+
+/* ========================================
+   Action Bar (review overlay)
+   ======================================== */
+.action-bar {
+  position: absolute;
+  right: 32px;
+  bottom: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  z-index: 120;
+}
+
+.action-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.action-bar-btn {
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(8, 15, 29, 0.86);
+  color: var(--color-text-inverse, #fff);
+  font-size: 14px;
+  font-family: var(--font-main, system-ui, sans-serif);
+  cursor: pointer;
+  backdrop-filter: blur(14px);
+  transition: transform var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.action-bar-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: var(--color-primary);
+  background: rgba(16, 27, 47, 0.94);
+}
+
+.action-bar-btn:disabled {
+  opacity: 0.65;
+  cursor: progress;
+}
+
+.action-bar-btn.primary {
+  background: var(--color-primary);
+  color: var(--color-bg-dark, #10141f);
+  border-color: transparent;
+  font-weight: 700;
+}
+
+.action-bar-btn.done-reviewing {
+  background: rgba(10, 95, 58, 0.92);
+  border-color: rgba(85, 242, 170, 0.28);
+  color: #f5fffb;
+  font-weight: 700;
+}
+
+.action-bar-btn.subtle {
+  background: rgba(16, 27, 47, 0.82);
+}
+
+.action-bar-btn.quick-flag {
+  min-width: 42px;
+  padding: 0 10px;
+  font-size: 18px;
+  background: rgba(255, 200, 0, 0.12);
+  border-color: rgba(255, 200, 0, 0.3);
+}
+
+.action-bar-btn.quick-flag:hover:not(:disabled) {
+  background: rgba(255, 200, 0, 0.22);
+  border-color: rgba(255, 200, 0, 0.6);
+}
+
+.action-bar-panel {
+  width: min(420px, calc(100vw - 64px));
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(8, 15, 29, 0.94);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.action-bar-panel-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.action-bar-panel-title {
+  color: var(--color-text-inverse, #fff);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.action-bar-panel-meta,
+.action-bar-attachment-status {
+  color: var(--color-text-muted, rgba(255, 255, 255, 0.72));
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.action-bar-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.action-bar-label {
+  color: var(--color-text-inverse, #fff);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.action-bar-textarea {
+  width: 100%;
+  min-height: 110px;
+  resize: vertical;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text-inverse, #fff);
+  font: inherit;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+.action-bar-textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.action-bar-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.action-bar-chip {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--color-text-inverse, #fff);
+  font-size: 13px;
+  font-family: var(--font-main, system-ui, sans-serif);
+  text-transform: capitalize;
+  cursor: pointer;
+}
+
+.action-bar-chip.selected {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 32%, rgba(8, 15, 29, 0.9));
+  color: var(--color-bg-dark, #10141f);
+  font-weight: 700;
+}
+
+.action-bar-panel-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.action-bar-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.action-bar-toast {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 12px);
+  min-width: 280px;
+  max-width: 420px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.5;
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.35);
+  animation: fadeIn 0.2s ease-out;
+}
+
+.action-bar-toast.success { background: rgba(13, 103, 62, 0.96); }
+.action-bar-toast.error   { background: rgba(145, 32, 52, 0.96); }
+.action-bar-toast.info    { background: rgba(21, 53, 102, 0.96); }
+
+/* ========================================
+   Animations
+   ======================================== */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* VTuber breathing */
+@keyframes breathing {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.03); }
+}
+
+/* ========================================
+   Print
+   ======================================== */
+@media print {
+  .studio-navigation { display: none !important; }
+}
