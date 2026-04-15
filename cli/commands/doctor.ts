@@ -62,7 +62,6 @@ export async function run(args: string[]) {
     return;
   }
 
-  validateLlm(config, results);
   validateEngine(root, results);
   validateTts(config, results);
   validatePublish(config, root, results);
@@ -75,14 +74,6 @@ export async function run(args: string[]) {
   if (hasFailure) {
     process.exit(1);
   }
-}
-
-function validateLlm(config: ArsConfig, results: CheckResult[]): void {
-  results.push({
-    label: 'llm',
-    status: 'pass',
-    detail: `Configured default=${config.llm.default}, fallbacks=${config.llm.fallbacks.join(', ') || 'none'}; core prepare now relies on Claude Code instead of local LLM CLIs.`,
-  });
 }
 
 function validateEngine(root: string, results: CheckResult[]): void {

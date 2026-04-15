@@ -1,19 +1,13 @@
 import fs from 'fs';
 import path from 'path';
 
-export const LLM_PROVIDER_IDS = ['anthropic', 'openai', 'noop'] as const;
 export const TTS_PROVIDER_IDS = ['none', 'minimax'] as const;
 export const REVIEW_UI_IDS = ['slides'] as const;
 
-export type LLMProviderId = (typeof LLM_PROVIDER_IDS)[number];
 export type TTSProviderId = (typeof TTS_PROVIDER_IDS)[number];
 export type ReviewUiId = (typeof REVIEW_UI_IDS)[number];
 
 export interface ArsConfig {
-  llm: {
-    default: LLMProviderId;
-    fallbacks: LLMProviderId[];
-  };
   tts: {
     provider: TTSProviderId;
   };
@@ -56,10 +50,6 @@ export function getConfigPath(root = getRepoRoot()): string {
 
 export function createDefaultConfig(): ArsConfig {
   return {
-    llm: {
-      default: 'anthropic',
-      fallbacks: ['openai'],
-    },
     tts: {
       provider: 'none',
     },
@@ -113,7 +103,6 @@ export function parseArsConfig(input: unknown): ArsConfig {
     throw new Error('Config root must be an object.');
   }
 
-  const llm = expectRecord(input.llm, 'llm');
   const tts = expectRecord(input.tts, 'tts');
   const publish = expectRecord(input.publish, 'publish');
   const youtube = expectRecord(publish.youtube, 'publish.youtube');
@@ -122,16 +111,7 @@ export function parseArsConfig(input: unknown): ArsConfig {
   const analytics = expectRecord(extensions.analytics, 'extensions.analytics');
   const review = expectRecord(input.review, 'review');
 
-  const defaultProvider = expectOneOf(llm.default, LLM_PROVIDER_IDS, 'llm.default');
-  const fallbacks = expectStringArray(llm.fallbacks, 'llm.fallbacks').map((provider, index) =>
-    expectOneOf(provider, LLM_PROVIDER_IDS, `llm.fallbacks[${index}]`),
-  );
-
   return {
-    llm: {
-      default: defaultProvider,
-      fallbacks,
-    },
     tts: {
       provider: expectOneOf(tts.provider, TTS_PROVIDER_IDS, 'tts.provider'),
     },

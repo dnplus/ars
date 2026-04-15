@@ -90,7 +90,6 @@ export async function run(args: string[]) {
   const savedEngineVersionPath = writeEngineVersion(engineVersionRecord, root);
 
   console.log(`✅ Wrote ${savedPath}`);
-  console.log(`   llm.default = ${config.llm.default}`);
   console.log(`   tts.provider = ${config.tts.provider}`);
   console.log(`   publish.youtube.enabled = ${String(config.publish.youtube.enabled)}`);
   console.log(`✅ Copied engine to ${path.join(root, 'src', 'engine')}`);
@@ -161,12 +160,6 @@ async function promptForConfig(): Promise<ArsConfig> {
   const rl = createInterface({ input, output });
 
   try {
-    const llmDefault = await promptChoice(
-      rl,
-      'Default LLM provider',
-      ['anthropic', 'noop'],
-      defaults.llm.default,
-    );
     const ttsProvider = await promptChoice(
       rl,
       'TTS provider',
@@ -195,10 +188,6 @@ async function promptForConfig(): Promise<ArsConfig> {
     );
 
     return {
-      llm: {
-        default: llmDefault,
-        fallbacks: defaults.llm.fallbacks,
-      },
       tts: {
         provider: ttsProvider,
       },
