@@ -1,6 +1,12 @@
 /**
  * @module components/cards/index
  * @description Cards 匯出中心
+ *
+ * @deprecated Legacy switch-case card exports.
+ * Prefer adding new cards under `src/engine/cards/` and registering them via
+ * `src/engine/cards/registry.ts`. Keep this module only for compatibility with
+ * the existing `WebinarScene` / `Root` / `Composition` flow until the renderer
+ * is fully registry-based.
  */
 
 export * from "./CoverCard";
