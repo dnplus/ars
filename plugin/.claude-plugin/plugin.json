@@ -1,0 +1,10 @@
+{
+  "id": "agentic-remotion-studio",
+  "name": "Agentic Remotion Studio",
+  "description": "Claude Code plugin for ARS CE — scene planning, review loop, and YouTube publishing workflow",
+  "version": "0.1.0",
+  "author": "ARS CE Contributors",
+  "skills": "skills/",
+  "agents": "agents/",
+  "hooks": "hooks/hooks.json"
+}

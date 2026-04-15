@@ -1,0 +1,62 @@
+[
+  {
+    "text": "第一，版面設計。",
+    "startTime": 0,
+    "endTime": 1.56
+  },
+  {
+    "text": "影片需要一個固定的視覺框架，包含標題區、內容區、還有字幕的位置。",
+    "startTime": 1.56,
+    "endTime": 8.52
+  },
+  {
+    "text": "這個框架要能夠重複使用，不然每支影片都要重新設計會很累。",
+    "startTime": 8.52,
+    "endTime": 13.92
+  },
+  {
+    "text": "第二，VTuber 或頭像。",
+    "startTime": 13.92,
+    "endTime": 16.16
+  },
+  {
+    "text": "我希望畫面上有個『人』的存在感，不管是真人還是動畫角色。",
+    "startTime": 16.16,
+    "endTime": 20.52
+  },
+  {
+    "text": "這樣觀眾看起來比較親切，不會只是一堆文字跟圖片在那邊跑。",
+    "startTime": 20.52,
+    "endTime": 25.16
+  },
+  {
+    "text": "第三，語音生成。",
+    "startTime": 25.16,
+    "endTime": 27.08
+  },
+  {
+    "text": "手動錄音太花時間，而且 N G 重錄超麻煩。",
+    "startTime": 27.08,
+    "endTime": 31.52
+  },
+  {
+    "text": "所以我需要一個 TTS 方案，最好能用自己的聲音做 voice clone。",
+    "startTime": 31.52,
+    "endTime": 38.04
+  },
+  {
+    "text": "第四，自動化腳本。",
+    "startTime": 38.04,
+    "endTime": 40.6
+  },
+  {
+    "text": "內容、音訊、時間軸，這些東西要能夠自動對齊。",
+    "startTime": 40.6,
+    "endTime": 45.28
+  },
+  {
+    "text": "不然每次改一個字就要手動調整，效率太差。",
+    "startTime": 45.28,
+    "endTime": 46.32
+  }
+]

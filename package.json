@@ -1,0 +1,77 @@
+{
+  "name": "ars-ce",
+  "version": "1.0.0",
+  "description": "ARS CE starter repo for adapter-first Remotion episode production",
+  "repository": {},
+  "license": "UNLICENSED",
+  "private": true,
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "dependencies": {
+    "@dagrejs/dagre": "^2.0.4",
+    "@drincs/pixi-vn": "^1.5.8",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.5.0",
+    "@remotion/cli": "4.0.435",
+    "@remotion/google-fonts": "4.0.435",
+    "@remotion/media": "4.0.435",
+    "@remotion/skia": "4.0.435",
+    "@remotion/tailwind-v4": "4.0.435",
+    "@remotion/three": "4.0.435",
+    "@remotion/transitions": "4.0.435",
+    "@shopify/react-native-skia": "^2.4.16",
+    "@types/qrcode": "^1.5.6",
+    "@types/three": "^0.183.1",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.1.0",
+    "mermaid": "^11.12.2",
+    "pixi.js": "^8.16.0",
+    "pptxgenjs": "^4.0.1",
+    "prism-react-renderer": "^2.4.1",
+    "qrcode": "^1.5.4",
+    "qrcode.react": "^4.2.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-markdown": "^10.1.0",
+    "react-native-web": "^0.21.2",
+    "remark-breaks": "^4.0.0",
+    "remark-gfm": "^4.0.1",
+    "remotion": "4.0.435",
+    "tailwindcss": "4.0.0",
+    "three": "^0.183.1"
+  },
+  "devDependencies": {
+    "@remotion/eslint-config-flat": "4.0.435",
+    "@remotion/player": "4.0.435",
+    "@types/jsdom": "^27.0.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "19.2.7",
+    "@types/web": "0.0.166",
+    "@vitejs/plugin-react": "^5.1.3",
+    "dotenv": "^17.2.3",
+    "eslint": "9.19.0",
+    "jsdom": "^28.0.0",
+    "prettier": "3.6.0",
+    "puppeteer-core": "^24.40.0",
+    "typescript": "5.9.3",
+    "vite": "^7.3.1",
+    "tsx": "^4.20.6"
+  },
+  "bin": {
+    "ars": "./cli/index.ts"
+  },
+  "scripts": {
+    "ars": "tsx cli/index.ts",
+    "dev": "remotion studio",
+    "build": "remotion bundle",
+    "upgrade": "remotion upgrade",
+    "lint": "eslint src && tsc",
+    "dev:slides": "vite --config vite.slides.config.ts",
+    "build:slides": "vite build --config vite.slides.config.ts",
+    "preview:slides": "vite preview --config vite.slides.config.ts"
+  },
+  "sideEffects": [
+    "*.css"
+  ]
+}

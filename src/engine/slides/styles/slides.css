@@ -1,0 +1,706 @@
+/**
+ * @stylesheet slides.css
+ * @description 網頁簡報專用樣式 - 完整重用 Remotion 畫面
+ */
+
+/* ========================================
+   CSS Variables
+   ========================================
+   Note: Detailed color tokens are injected via JS from theme.ts
+   We define strict defaults here just in case, but actual values come from inline styles.
+   ======================================== */
+:root {
+  --transition-fast: 0.2s ease;
+  --transition-normal: 0.3s ease;
+}
+
+/* ========================================
+   Reset & Base
+   ======================================== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  font-family: var(--font-main, system-ui, sans-serif);
+  background: #000;
+  color: var(--color-text-inverse, #fff);
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ========================================
+   Slide App Container
+   ======================================== */
+.slide-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: #000;
+}
+
+.slide-app:fullscreen {
+  width: 100vw;
+  height: 100vh;
+}
+
+.slide-app-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ========================================
+   Slide Viewport - 16:9 Container
+   ======================================== */
+.slide-viewport {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+  /* 移除 padding，讓內容貼齊邊界 */
+}
+
+/* 
+  內容容器 Wrapper 
+  固定 1920x1080 內部解析度，透過 transform: scale() 縮放以適應視窗
+  這確保無論視窗大小，排版都完全一致
+*/
+.slide-content-wrapper {
+  position: relative;
+  
+  /* 固定內部解析度 */
+  width: 1920px;
+  height: 1080px;
+  
+  /* 從中心縮放 */
+  transform-origin: center center;
+  
+  /* 確保內容不溢出 */
+  overflow: hidden;
+  
+  /* 讓 AbsoluteFill 能夠正確填充 */
+  display: block;
+  
+  /* 陰影增加層次感 */
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+}
+
+.action-bar {
+  position: absolute;
+  right: 32px;
+  bottom: 32px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 120;
+}
+
+.action-bar-btn {
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(8, 15, 29, 0.86);
+  color: var(--color-text-inverse, #fff);
+  font-size: 14px;
+  font-family: var(--font-main, system-ui, sans-serif);
+  cursor: pointer;
+  backdrop-filter: blur(14px);
+  transition: transform var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.action-bar-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: var(--color-primary);
+  background: rgba(16, 27, 47, 0.94);
+}
+
+.action-bar-btn:disabled {
+  opacity: 0.65;
+  cursor: progress;
+}
+
+.action-bar-btn.primary {
+  background: var(--color-primary);
+  color: var(--color-bg-dark, #10141f);
+  border-color: transparent;
+  font-weight: 700;
+}
+
+.action-bar-toast {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 12px);
+  min-width: 280px;
+  max-width: 420px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.5;
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.35);
+  animation: slideUp 0.2s ease-out;
+}
+
+.action-bar-toast.success {
+  background: rgba(13, 103, 62, 0.96);
+}
+
+.action-bar-toast.error {
+  background: rgba(145, 32, 52, 0.96);
+}
+
+.action-bar-toast.info {
+  background: rgba(21, 53, 102, 0.96);
+}
+
+/* ========================================
+   Narration Overlay (講者備註)
+   ======================================== */
+.slide-narration {
+  position: absolute;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 90%;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 16px 24px;
+  background: rgba(0, 0, 0, 0.9);
+  border: 1px solid var(--color-primary);
+  border-radius: 12px;
+  color: var(--color-text-inverse);
+  font-size: 16px;
+  line-height: 1.6;
+  z-index: 100;
+  animation: slideUp 0.3s ease-out;
+}
+
+.slide-narration p {
+  white-space: pre-wrap;
+}
+
+/* ========================================
+   Navigation Bar
+   ======================================== */
+.slide-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: rgba(0, 0, 0, 0.8);
+  position: relative;
+  z-index: 200;
+}
+
+.nav-left,
+.nav-center,
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nav-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 12px;
+  background: var(--color-card-bg);
+  color: #1a1a2e; /* 深色文字，確保可見 */
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.nav-btn:hover:not(:disabled) {
+  background: var(--color-card-header-bg);
+  border-color: var(--color-primary);
+}
+
+.nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.nav-btn.active {
+  background: var(--color-primary);
+  color: var(--color-bg-dark);
+  border-color: var(--color-primary);
+}
+
+.nav-btn.audio-btn {
+  font-size: 20px;
+}
+
+.nav-progress {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  font-family: var(--font-code);
+  min-width: 80px;
+  text-align: center;
+}
+
+.nav-progress-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--color-border);
+}
+
+.nav-progress-fill {
+  height: 100%;
+  background: var(--color-primary);
+  transition: width var(--transition-normal);
+}
+
+/* Export Dropdown */
+.export-dropdown {
+  position: relative;
+}
+
+.export-menu {
+  position: absolute;
+  bottom: 50px;
+  right: 0;
+  background: var(--color-bg-dark);
+  border: 1px solid var(--color-primary);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  z-index: 300;
+  animation: slideUp 0.2s ease-out;
+}
+
+.export-menu button {
+  display: block;
+  width: 100%;
+  padding: 12px 20px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-inverse);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.export-menu button:hover {
+  background: var(--color-primary);
+  color: var(--color-bg-dark);
+}
+
+.export-menu button + button {
+  border-top: 1px solid var(--color-border);
+}
+
+/* ========================================
+   Keyboard Hints
+   ======================================== */
+.keyboard-hints {
+  position: fixed;
+  bottom: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 24px;
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-family: var(--font-code);
+  animation: fadeOut 3s ease-out 2s forwards;
+  pointer-events: none;
+  z-index: 150;
+}
+
+/* ========================================
+   Fullscreen Mode
+   ======================================== */
+.slide-app.fullscreen .slide-navigation {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  opacity: 0;
+  transition: opacity var(--transition-normal);
+}
+
+.slide-app.fullscreen:hover .slide-navigation {
+  opacity: 1;
+}
+
+.slide-app.fullscreen .keyboard-hints {
+  display: none;
+}
+
+/* ========================================
+   Matrix Rain Fallback Animation
+   ======================================== */
+@keyframes matrix-scroll {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 1000px;
+  }
+}
+
+/* ========================================
+   Animations
+   ======================================== */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* VTuber 呼吸動畫 */
+@keyframes breathing {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+/* ========================================
+   Responsive
+   ======================================== */
+@media (max-width: 768px) {
+  .keyboard-hints {
+    display: none;
+  }
+
+  .nav-progress {
+    min-width: 60px;
+    font-size: 12px;
+  }
+}
+
+/* ========================================
+   Print (basic browser print support)
+   ======================================== */
+@media print {
+  .slide-navigation,
+  .keyboard-hints,
+  .export-dropdown,
+  .export-menu {
+    display: none !important;
+  }
+}
+
+/* ========================================
+   Script Modal
+   ======================================== */
+.script-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.script-modal-content {
+  background: var(--color-bg-dark);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.script-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-card-header-bg);
+  border-radius: 12px 12px 0 0;
+}
+
+.script-modal-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--color-primary);
+}
+
+.script-modal-close {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0 8px;
+}
+
+.script-modal-close:hover {
+  color: var(--color-text-inverse);
+}
+
+.script-modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  font-family: var(--font-code);
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--color-text-inverse);
+  white-space: pre-wrap;
+}
+
+.script-section {
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px dashed var(--color-border);
+}
+
+.script-section:last-child {
+  border-bottom: none;
+}
+
+.script-section-header {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.script-actions {
+  padding: 16px 24px;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  background: var(--color-card-header-bg);
+  border-radius: 0 0 12px 12px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ========================================
+   Slide Overview Panel
+   ======================================== */
+.overview-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  z-index: 500;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.overview-panel {
+  position: fixed;
+  top: 5%;
+  left: 5%;
+  right: 5%;
+  bottom: 10%;
+  background: #0d0d1a;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+}
+
+.overview-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.03);
+  flex-shrink: 0;
+}
+
+.overview-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.overview-count {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  font-family: var(--font-code);
+}
+
+.overview-close {
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 18px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.overview-close:hover {
+  color: var(--color-text-inverse);
+  border-color: var(--color-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.overview-grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  align-content: start;
+}
+
+/* Scrollbar styling */
+.overview-grid::-webkit-scrollbar {
+  width: 6px;
+}
+
+.overview-grid::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.overview-grid::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+.overview-grid::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}
+
+.overview-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+  color: var(--color-text-inverse);
+  min-height: 64px;
+}
+
+.overview-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--color-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.overview-card.active {
+  border-color: var(--color-primary);
+  background: rgba(var(--color-primary), 0.1);
+  box-shadow: 0 0 0 2px var(--color-primary), 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.overview-card-num {
+  position: absolute;
+  bottom: 4px;
+  right: 6px;
+  font-size: 9px;
+  font-weight: 600;
+  font-family: var(--font-code);
+  color: var(--color-text-muted);
+  opacity: 0.6;
+}
+
+.overview-card.active .overview-card-num {
+  color: var(--color-primary);
+  opacity: 1;
+}
+
+.overview-card-phase {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  font-family: var(--font-code);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.overview-card-title {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--color-text-inverse);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

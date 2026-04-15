@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Scene Background</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: transparent;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+    .scene {
+      position: relative;
+      width: 720px;
+      height: 600px;
+      overflow: visible;
+      image-rendering: pixelated;
+      transform-origin: center center;
+    }
+    .scene-sprite {
+      position: absolute;
+      image-rendering: pixelated;
+      pointer-events: none;
+    }
+    .character {
+      position: absolute;
+      image-rendering: pixelated;
+      pointer-events: none;
+      z-index: 50;
+    }
+    .character .char-sheet {
+      position: absolute;
+      top: 0; left: 0;
+      image-rendering: pixelated;
+    }
+    .emote-bubble {
+      position: absolute;
+      pointer-events: none;
+      z-index: 100;
+      font-size: 28px;
+      opacity: 0;
+      transform: translateY(0);
+      transition: opacity 0.3s, transform 0.5s;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    }
+    .emote-bubble.show { opacity: 1; transform: translateY(-10px); }
+    .emote-bubble.hide { opacity: 0; transform: translateY(-20px); }
+    .ticker-bar {
+      position: absolute;
+      bottom: 60px;
+      left: 0;
+      width: 100%;
+      height: 48px;
+      background: linear-gradient(90deg, rgba(20,12,28,0.95) 0%, rgba(40,24,56,0.90) 50%, rgba(20,12,28,0.95) 100%);
+      border-top: 2px solid rgba(255,224,102,0.4);
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+      z-index: 200;
+    }
+    .ticker-label {
+      flex-shrink: 0;
+      background: linear-gradient(135deg, #ffe066, #ffb347);
+      color: #1a1a2e;
+      font-weight: 800;
+      font-size: 16px;
+      padding: 4px 14px;
+      margin-right: 16px;
+      font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
+      letter-spacing: 1px;
+    }
+    .ticker-text {
+      font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
+      color: #ffe066;
+      text-shadow: 0 0 8px rgba(255,224,102,0.5);
+      font-weight: 700;
+      font-size: 22px;
+      white-space: nowrap;
+      letter-spacing: 2px;
+      animation: ticker-scroll 12s linear infinite;
+    }
+    @keyframes ticker-scroll {
+      0%   { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="scene" id="scene"></div>
+
+  <script>
+    // ─── Config ───
+    const CANVAS_W = 720;
+    const CANVAS_H = 600;
+    const CHAR_WIDTH = 110;
+    const WALK_FPS = 3;
+    const IDLE_WAIT_MIN = 8000;
+    const IDLE_WAIT_MAX = 15000;
+    const MOVE_SPEED = 0.01;
+    const INTERACT_DIST = 80;
+    const EMOTE_DURATION = 4000;
+
+    // Character sprite sheet config — override via URL params
+    const params = new URLSearchParams(window.location.search);
+    const SHEET_ASSET = params.get('charAsset') || 'pixel-svg/luna_ny_4dir_aligned.svg';
+    const SHEET_ROWS = parseInt(params.get('charRows') || '4');
+    const SHEET_COLS = parseInt(params.get('charCols') || '4');
+    const WALK_COLS = SHEET_COLS - 1; // Walking frames per direction
+
+    // 4-direction row mapping (for 4-row sheets)
+    const DIR_ROW_MAP_4 = { 'down': 0, 'left': 1, 'up': 2, 'right': 3 };
+    // 8-direction row mapping (for 8-row sheets)
+    const DIR_ROW_MAP_8 = {
+      'down': 0, 'down-left': 1, 'left': 2, 'up-left': 3,
+      'up': 4, 'up-right': 5, 'right': 6, 'down-right': 7
+    };
+    const DIR_ROW_MAP = SHEET_ROWS === 8 ? DIR_ROW_MAP_8 : DIR_ROW_MAP_4;
+
+    const EMOTES = ['❗', '❤️', '✨', '💤', '🎵', '❓', '💡', '🌟', '😊', '🎮'];
+
+    // ── Horse Year Auspicious Phrases (跑馬燈) ──
+    const HORSE_PHRASES = [
+      '🐴 馬到成功', '🏇 龍馬精神', '✨ 一馬當先', '🎊 萬馬奔騰',
+      '🧧 馬年大吉', '💰 金馬送福', '🎉 駿馬迎春', '🌟 馬不停蹄',
+      '🍊 策馬奔騰', '🐎 天馬行空', '🎋 馬上發財', '🏮 馬上有錢',
+    ];
+
+    // ─── Embedded scene data (from scene.json) ───
+    const SCENE_DATA = {
+      "canvas": { "width": 720, "height": 600 },
+      "sprites": [
+        { "name": "room", "asset": "pixel-svg/room.svg", "left": 58, "bottom": 6, "width": 604, "zIndex": 12 },
+        { "name": "box", "asset": "pixel-svg/box.svg", "left": 450, "bottom": 171, "width": 114, "zIndex": 13 },
+        { "name": "box", "asset": "pixel-svg/box.svg", "left": 507, "bottom": 145, "width": 114, "zIndex": 14 },
+        { "name": "box", "asset": "pixel-svg/box.svg", "left": 452, "bottom": 234, "width": 114, "zIndex": 15 },
+        { "name": "box", "asset": "pixel-svg/box.svg", "left": 506, "bottom": 208, "width": 114, "zIndex": 16 },
+        { "name": "box", "asset": "pixel-svg/box.svg", "left": 450, "bottom": 116, "width": 114, "zIndex": 17 },
+        { "name": "desk", "asset": "pixel-svg/desk.svg", "left": 133, "bottom": 177, "width": 218, "zIndex": 18 }
+      ],
+      "collision": {
+        "floor": [[355,27],[632,165],[351,305],[85,165]],
+        "obstacles": [
+          { "name": "box", "polygon": [[464,133],[555,194],[457,256],[416,173]] },
+          { "name": "box", "polygon": [[564,143],[612,168],[564,193],[516,168]] },
+          { "name": "box", "polygon": [[509,232],[557,257],[459,305],[461,257]] },
+          { "name": "box", "polygon": [[563,206],[611,231],[563,256],[515,231]] },
+          { "name": "box", "polygon": [[507,114],[555,139],[507,164],[459,139]] },
+          { "name": "desk", "polygon": [[190,176],[343,253],[294,273],[146,199]] }
+        ]
+      },
+      "slots": [
+        { "name": "slot-1", "left": 342, "bottom": 395, "width": 300, "height": 83, "zIndex": 20, "corners": [[20,-90],[-3,59],[20,-70],[-4,72]] }
+      ]
+    };
+
+    // Convert collision floor from array format to object format
+    const FLOOR_POLYGON = SCENE_DATA.collision.floor.map(([x, y]) => ({ x, y }));
+    const collisionPolygons = SCENE_DATA.collision.obstacles.map(obs => ({
+      name: obs.name,
+      polygon: obs.polygon.map(([x, y]) => ({ x, y }))
+    }));
+
+    // ─── Collision ───
+    function pointInPolygon(px, py, polygon) {
+      let inside = false;
+      for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        const xi = polygon[i].x, yi = polygon[i].y;
+        const xj = polygon[j].x, yj = polygon[j].y;
+        if (((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi)) {
+          inside = !inside;
+        }
+      }
+      return inside;
+    }
+
+    function isPositionValid(x, y) {
+      if (!pointInPolygon(x, y, FLOOR_POLYGON)) return false;
+      for (const col of collisionPolygons) {
+        if (pointInPolygon(x, y, col.polygon)) return false;
+      }
+      return true;
+    }
+
+    function resolveCollision(fromX, fromY, toX, toY) {
+      if (isPositionValid(toX, toY)) return { x: toX, y: toY, blocked: false };
+      if (isPositionValid(toX, fromY)) return { x: toX, y: fromY, blocked: false };
+      if (isPositionValid(fromX, toY)) return { x: fromX, y: toY, blocked: false };
+      return { x: fromX, y: fromY, blocked: true };
+    }
+
+    // ─── State ───
+    let interactables = [];
+    const sceneEl = document.getElementById('scene');
+
+    const character = {
+      x: 0, y: 0,
+      state: 'idle',
+      dir: 'down',
+      targetX: 0, targetY: 0,
+      idleTimer: 0, walkFrame: 0, walkFrameTimer: 0,
+      emoteTimer: 0, interactTarget: null, stuckCounter: 0,
+    };
+
+    // ─── Render Scene ───
+    function renderScene() {
+      interactables = [];
+      for (const sp of SCENE_DATA.sprites) {
+        const img = document.createElement('img');
+        img.className = 'scene-sprite';
+        img.src = sp.asset;
+        img.style.left = sp.left + 'px';
+        img.style.bottom = sp.bottom + 'px';
+        img.style.width = sp.width + 'px';
+        img.style.height = 'auto';
+        img.style.zIndex = sp.zIndex || 1;
+        if (sp.flipX) img.style.transform = 'scaleX(-1)';
+        sceneEl.appendChild(img);
+
+        if (sp.name !== 'room') {
+          interactables.push({ name: sp.name, left: sp.left, bottom: sp.bottom, width: sp.width });
+        }
+      }
+    }
+
+    // ─── Character ───
+    let charContainer, charImg, emoteEl;
+    let charNatW = 0, charNatH = 0;
+
+    function createCharacter() {
+      charContainer = document.createElement('div');
+      charContainer.className = 'character';
+      charContainer.style.width = CHAR_WIDTH + 'px';
+      charContainer.style.overflow = 'hidden';
+
+      charImg = document.createElement('img');
+      charImg.className = 'char-sheet';
+      charImg.src = SHEET_ASSET;
+      charImg.onload = () => {
+        charNatW = charImg.naturalWidth;
+        charNatH = charImg.naturalHeight;
+        updateCharFrame();
+      };
+      charContainer.appendChild(charImg);
+
+      emoteEl = document.createElement('div');
+      emoteEl.className = 'emote-bubble';
+      sceneEl.appendChild(emoteEl);
+      sceneEl.appendChild(charContainer);
+    }
+
+    function dirToRow(dir) {
+      if (SHEET_ROWS === 8) return DIR_ROW_MAP[dir] || 0;
+      // 4-row: collapse 8-dir to 4-dir
+      if (dir.includes('left')) return 1;
+      if (dir.includes('right')) return 3;
+      if (dir.includes('up')) return 2;
+      return 0;
+    }
+
+    function updateCharFrame() {
+      if (!charNatW || !charNatH) return;
+      const rowIdx = dirToRow(character.dir);
+      let col = 0;
+      if (character.state === 'walking') {
+        col = 1 + (character.walkFrame % WALK_COLS);
+      }
+
+      const natFrameW = charNatW / SHEET_COLS;
+      const natFrameH = charNatH / SHEET_ROWS;
+      const displayW = CHAR_WIDTH;
+      const displayH = displayW * (natFrameH / natFrameW);
+
+      charContainer.style.width = displayW + 'px';
+      charContainer.style.height = displayH + 'px';
+
+      const totalW = displayW * SHEET_COLS;
+      const totalH = displayH * SHEET_ROWS;
+      charImg.style.width = totalW + 'px';
+      charImg.style.height = totalH + 'px';
+      charImg.style.left = (-col * displayW) + 'px';
+      charImg.style.top = (-rowIdx * displayH) + 'px';
+
+      charContainer.style.left = (character.x - displayW / 2) + 'px';
+      charContainer.style.bottom = (character.y - 10) + 'px';
+
+      emoteEl.style.left = (character.x - 15) + 'px';
+      emoteEl.style.bottom = (character.y + displayH - 10) + 'px';
+    }
+
+    // ─── Direction ───
+    function getDirection(dx, dy) {
+      const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+      if (angle >= -22.5 && angle < 22.5) return 'right';
+      if (angle >= 22.5 && angle < 67.5) return 'up-right';
+      if (angle >= 67.5 && angle < 112.5) return 'up';
+      if (angle >= 112.5 && angle < 157.5) return 'up-left';
+      if (angle >= 157.5 || angle < -157.5) return 'left';
+      if (angle >= -157.5 && angle < -112.5) return 'down-left';
+      if (angle >= -112.5 && angle < -67.5) return 'down';
+      return 'down-right';
+    }
+
+    // ─── AI ───
+    function pickRandomTarget() {
+      for (let i = 0; i < 30; i++) {
+        const tx = FLOOR_POLYGON[0].x + Math.random() * (FLOOR_POLYGON[1].x - FLOOR_POLYGON[0].x);
+        const ty = FLOOR_POLYGON[0].y + Math.random() * (FLOOR_POLYGON[2].y - FLOOR_POLYGON[0].y);
+        if (isPositionValid(tx, ty)) {
+          character.targetX = tx; character.targetY = ty; return;
+        }
+      }
+      character.targetX = (FLOOR_POLYGON[0].x + FLOOR_POLYGON[1].x) / 2;
+      character.targetY = (FLOOR_POLYGON[0].y + FLOOR_POLYGON[2].y) / 2;
+    }
+
+    function pickTargetNearObject(obj) {
+      const col = collisionPolygons.find(c => c.name === obj.name);
+      if (!col) { pickRandomTarget(); return; }
+      const poly = col.polygon;
+      const cx = (poly[0].x + poly[2].x) / 2;
+      const cy = (poly[0].y + poly[2].y) / 2;
+      const margin = 30;
+      const offsets = poly.map(p => {
+        const dx = p.x - cx, dy = p.y - cy;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        return { x: p.x + (dx/d)*margin, y: p.y + (dy/d)*margin };
+      }).sort(() => Math.random() - 0.5);
+      for (const pos of offsets) {
+        if (isPositionValid(pos.x, pos.y)) {
+          character.targetX = pos.x; character.targetY = pos.y; return;
+        }
+      }
+      pickRandomTarget();
+    }
+
+    function findNearby() {
+      for (const obj of interactables) {
+        const ox = obj.left + obj.width / 2;
+        const oy = obj.bottom + obj.width / 3;
+        const dx = character.x - ox, dy = character.y - oy;
+        if (Math.sqrt(dx*dx + dy*dy) < INTERACT_DIST) return obj;
+      }
+      return null;
+    }
+
+    function showEmote() {
+      emoteEl.textContent = EMOTES[Math.floor(Math.random() * EMOTES.length)];
+      emoteEl.className = 'emote-bubble show';
+      character.emoteTimer = EMOTE_DURATION;
+    }
+
+    function hideEmote() {
+      emoteEl.className = 'emote-bubble hide';
+      character.interactTarget = null;
+    }
+
+    // ─── Game Loop (dual mode: Remotion-driven or standalone) ───
+    const FIXED_DT = 33.33; // ~30fps fixed timestep for Remotion sync
+    let lastRenderedFrame = -1;
+    let isRemotionMode = params.get('remotion') === '1';
+    let lastTime = 0;
+
+    // Seeded PRNG for deterministic simulation in Remotion mode
+    let seed = 42;
+    function seededRandom() {
+      seed = (seed * 16807 + 0) % 2147483647;
+      return (seed - 1) / 2147483646;
+    }
+
+    // Replace Math.random with seeded version in Remotion mode
+    const originalRandom = Math.random;
+    function getR() { return isRemotionMode ? seededRandom() : originalRandom.call(Math); }
+
+    // Patch all randomness in update to use getR()
+    function patchedPickRandomTarget() {
+      const bb = {
+        minX: Math.min(...FLOOR_POLYGON.map(p => p.x)),
+        maxX: Math.max(...FLOOR_POLYGON.map(p => p.x)),
+        minY: Math.min(...FLOOR_POLYGON.map(p => p.y)),
+        maxY: Math.max(...FLOOR_POLYGON.map(p => p.y)),
+      };
+      for (let i = 0; i < 20; i++) {
+        const x = bb.minX + getR() * (bb.maxX - bb.minX);
+        const y = bb.minY + getR() * (bb.maxY - bb.minY);
+        if (isPositionValid(x, y)) {
+          character.targetX = x;
+          character.targetY = y;
+          return;
+        }
+      }
+      character.targetX = character.x + (getR() - 0.5) * 80;
+      character.targetY = character.y + (getR() - 0.5) * 80;
+    }
+    // Override the original function
+    pickRandomTarget = patchedPickRandomTarget;
+
+    function updateStep(dt) {
+      switch (character.state) {
+        case 'idle':
+          character.idleTimer -= dt;
+          if (character.idleTimer <= 0) {
+            if (interactables.length > 0 && getR() < 0.35) {
+              pickTargetNearObject(interactables[Math.floor(getR() * interactables.length)]);
+            } else {
+              pickRandomTarget();
+            }
+            character.state = 'walking';
+            character.walkFrame = 0;
+            character.walkFrameTimer = 0;
+          }
+          break;
+
+        case 'walking': {
+          const dx = character.targetX - character.x;
+          const dy = character.targetY - character.y;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+
+          if (dist < 8) {
+            character.state = 'idle';
+            character.idleTimer = IDLE_WAIT_MIN + getR() * (IDLE_WAIT_MAX - IDLE_WAIT_MIN);
+            character.stuckCounter = 0;
+            const nearby = findNearby();
+            if (nearby) {
+              character.state = 'interacting';
+              character.interactTarget = nearby;
+              showEmote();
+            }
+            break;
+          }
+
+          const speed = MOVE_SPEED * (dt / 16.67);
+          const nx = dx / dist, ny = dy / dist;
+          const r = resolveCollision(character.x, character.y, character.x + nx*speed, character.y + ny*speed);
+          character.x = r.x; character.y = r.y;
+
+          if (r.blocked) {
+            character.stuckCounter++;
+            if (character.stuckCounter > 8) {
+              const validPos = findValidStart();
+              character.x = validPos.x;
+              character.y = validPos.y;
+              character.state = 'idle';
+              character.idleTimer = 500;
+              character.stuckCounter = 0;
+            } else if (character.stuckCounter > 3) {
+              pickRandomTarget();
+            }
+          } else {
+            character.stuckCounter = 0;
+          }
+
+          character.dir = getDirection(dx, dy);
+          character.walkFrameTimer += dt;
+          if (character.walkFrameTimer > (1000 / WALK_FPS)) {
+            character.walkFrame = (character.walkFrame + 1) % 4;
+            character.walkFrameTimer = 0;
+          }
+          break;
+        }
+
+        case 'interacting':
+          character.idleTimer -= dt;
+          if (character.idleTimer <= 0) {
+            hideEmote();
+            character.state = 'idle';
+            character.idleTimer = IDLE_WAIT_MIN + getR() * (IDLE_WAIT_MAX - IDLE_WAIT_MIN);
+          }
+          break;
+      }
+      updateCharFrame();
+    }
+
+    // Remotion frame message handler
+    window.addEventListener('message', (e) => {
+      if (e.data?.type === 'remotion-frame') {
+        const targetFrame = e.data.frame;
+        if (!isRemotionMode) {
+          // Switch to Remotion mode: reset simulation from frame 0
+          isRemotionMode = true;
+          seed = 42;
+          const resetStart = findValidStart();
+          character.x = resetStart.x;
+          character.y = resetStart.y;
+          character.state = 'idle';
+          character.idleTimer = 1500;
+          character.stuckCounter = 0;
+          lastRenderedFrame = -1;
+        }
+
+        // Run simulation forward from lastRenderedFrame to targetFrame
+        while (lastRenderedFrame < targetFrame) {
+          lastRenderedFrame++;
+          updateStep(FIXED_DT);
+        }
+      }
+    });
+
+    // Standalone mode: normal rAF loop (for testing in browser)
+    function standaloneLoop(timestamp) {
+      if (isRemotionMode) return; // stop if Remotion takes over
+      if (!lastTime) lastTime = timestamp;
+      const rawDt = timestamp - lastTime;
+      const dt = Math.min(rawDt, 50); // Cap at 50ms to prevent teleporting during fast renders
+      lastTime = timestamp;
+      updateStep(dt);
+      requestAnimationFrame(standaloneLoop);
+    }
+    // Only start standalone loop if NOT in Remotion mode
+    if (!isRemotionMode) {
+      requestAnimationFrame(standaloneLoop);
+    }
+
+    // ─── Build Bottom Ticker (跑馬燈) ───
+    function buildTicker() {
+      const bar = document.createElement('div');
+      bar.className = 'ticker-bar';
+
+      const label = document.createElement('div');
+      label.className = 'ticker-label';
+      label.textContent = '🐴 馬年快樂';
+      bar.appendChild(label);
+
+      const text = document.createElement('div');
+      text.className = 'ticker-text';
+      // Join all phrases with separator for continuous scroll
+      text.textContent = HORSE_PHRASES.join('    ✦    ');
+      bar.appendChild(text);
+
+      sceneEl.appendChild(bar);
+    }
+
+    // ─── Init ───
+    renderScene();
+    buildTicker();
+    createCharacter();
+
+    // Find a valid starting position (not inside any obstacle)
+    function findValidStart() {
+      const bb = {
+        minX: Math.min(...FLOOR_POLYGON.map(p => p.x)),
+        maxX: Math.max(...FLOOR_POLYGON.map(p => p.x)),
+        minY: Math.min(...FLOOR_POLYGON.map(p => p.y)),
+        maxY: Math.max(...FLOOR_POLYGON.map(p => p.y)),
+      };
+      for (let i = 0; i < 50; i++) {
+        const x = bb.minX + Math.random() * (bb.maxX - bb.minX);
+        const y = bb.minY + Math.random() * (bb.maxY - bb.minY);
+        if (isPositionValid(x, y)) return { x, y };
+      }
+      // Fallback: left side of floor (away from boxes)
+      return { x: 200, y: 160 };
+    }
+    const start = findValidStart();
+    character.x = start.x;
+    character.y = start.y;
+    character.state = 'idle';
+    character.idleTimer = 1500;
+
+    // Auto-scale scene to fill viewport
+    function autoScale() {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const scaleX = vw / CANVAS_W;
+      const scaleY = vh / CANVAS_H;
+      const scale = Math.min(scaleX, scaleY);
+      sceneEl.style.transform = `scale(${scale})`;
+    }
+    autoScale();
+    window.addEventListener('resize', autoScale);
+  </script>
+</body>
+</html>

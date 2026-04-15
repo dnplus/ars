@@ -1,0 +1,261 @@
+/**
+ * @command publish
+ * @description High-level release commands that compose prepare/package/upload steps.
+ *
+ * Usage:
+ *   npx ars publish package <series>/<epId>
+ *   npx ars publish youtube <series>/<epId>
+ *   npx ars publish social <series>/<epId>
+ *   npx ars publish all <series>/<epId>
+ */
+import fs from 'fs';
+import path from 'path';
+import { execFileSync } from 'child_process';
+import { createInterface } from 'readline';
+import { parseTarget } from '../lib/context';
+import { loadEpisodeMetadata } from '../lib/episode-file';
+import { readPreparedYoutubeCandidate } from '../lib/prepare-artifact';
+
+type PublishMode = 'package' | 'youtube' | 'social' | 'all';
+
+interface PublishOptions {
+  mode: PublishMode;
+  series: string;
+  epId: string;
+  dryRun: boolean;
+  yes: boolean;
+  force: boolean;
+  privacy: 'public' | 'unlisted' | 'private';
+}
+
+const ROOT = path.resolve(__dirname, '../..');
+
+const HELP = `
+🚀 ARS Publish — High-Level Release Commands
+
+Usage:
+  npx ars publish package <series>/<epId>   Export cover + SRT + render
+  npx ars publish youtube <series>/<epId>   Package + upload YouTube
+  npx ars publish social <series>/<epId>    Upload Threads + FB Group
+  npx ars publish all <series>/<epId>       Package + YouTube + social
+
+Options:
+  --dry-run              Execute local safe steps; keep external uploads in dry-run mode
+  --yes                  Skip confirmation prompt and execute immediately
+  --force                Rebuild local artifacts even if they already exist
+  --privacy <status>     YouTube privacy: public|unlisted|private (default: private)
+
+Notes:
+  - Prefer publish* for daily release; use low-level upload* only for partial reruns/debugging.
+  - publish youtube expects a prepared artifact from:
+      npx ars prepare youtube <series>/<epId>
+  - publish social expects metadata.social and metadata.publish.youtubeUrl to already exist.
+  - Generate metadata with:
+      npx ars prepare youtube <series>/<epId>
+      npx ars prepare social <series>/<epId>
+`;
+
+function parseArgs(args: string[]): PublishOptions {
+  const mode = args[0] as PublishMode;
+  const target = args[1];
+
+  if (!mode || !target || !['package', 'youtube', 'social', 'all'].includes(mode)) {
+    console.log(HELP);
+    process.exit(mode && target ? 1 : 0);
+  }
+
+  const { series, epId } = parseTarget(target);
+  const privacyIdx = args.indexOf('--privacy');
+  const privacy = privacyIdx !== -1 && args[privacyIdx + 1]
+    ? args[privacyIdx + 1] as PublishOptions['privacy']
+    : 'private';
+
+  return {
+    mode,
+    series,
+    epId,
+    dryRun: args.includes('--dry-run'),
+    yes: args.includes('--yes'),
+    force: args.includes('--force'),
+    privacy,
+  };
+}
+
+async function confirmExecution(opts: PublishOptions, target: string): Promise<void> {
+  if (opts.dryRun || opts.yes) return;
+
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  const answer = await new Promise<string>((resolve) => {
+    rl.question(`\nConfirm publish ${opts.mode} for ${target}? [y/N] `, (value) => {
+      rl.close();
+      resolve(value.trim().toLowerCase());
+    });
+  });
+
+  if (answer !== 'y' && answer !== 'yes') {
+    console.log('   Aborted.');
+    process.exit(0);
+  }
+}
+
+function cliArgs(...args: string[]): [string, string[]] {
+  return ['npx', ['tsx', 'cli/index.ts', ...args]];
+}
+
+function remotionArgs(...args: string[]): [string, string[]] {
+  return ['npx', ['remotion', ...args]];
+}
+
+function runStep(label: string, bin: string, args: string[]): void {
+  const display = `${bin} ${args.join(' ')}`;
+  console.log(`   $ ${display}`);
+  execFileSync(bin, args, { stdio: 'inherit', cwd: ROOT });
+  console.log(`   ✅ ${label}`);
+}
+
+function runLocalStep(label: string, bin: string, args: string[]): void {
+  const display = `${bin} ${args.join(' ')}`;
+  console.log(`   $ ${display}`);
+  execFileSync(bin, args, { stdio: 'inherit', cwd: ROOT });
+  console.log(`   ✅ ${label}`);
+}
+
+function tryRunLocalStep(label: string, bin: string, args: string[]): boolean {
+  try {
+    runLocalStep(label, bin, args);
+    return true;
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    console.warn(`   ⚠️  ${label} skipped: ${detail}`);
+    return false;
+  }
+}
+
+function ensureYoutubeReady(series: string, epId: string): void {
+  if (!readPreparedYoutubeCandidate(series, epId)) {
+    console.error(`Error: YouTube metadata not found.`);
+    console.error(`   1. Run: npx ars prepare youtube ${series}/${epId}`);
+    console.error(`   2. In Claude Code: /ars:prepare-youtube ${series}/${epId}`);
+    process.exit(1);
+  }
+}
+
+function ensureSocialReady(metadata: Awaited<ReturnType<typeof loadEpisodeMetadata>>, series: string, epId: string): void {
+  if (!metadata?.social?.posts?.[0]) {
+    console.error(`❌ Missing metadata.social`);
+    console.error(`   Run first: npx ars prepare social ${series}/${epId}`);
+    process.exit(1);
+  }
+  if (!metadata?.publish?.youtubeUrl) {
+    console.error(`❌ Missing metadata.publish.youtubeUrl`);
+    console.error(`   Upload YouTube first, then run: npx ars prepare social ${series}/${epId}`);
+    process.exit(1);
+  }
+}
+
+function ensurePackageOutputs(series: string, epId: string): void {
+  const renderPath = path.join(ROOT, 'output', 'render', series, `${epId}.mp4`);
+  const coverPath = path.join(ROOT, 'output', 'covers', series, `${epId}.jpg`);
+  const missing = [
+    !fs.existsSync(renderPath) && renderPath,
+    !fs.existsSync(coverPath) && coverPath,
+  ].filter(Boolean);
+
+  if (missing.length > 0) {
+    console.error(`❌ Package outputs missing:`);
+    for (const item of missing) {
+      console.error(`   • ${path.relative(ROOT, item as string)}`);
+    }
+    process.exit(1);
+  }
+}
+
+function localOutputPaths(series: string, epId: string) {
+  return {
+    renderPath: path.join(ROOT, 'output', 'render', series, `${epId}.mp4`),
+    coverPath: path.join(ROOT, 'output', 'covers', series, `${epId}.jpg`),
+    srtPath: path.join(ROOT, 'output', 'srt', series, `${epId}.srt`),
+  };
+}
+
+function publishPackage(target: string, series: string, epId: string, dryRun: boolean, force: boolean): void {
+  console.log(`\n📦 Publish package: ${target}`);
+  if (dryRun) {
+    console.log('   ℹ️  Dry run for publish means: local asset steps still execute; only external uploads stay dry-run.');
+  }
+  const { coverPath, srtPath, renderPath } = localOutputPaths(series, epId);
+
+  if (!force && fs.existsSync(coverPath)) {
+    console.log(`   ⏭️  Cover export skipped: ${path.relative(ROOT, coverPath)}`);
+  } else {
+    runLocalStep('Cover export', ...cliArgs('export', 'cover', target));
+  }
+
+  if (!force && fs.existsSync(srtPath)) {
+    console.log(`   ⏭️  SRT export skipped: ${path.relative(ROOT, srtPath)}`);
+  } else {
+    tryRunLocalStep('SRT export', ...cliArgs('export', 'srt', target));
+  }
+
+  if (!force && fs.existsSync(renderPath)) {
+    console.log(`   ⏭️  Render skipped: ${path.relative(ROOT, renderPath)}`);
+  } else if (dryRun) {
+    console.log(`   DRY RUN: would render output/render/${series}/${epId}.mp4`);
+  } else {
+    runLocalStep('Render', ...remotionArgs('render', `${series}--${epId}`, `output/render/${series}/${epId}.mp4`));
+  }
+}
+
+export async function run(args: string[]) {
+  const opts = parseArgs(args);
+  const target = `${opts.series}/${opts.epId}`;
+
+  console.log(`\n🚀 Publish: ${opts.mode} (${target})`);
+  console.log(`${'═'.repeat(50)}`);
+  await confirmExecution(opts, target);
+
+  if (opts.mode === 'package') {
+    publishPackage(target, opts.series, opts.epId, opts.dryRun, opts.force);
+    return;
+  }
+
+  if (opts.mode === 'youtube') {
+    const metadata = await loadEpisodeMetadata(opts.series, opts.epId);
+    ensureYoutubeReady(opts.series, opts.epId);
+    publishPackage(target, opts.series, opts.epId, opts.dryRun, opts.force);
+    if (!opts.dryRun) ensurePackageOutputs(opts.series, opts.epId);
+    runStep(
+      'YouTube upload',
+      ...cliArgs('upload', 'youtube', target, '--privacy', opts.privacy, ...(opts.dryRun ? ['--dry-run'] : [])),
+    );
+    return;
+  }
+
+  if (opts.mode === 'social') {
+    const metadata = await loadEpisodeMetadata(opts.series, opts.epId);
+    ensureSocialReady(metadata, opts.series, opts.epId);
+    runStep('Threads upload', ...cliArgs('upload', 'threads', target, ...(opts.dryRun ? ['--dry-run'] : [])));
+    runStep('FB Group upload', ...cliArgs('upload', 'fbgroup', target, ...(opts.dryRun ? ['--dry-run'] : [])));
+    return;
+  }
+
+  const metadata = await loadEpisodeMetadata(opts.series, opts.epId);
+  ensureYoutubeReady(opts.series, opts.epId);
+  publishPackage(target, opts.series, opts.epId, opts.dryRun, opts.force);
+  if (!opts.dryRun) ensurePackageOutputs(opts.series, opts.epId);
+  runStep(
+    'YouTube upload',
+    ...cliArgs('upload', 'youtube', target, '--privacy', opts.privacy, ...(opts.dryRun ? ['--dry-run'] : [])),
+  );
+
+  const refreshed = await loadEpisodeMetadata(opts.series, opts.epId);
+  if (!refreshed?.publish?.youtubeUrl) {
+    console.log(`\n⚠️  YouTube uploaded, but social phase still requires prepare social.`);
+    console.log(`   Run next: npx ars prepare social ${target}`);
+    return;
+  }
+
+  ensureSocialReady(refreshed, opts.series, opts.epId);
+  runStep('Threads upload', ...cliArgs('upload', 'threads', target, ...(opts.dryRun ? ['--dry-run'] : [])));
+  runStep('FB Group upload', ...cliArgs('upload', 'fbgroup', target, ...(opts.dryRun ? ['--dry-run'] : [])));
+}

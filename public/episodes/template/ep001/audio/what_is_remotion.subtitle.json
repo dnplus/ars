@@ -1,0 +1,27 @@
+[
+  {
+    "text": "Remotion 是一個用 React 寫影片的框架。",
+    "startTime": 0,
+    "endTime": 4.4
+  },
+  {
+    "text": "對工程師來說，這就是把我們熟悉的技能直接轉換成影片產能——用 component 設計版面、用 props 傳遞資料、用 JSON 管理內容。",
+    "startTime": 4.4,
+    "endTime": 13.8
+  },
+  {
+    "text": "但在認真投入之前，我決定先做一個試作片。",
+    "startTime": 13.8,
+    "endTime": 17.1
+  },
+  {
+    "text": "就像正式開發前會先跑 POC 一樣，one-shot 跑一輪，才知道這個流程到底需要什麼。",
+    "startTime": 17.1,
+    "endTime": 24.5
+  },
+  {
+    "text": "我拿之前做的 L L M 教學課程來測試。跑完一次之後，我整理出幾個必須準備的東西。",
+    "startTime": 24.5,
+    "endTime": 30.12
+  }
+]
