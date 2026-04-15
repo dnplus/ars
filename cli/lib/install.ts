@@ -171,6 +171,10 @@ export function getSourceGitCommit(sourceRoot: string): string {
     return pkg.gitHead.trim();
   }
 
+  if (typeof pkg?.version === 'string' && pkg.version.trim()) {
+    return `version:${pkg.version.trim()}`;
+  }
+
   throw new Error(
     `Failed to resolve source commit from ${sourceRoot}: ${
       gitResult.stderr.trim() || 'git rev-parse HEAD failed'
