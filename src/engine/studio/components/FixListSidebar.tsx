@@ -54,11 +54,8 @@ export const FixListSidebar: React.FC<FixListSidebarProps> = ({ onClose }) => {
   return (
     <div
       style={{
-        position: 'absolute',
-        top: 0,
-        right: 0,
-        bottom: 0,
         width: 320,
+        flexShrink: 0,
         background: '#1a1a2e',
         borderLeft: '1px solid var(--color-border, #333)',
         display: 'flex',

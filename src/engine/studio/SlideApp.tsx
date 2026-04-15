@@ -121,18 +121,17 @@ export const SlideApp: React.FC<StudioAppProps> = ({ episode }) => {
     Math.round((currentSlide?.step.durationInSeconds ?? 5) * fps),
   );
 
-  const SIDEBAR_WIDTH = 320;
+  const viewportRef = useRef<HTMLDivElement>(null);
 
-  // Scale canvas to fit viewport (sidebar-aware)
+  // Scale canvas to fit the left pane (sidebar-aware via flex)
   useEffect(() => {
     const updateScale = () => {
-      const viewport = appRef.current?.querySelector('.studio-viewport') as HTMLElement | null;
+      const pane = viewportRef.current;
       const canvas = canvasRef.current;
-      if (!viewport || !canvas) return;
-      const availableWidth = viewport.clientWidth - (showFixList ? SIDEBAR_WIDTH : 0);
+      if (!pane || !canvas) return;
       const scale = Math.min(
-        availableWidth / compositionWidth,
-        viewport.clientHeight / compositionHeight,
+        pane.clientWidth / compositionWidth,
+        pane.clientHeight / compositionHeight,
       );
       canvas.style.transform = `scale(${scale})`;
     };
@@ -208,102 +207,92 @@ export const SlideApp: React.FC<StudioAppProps> = ({ episode }) => {
       <div
         ref={appRef}
         className={`studio-app${isFullscreen ? ' fullscreen' : ''}`}
-        style={themeStyles}
+        style={{ ...themeStyles, flexDirection: 'row' }}
       >
-        {/* Main viewport */}
-        <div className="studio-viewport" style={{ position: 'relative', overflow: 'hidden' }}>
-          <div className="studio-scale-wrapper">
-            {/* Fixed-resolution canvas scaled to fit */}
-            <div
-              ref={canvasRef}
-              className="studio-canvas"
-              style={{ width: compositionWidth, height: compositionHeight }}
-            >
-              <Player
-                ref={playerRef}
-                component={SlideComposition}
-                inputProps={{
-                  step: currentSlide.step,
-                  prevLayoutMode: prevSlide?.step.layoutMode,
-                  episode,
-                  episodeInfo,
-                  audioSrc: currentSlide.audioSrc,
-                } satisfies SlideCompositionProps}
-                durationInFrames={durationInFrames}
-                compositionWidth={compositionWidth}
-                compositionHeight={compositionHeight}
-                fps={fps}
-                controls={false}
-                loop={false}
-                autoPlay
-                clickToPlay={false}
-                moveToBeginningWhenEnded={false}
-                initialFrame={0}
-                acknowledgeRemotionLicense
+        {/* Left column: viewport + nav */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          {/* Viewport */}
+          <div
+            ref={viewportRef}
+            className="studio-viewport"
+          >
+            <div className="studio-scale-wrapper">
+              <div
+                ref={canvasRef}
+                className="studio-canvas"
                 style={{ width: compositionWidth, height: compositionHeight }}
-              />
+              >
+                <Player
+                  ref={playerRef}
+                  component={SlideComposition}
+                  inputProps={{
+                    step: currentSlide.step,
+                    prevLayoutMode: prevSlide?.step.layoutMode,
+                    episode,
+                    episodeInfo,
+                    audioSrc: currentSlide.audioSrc,
+                  } satisfies SlideCompositionProps}
+                  durationInFrames={durationInFrames}
+                  compositionWidth={compositionWidth}
+                  compositionHeight={compositionHeight}
+                  fps={fps}
+                  controls={false}
+                  loop={false}
+                  autoPlay
+                  clickToPlay={false}
+                  moveToBeginningWhenEnded={false}
+                  initialFrame={0}
+                  acknowledgeRemotionLicense
+                  style={{ width: compositionWidth, height: compositionHeight }}
+                />
 
-              {/* Card ⚡ — bottom-right of canvas */}
-              <div style={{ position: 'absolute', bottom: 16, right: 16, zIndex: 120 }}>
-                <ActionBar stepId={step.id} series={fallbackSeries} epId={fallbackEpId} kind="visual" />
-              </div>
-
-              {/* Narration display + narration ⚡ — bottom center of canvas */}
-              {step.narration && (
-                <div style={{
-                  position: 'absolute',
-                  bottom: 16,
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  display: 'flex',
-                  alignItems: 'flex-end',
-                  gap: 8,
-                  maxWidth: '70%',
-                  zIndex: 120,
-                }}>
-                  <div style={{
-                    flex: 1,
-                    padding: '10px 16px',
-                    background: 'rgba(0,0,0,0.82)',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    borderRadius: 10,
-                    color: '#fff',
-                    fontSize: 14,
-                    lineHeight: 1.6,
-                    whiteSpace: 'pre-wrap',
-                  }}>
-                    {step.narration}
-                  </div>
-                  <ActionBar stepId={step.id} series={fallbackSeries} epId={fallbackEpId} kind="content" />
+                {/* Card ⚡ — bottom-right of canvas */}
+                <div style={{ position: 'absolute', bottom: 16, right: 16, zIndex: 120 }}>
+                  <ActionBar stepId={step.id} series={fallbackSeries} epId={fallbackEpId} kind="visual" />
                 </div>
-              )}
+
+                {/* Narration + narration ⚡ — bottom center of canvas */}
+                {step.narration && (
+                  <div style={{
+                    position: 'absolute', bottom: 16, left: '50%',
+                    transform: 'translateX(-50%)',
+                    display: 'flex', alignItems: 'flex-end', gap: 8,
+                    maxWidth: '70%', zIndex: 120,
+                  }}>
+                    <div style={{
+                      flex: 1, padding: '10px 16px',
+                      background: 'rgba(0,0,0,0.82)',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      borderRadius: 10, color: '#fff',
+                      fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-wrap',
+                    }}>
+                      {step.narration}
+                    </div>
+                    <ActionBar stepId={step.id} series={fallbackSeries} epId={fallbackEpId} kind="content" />
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Fix list sidebar */}
-          {showFixList && (
-            <FixListSidebar onClose={() => setShowFixList(false)} />
+          {/* Fix-applied banner */}
+          {fixAppliedBanner && (
+            <div className="studio-fix-banner" role="status" aria-live="polite">
+              <div className="studio-fix-banner-message">
+                Steps fixed: {fixAppliedBanner.stepIds.join(', ')} — reload to confirm
+              </div>
+              <button
+                className="studio-fix-banner-btn"
+                type="button"
+                onClick={() => window.location.reload()}
+              >
+                Reload
+              </button>
+            </div>
           )}
-        </div>
 
-        {/* Fix-applied banner */}
-        {fixAppliedBanner && (
-          <div className="studio-fix-banner" role="status" aria-live="polite">
-            <div className="studio-fix-banner-message">
-              Steps fixed: {fixAppliedBanner.stepIds.join(', ')} — reload to confirm
-            </div>
-            <button
-              className="studio-fix-banner-btn"
-              type="button"
-              onClick={() => window.location.reload()}
-            >
-              Reload
-            </button>
-          </div>
-        )}
-
-        {/* Navigation */}
-        <nav className="studio-navigation">
+          {/* Navigation */}
+          <nav className="studio-navigation">
           <div className="nav-left">
             <button
               className="nav-btn"
@@ -354,6 +343,12 @@ export const SlideApp: React.FC<StudioAppProps> = ({ episode }) => {
             />
           </div>
         </nav>
+        </div>{/* end left column */}
+
+        {/* Right column: fix list sidebar (full height) */}
+        {showFixList && (
+          <FixListSidebar onClose={() => setShowFixList(false)} />
+        )}
       </div>
     </ThemeProvider>
   );
