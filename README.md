@@ -80,7 +80,8 @@ Inside Claude Code:
 - write `.ars/episodes/ep001/topic.md`
 - write `.ars/episodes/ep001/plan.md`
 - write `.ars/episodes/ep001/todo.json`
-- emit `card-specs/` only if a custom card is needed
+- inspect built-in cards and `src/episodes/<series>/cards/*/spec.ts` before planning a new custom card
+- emit `card-specs/` only if neither built-in cards nor existing series-scoped custom cards are sufficient
 
 ### 5. Build the episode
 

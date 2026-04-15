@@ -9,6 +9,7 @@ effort: medium
 Generate a new series-scoped card using ARS engine primitives.
 
 Prefer using this only when `/ars:plan` produced a matching `card-spec` todo or a card brief under `.ars/episodes/<epId>/card-specs/`.
+Existing series-scoped cards are reusable assets for that series, not throwaway episode-specific files.
 
 ## Overview
 
@@ -27,12 +28,17 @@ Output path: `src/episodes/<series>/cards/<card-name>/`
 
 3. **Understand the card purpose**: If no description, first look for a matching brief under `.ars/episodes/*/card-specs/<card-name>.md`. Only ask one focused question if no brief exists.
 
-4. **Choose the right primitive**:
+4. **Check for reuse before scaffolding**:
+   - Inspect existing cards under `src/episodes/<series>/cards/*/spec.ts`.
+   - If an existing series-scoped card already solves the need, tell the user to reuse it instead of generating a redundant sibling card.
+   - If an existing card is close, prefer extending it or recommending a small follow-up patch over creating a near-duplicate.
+
+5. **Choose the right primitive**:
    - `BaseSlide` — fullscreen content, no chrome (default choice for most cards)
    - `WindowSlide` — content inside a window frame (mac/terminal/browser/simple)
    - `ScrollSlide` — WindowSlide with auto-scrolling (for long content like logs, code)
 
-5. **Generate the card**:
+6. **Generate the card**:
 
    Create `src/episodes/<series>/cards/<card-name>/spec.ts`:
    ```ts
@@ -78,9 +84,9 @@ Output path: `src/episodes/<series>/cards/<card-name>/`
    };
    ```
 
-6. **Verify**: Run `npx tsc --noEmit` to confirm no type errors.
+7. **Verify**: Run `npx tsc --noEmit` to confirm no type errors.
 
-7. **Report**: Tell the user:
+8. **Report**: Tell the user:
    - Files created
    - The `type` string to reference in episode scripts (e.g., `"<series>/<card-name>"`)
    - Example usage snippet for a scene step
