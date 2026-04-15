@@ -28,7 +28,7 @@ npx ars review open $ARGUMENTS
 
 This starts the Vite dev server and opens the browser. Tell the user:
 - Studio is running — open it in the browser to review slides
-- Flag slides using the ⚡ buttons (card fix / narration fix / global fix)
+- 用 ✨ 按鈕標記問題（卡片左上 = 視覺、字幕列左側 = 口播、導覽列中央 = 整集）
 - You (Claude Code) will pick up intents automatically
 
 ## Step 3 — Watch loop
