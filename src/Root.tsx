@@ -17,8 +17,8 @@ import React from "react";
 import { Composition, Folder, Still, staticFile } from "remotion";
 import { EpisodeRenderer } from "./engine/Composition";
 import { ThumbnailCard } from "./engine/components/cards/ThumbnailCard";
-import { PhotoThumbnailCard } from "./engine/components/cards/PhotoThumbnailCard";
-import { SocialCoverCard } from "./engine/components/cards/SocialCoverCard";
+import { ThemePreviewCard } from "./engine/components/ThemePreviewCard";
+import { FALLBACK_THEME, ThemeProvider } from "./engine/shared/ThemeContext";
 import { Episode, SeriesConfig } from "./engine/shared/types";
 
 // 跨目錄掃描所有 series 下的 .ts 檔案
@@ -161,27 +161,13 @@ export const RemotionRoot: React.FC = () => (
             const meta = { ...GLOBAL_FALLBACK, ...defaults, ...episode.metadata };
             const w = meta.width ?? 1280;
             const h = meta.height ?? 720;
-            const thumbCfg = sc?.thumbnail;
 
             const mascotUrl = shell?.config?.vtuber?.openImg
               ? staticFile(shell.config.vtuber.openImg)
               : staticFile(`episodes/${series}/shared/vtuber/vtuber_open.png`);
 
             const CardComponent = () =>
-              thumbCfg?.style === 'photo' ? (
-                <PhotoThumbnailCard
-                  backgroundImage={staticFile(thumbCfg.backgroundImage)}
-                  title={meta.title}
-                  subtitle={meta.subtitle}
-                  channelName={meta.channelName}
-                  episodeTag={meta.episodeTag}
-                  titlePosition={thumbCfg.titlePosition}
-                  borderGradient={thumbCfg.borderGradient}
-                  logoUrl={thumbCfg.logoUrl ? staticFile(thumbCfg.logoUrl) : undefined}
-                  width={w}
-                  height={h}
-                />
-              ) : (
+              (
                 <ThumbnailCard
                   title={meta.title}
                   subtitle={meta.subtitle}
@@ -207,73 +193,19 @@ export const RemotionRoot: React.FC = () => (
       ))}
     </Folder>
 
-    {/* ── Social Stills ── */}
-    <Folder name="social">
-      {Object.entries(seriesMap).sort().map(([series, episodes]) => (
-        <Folder key={`social-${series}`} name={series}>
-          {Object.entries(episodes).sort().flatMap(([epId, episode]) => {
-            const sc = seriesConfigs[series];
-            const defaults = sc?.episodeDefaults ?? {};
-            const meta = { ...GLOBAL_FALLBACK, ...defaults, ...episode.metadata };
-            const socialTheme = {
-              primary: sc?.shell?.theme?.colors.primary ?? "#c4a77d",
-              secondary: sc?.shell?.theme?.colors.secondary ?? "#6b5d4d",
-              accent: sc?.shell?.theme?.colors.accent ?? "#d4b896",
-              surfaceLight: sc?.shell?.theme?.colors.surfaceLight ?? "#f5f0e8",
-              onLight: sc?.shell?.theme?.colors.onLight ?? "#3d3530",
-              border: sc?.shell?.theme?.colors.border ?? "#d9cbb7",
-            };
-
-            const subtitleSingle =
-              meta.subtitle ||
-              "不是更會聊，而是更能把模型接進現實世界。";
-            const subtitleOpener =
-              "這不是單一功能升級，而是產品路線改變。下一張開始拆重點。";
-
-            const socialSingle = () => (
-              <SocialCoverCard
-                title={meta.title}
-                subtitle={subtitleSingle}
-                channelName={meta.channelName}
-                episodeTag={meta.episodeTag}
-                theme={socialTheme}
-                width={1080}
-                height={1350}
-                variant="single"
-              />
-            );
-
-            const carouselOpener = () => (
-              <SocialCoverCard
-                title={meta.title}
-                subtitle={subtitleOpener}
-                channelName={meta.channelName}
-                episodeTag={meta.episodeTag}
-                theme={socialTheme}
-                width={1080}
-                height={1350}
-                variant="opener"
-              />
-            );
-
-            return [
-              <Still
-                key={`social-single-${series}--${epId}`}
-                id={`social-single-${series}--${epId}`}
-                component={socialSingle}
-                width={1080}
-                height={1350}
-              />,
-              <Still
-                key={`carousel-opener-${series}--${epId}`}
-                id={`carousel-opener-${series}--${epId}`}
-                component={carouselOpener}
-                width={1080}
-                height={1350}
-              />,
-            ];
-          })}
-        </Folder>
+    <Folder name="theme-preview">
+      {Object.entries(seriesConfigs).sort(([left], [right]) => left.localeCompare(right)).map(([seriesId, config]) => (
+        <Still
+          key={seriesId}
+          id={`theme-${seriesId}`}
+          component={() => (
+            <ThemeProvider theme={config.shell?.theme ?? FALLBACK_THEME}>
+              <ThemePreviewCard />
+            </ThemeProvider>
+          )}
+          width={1920}
+          height={1080}
+        />
       ))}
     </Folder>
   </>

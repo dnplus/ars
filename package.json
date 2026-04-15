@@ -11,18 +11,11 @@
   "dependencies": {
     "@dagrejs/dagre": "^2.0.4",
     "@drincs/pixi-vn": "^1.5.8",
-    "@react-three/drei": "^10.7.7",
-    "@react-three/fiber": "^9.5.0",
     "@remotion/cli": "4.0.435",
     "@remotion/google-fonts": "4.0.435",
     "@remotion/media": "4.0.435",
-    "@remotion/skia": "4.0.435",
-    "@remotion/tailwind-v4": "4.0.435",
-    "@remotion/three": "4.0.435",
     "@remotion/transitions": "4.0.435",
-    "@shopify/react-native-skia": "^2.4.16",
     "@types/qrcode": "^1.5.6",
-    "@types/three": "^0.183.1",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.1.0",
     "mermaid": "^11.12.2",
@@ -38,8 +31,7 @@
     "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1",
     "remotion": "4.0.435",
-    "tailwindcss": "4.0.0",
-    "three": "^0.183.1"
+    "tailwindcss": "4.0.0"
   },
   "devDependencies": {
     "@remotion/eslint-config-flat": "4.0.435",
@@ -54,9 +46,9 @@
     "jsdom": "^28.0.0",
     "prettier": "3.6.0",
     "puppeteer-core": "^24.40.0",
+    "tsx": "^4.20.6",
     "typescript": "5.9.3",
-    "vite": "^7.3.1",
-    "tsx": "^4.20.6"
+    "vite": "^7.3.1"
   },
   "bin": {
     "ars": "./cli/index.ts"

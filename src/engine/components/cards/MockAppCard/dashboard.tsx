@@ -1,6 +1,5 @@
 import React from "react";
-import { ChartCard } from "../ChartCard";
-import type { ChartDatum } from "../ChartCard";
+import type { ChartDatum } from "./types";
 import type { StatItem } from "../StatsCard";
 import { useTheme } from "../../../shared/ThemeContext";
 
@@ -71,19 +70,32 @@ export const DashboardView: React.FC<{
       <div
         style={{
           minHeight: 0,
-          overflow: "visible",
+          overflow: "hidden",
           position: "relative",
+          display: "flex",
+          flexDirection: "column",
+          gap: 6,
+          padding: "8px 14px",
         }}
       >
-        <ChartCard
-          type={chartType}
-          data={chartData}
-          embedded
-          valuePrefix={valuePrefix}
-          valueSuffix={valueSuffix}
-          showLegend={chartData.length <= 5}
-          sourceLabel={sourceLabel}
-        />
+        {chartData.length > 0 && (
+          <div style={{ flex: 1, display: "flex", alignItems: "flex-end", gap: 6, minHeight: 0 }}>
+            {chartData.map((d, i) => {
+              const max = Math.max(...chartData.map(x => x.value), 1);
+              const pct = (d.value / max) * 100;
+              return (
+                <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                  <div style={{ fontSize: 11, color: theme.colors.onCardMuted }}>{valuePrefix}{d.value}{valueSuffix}</div>
+                  <div style={{ width: "100%", height: `${pct}%`, minHeight: 4, borderRadius: 4, background: d.color ?? theme.colors.primary, opacity: 0.85 }} />
+                  <div style={{ fontSize: 11, color: theme.colors.onCardMuted, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>{d.label}</div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {sourceLabel && (
+          <div style={{ fontSize: 11, color: theme.colors.onCardMuted, textAlign: "right" }}>{sourceLabel}</div>
+        )}
         {insight && (
           <div
             style={{

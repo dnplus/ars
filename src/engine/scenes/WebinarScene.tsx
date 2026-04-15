@@ -44,11 +44,6 @@ import { ContextCard } from "../components/cards/ContextCard";
 import { CompareCard } from "../components/cards/CompareCard";
 import { StatsCard } from "../components/cards/StatsCard";
 import { TimelineCard } from "../components/cards/TimelineCard";
-import { LiveSceneCard } from "../components/cards/LiveSceneCard";
-import { ThreeSceneCard } from "../components/cards/ThreeSceneCard";
-import { TerminalCard } from "../components/cards/TerminalCard";
-import { PhoneCard } from "../components/cards/PhoneCard";
-import { MacAppCard } from "../components/cards/MacAppCard";
 import { MockAppCard } from "../components/cards/MockAppCard";
 import { FlowchartCard } from "../components/cards/FlowchartCard";
 
@@ -72,21 +67,6 @@ export const WebinarScene: React.FC<WebinarSceneProps> = ({
   const { fps } = useVideoConfig();
 
   const { contentType } = step;
-
-  // Three.js Scene - 3D 視覺場景
-  if (contentType === "threeScene") {
-    return (
-      <ThreeSceneCard
-        sceneType={step.threeSceneType || "particles"}
-        headline={step.threeHeadline}
-        bodyText={step.threeBodyText}
-        nodes={step.threeNodes}
-        primaryColor={step.threePrimaryColor}
-        secondaryColor={step.threeSecondaryColor}
-        textStyle={step.threeTextStyle || "glass"}
-      />
-    );
-  }
 
   // Cover - 全螢幕卡片（片頭/章節頭）
   if (contentType === "cover") {
@@ -323,53 +303,6 @@ function renderCard(step: Step, layoutMode: LayoutMode) {
           title={step.cardTitle}
           direction={step.tickerDirection || "vertical"}
           style={step.tickerStyle || "flash"}
-        />
-      );
-
-    case "liveScene":
-      return (
-        <LiveSceneCard content={step.liveScene || "{}"} frame={cardFrame} />
-      );
-
-    case "threeScene":
-      return (
-        <ThreeSceneCard
-          sceneType={step.threeSceneType || "particles"}
-          headline={step.threeHeadline}
-          bodyText={step.threeBodyText}
-          nodes={step.threeNodes}
-          primaryColor={step.threePrimaryColor}
-          secondaryColor={step.threeSecondaryColor}
-          textStyle={step.threeTextStyle || "glass"}
-        />
-      );
-
-    case "terminal":
-      return (
-        <TerminalCard
-          title={step.terminalTitle || step.windowTitle || "Terminal"}
-          lines={step.terminalLines || []}
-          charsPerSecond={step.terminalCharsPerSecond}
-        />
-      );
-
-    case "phone":
-      return (
-        <PhoneCard
-          appName={step.appName || "AI Assistant"}
-          messages={step.appMessages || []}
-          charsPerSecond={step.appCharsPerSecond}
-          inputPlaceholder={step.appInputPlaceholder}
-        />
-      );
-
-    case "macApp":
-      return (
-        <MacAppCard
-          appName={step.appName || "AI Assistant Desktop"}
-          messages={step.appMessages || []}
-          charsPerSecond={step.appCharsPerSecond}
-          inputPlaceholder={step.appInputPlaceholder}
         />
       );
 

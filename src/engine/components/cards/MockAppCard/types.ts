@@ -1,5 +1,10 @@
-import type { ChartDatum } from "../ChartCard";
 import type { StatItem } from "../StatsCard";
+
+export type ChartDatum = {
+  label: string;
+  value: number;
+  color?: string;
+};
 
 export type MockAppArtifact = {
   label: string;
