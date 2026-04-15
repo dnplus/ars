@@ -3,22 +3,86 @@
  * @description Layout 註冊中心
  */
 
-import { StreamingLayout, StreamingLayoutConfig } from "./StreamingLayout";
-import { ShortsLayout } from "./ShortsLayout";
+import type { ComponentType } from "react";
+import type { StreamingLayoutConfig, StreamingLayoutProps } from "./StreamingLayout";
+import { layoutSpec as streamingLayoutSpec } from "./StreamingLayout";
+import { layoutSpec as shortsLayoutSpec } from "./ShortsLayout";
 
-export type LayoutType = 'streaming' | 'shorts';
+export type LayoutComponent = ComponentType<StreamingLayoutProps>;
+export type BuiltInLayoutKey = "streaming" | "shorts";
+export type LayoutReference = BuiltInLayoutKey | LayoutComponent;
+export type LayoutType = BuiltInLayoutKey;
 
-export type LayoutConfig = 
-  | { type: 'streaming'; config: StreamingLayoutConfig }
-  | { type: 'shorts'; config: StreamingLayoutConfig };
+export type LayoutConfig = {
+  type: BuiltInLayoutKey;
+  config: StreamingLayoutConfig;
+};
 
-export const LayoutRegistry = {
-  streaming: StreamingLayout,
-  shorts: ShortsLayout,
-} as const;
+export type LayoutSpec = {
+  type: BuiltInLayoutKey;
+  component: LayoutComponent;
+  description?: string;
+};
 
-export function getLayout(type: LayoutType) {
-  return LayoutRegistry[type];
+const BUILT_IN_LAYOUT_SPECS: Record<string, LayoutSpec> = {
+  "./StreamingLayout.tsx": streamingLayoutSpec,
+  "./ShortsLayout.tsx": shortsLayoutSpec,
+};
+
+const collect = (): Map<BuiltInLayoutKey, LayoutSpec> => {
+  const registry = new Map<BuiltInLayoutKey, LayoutSpec>();
+
+  for (const [source, spec] of Object.entries(BUILT_IN_LAYOUT_SPECS)) {
+    if (registry.has(spec.type)) {
+      throw new Error(
+        `[layout-registry] Duplicate layout type "${spec.type}" from ${source}.`,
+      );
+    }
+
+    registry.set(spec.type, spec);
+  }
+
+  return registry;
 }
+
+export const BUILT_IN_LAYOUT_REGISTRY = collect();
+
+export const LayoutRegistry = Object.freeze(
+  Object.fromEntries(
+    [...BUILT_IN_LAYOUT_REGISTRY.entries()].map(([key, spec]) => [
+      key,
+      spec.component,
+    ]),
+  ) as Record<BuiltInLayoutKey, LayoutComponent>,
+);
+
+export const isBuiltInLayout = (
+  value: LayoutReference,
+): value is BuiltInLayoutKey => typeof value === "string";
+
+export const getBuiltInLayout = (key: BuiltInLayoutKey): LayoutSpec => {
+  const spec = BUILT_IN_LAYOUT_REGISTRY.get(key);
+
+  if (!spec) {
+    throw new Error(`[layout-registry] Unknown layout type "${key}".`);
+  }
+
+  return spec;
+};
+
+export const resolveLayout = (layout: LayoutReference): LayoutComponent => {
+  if (isBuiltInLayout(layout)) {
+    return getBuiltInLayout(layout).component;
+  }
+
+  return layout;
+};
+
+export const getLayoutKey = (
+  layout: LayoutReference,
+): BuiltInLayoutKey | null => (isBuiltInLayout(layout) ? layout : null);
+
+export const getLayout = (layout: LayoutReference): LayoutComponent =>
+  resolveLayout(layout);
 
 export * from "./StreamingLayout";

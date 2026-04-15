@@ -175,15 +175,10 @@ export function createSlidesConfig(options: SlidesConfigOptions): UserConfig {
     ],
     resolve: {
       alias: {
-        // Mock Remotion 相關模組
-        'remotion': path.resolve(rootDir, 'src/engine/slides/mocks/remotion.tsx'),
+        // Mock only packages that have no web-compatible real implementation
         '@remotion/google-fonts/NotoSansTC': path.resolve(rootDir, 'src/engine/slides/mocks/remotion-google-fonts.ts'),
         '@remotion/media': path.resolve(rootDir, 'src/engine/slides/mocks/remotion-media.ts'),
         '@remotion/media-utils': path.resolve(rootDir, 'src/engine/slides/mocks/remotion-media-utils.ts'),
-        '@remotion/cli': path.resolve(rootDir, 'src/engine/slides/mocks/remotion.tsx'),
-        '@remotion/skia': path.resolve(rootDir, 'src/engine/slides/mocks/remotion.tsx'),
-        '@remotion/player': path.resolve(rootDir, 'src/engine/slides/mocks/remotion.tsx'),
-        '@remotion/tailwind-v4': path.resolve(rootDir, 'src/engine/slides/mocks/remotion.tsx'),
         '@remotion/three': path.resolve(rootDir, 'src/engine/slides/mocks/remotion-three.tsx'),
         // Mock Skia for web
         '@shopify/react-native-skia': path.resolve(rootDir, 'src/engine/slides/mocks/react-native-skia.tsx'),
@@ -203,7 +198,7 @@ export function createSlidesConfig(options: SlidesConfigOptions): UserConfig {
       open: openPath,
     },
     optimizeDeps: {
-      include: ['react', 'react-dom', 'mermaid', 'prism-react-renderer', 'react-markdown', 'remark-gfm'],
+      include: ['react', 'react-dom', 'mermaid', 'prism-react-renderer', 'react-markdown', 'remark-gfm', '@remotion/player'],
       exclude: ['@remotion/three'],
     },
   }) as UserConfig;

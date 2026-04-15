@@ -162,6 +162,19 @@ body {
   background: rgba(16, 27, 47, 0.82);
 }
 
+.action-bar-btn.quick-flag {
+  min-width: 42px;
+  padding: 0 10px;
+  font-size: 18px;
+  background: rgba(255, 200, 0, 0.12);
+  border-color: rgba(255, 200, 0, 0.3);
+}
+
+.action-bar-btn.quick-flag:hover:not(:disabled) {
+  background: rgba(255, 200, 0, 0.22);
+  border-color: rgba(255, 200, 0, 0.6);
+}
+
 .action-bar-panel {
   width: min(420px, calc(100vw - 64px));
   padding: 16px;

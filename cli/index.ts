@@ -1,135 +1,177 @@
 #!/usr/bin/env tsx
 import 'dotenv/config';
-
-/**
- * @module cli/index
- * @description ARS (Agentic Remotion Studio) CLI entry point.
- */
-
-const HELP = `
-🎬 ARS — Agentic Remotion Studio CLI
-
-Usage:
-  npx ars <command> [target] [options]
-
-Target format:
-  <series>/<epId>     e.g. template/ep-demo, template/ep-my-topic
-  <series>            e.g. template  (for list commands)
-
-Commands:
-  episode create <series>/<epId>    Create a new episode (free-form epId)
-  episode list <series>             List all episodes in a series
-  episode validate <series>/<epId>  Validate an episode's structure
-  episode stats <series>/<epId>     Card usage stats and pacing signals
-  episode stats <series> --all      Aggregate card stats for a series
-  episode stats --all               Aggregate card stats for all series
-  prepare youtube <series>/<epId>   Prepare Claude Code context for YouTube metadata
-    note                            Writes prepare-youtube.md/json, then use /ars:prepare-youtube
-  prepare social <series>/<epId>    Review/apply heuristic metadata.social
-    note                            Requires metadata.publish.youtubeUrl
-  publish package <series>/<epId>   Export cover + SRT + render
-  publish youtube <series>/<epId>   Package + upload YouTube
-
-  audio generate <series>/<epId>    Generate audio using MiniMax TTS
-    --speed <0.5-2.0>               Playback speed (default: 1.0)
-    --no-subtitle                   Disable subtitle generation
-    --step <id>                     Only generate one specific step (repeatable)
-    --steps <id1,id2,...>           Only generate specific steps
-  setup [--force]                   Initialize config, copy engine, and patch CLAUDE.md
-  update                            Backup src/engine and refresh it from the installed ARS package
-  doctor                            Validate config, engine install, and provider credentials
-  slides <series>/<epId>            Launch web slides viewer
-  review open <series>/<epId>       Launch slides review surface
-  review intent <subcommand>        Manage .ars/review-intents inbox
-  init <series-name>                Initialize a new series from template
-  theme <subcommand> <series>       Generate, tweak, or preview a series theme
-  export cover <series>/<epId>      Export cover image of an episode
-  export srt <series>/<epId>        Export SRT subtitle for YouTube CC
-
-  upload youtube <series>/<epId>    Upload video to YouTube
-    --dry-run                       Preview without uploading
-    --privacy <public|unlisted|private>  YouTube privacy (default: private)
-    --schedule <ISO-8601>           Schedule YouTube publish time
-
-  pipeline <series>/<epId>          Run full pipeline: audio → render → upload
-    --from <step>                   Resume from step
-    --until <step>                  Stop after step
-    --dry-run                       Preview uploads
-    --no-interactive                Skip checkpoints
-
-Publish notes:
-  publish --dry-run                 Runs local safe steps, then simulates upload commands
-  publish --force                   Rebuild cover / srt / render even if outputs already exist
-  prefer publish*                   Use publish* for daily release; use low-level upload* for reruns/debugging
-`;
+import { getRuntimePackageInfo } from './lib/runtime-package';
+import { launchCommand } from './commands/launch';
+import { postinstallCommand } from './commands/postinstall';
 
 type CommandModule = { run: (args: string[]) => Promise<void> };
 
+const KNOWN_COMMANDS = new Set([
+  'audio',
+  'doctor',
+  'episode',
+  'export',
+  'init',
+  'launch',
+  'pipeline',
+  'postinstall',
+  'prepare',
+  'publish',
+  'review',
+  'setup',
+  'slides',
+  'theme',
+  'update',
+  'upload',
+]);
+
+const HELP = `
+ARS — Agentic Remotion Studio CLI
+
+Usage:
+  npx ars [claude-args...]
+  npx ars <command> [options]
+
+Launch behavior:
+  bare \`ars\` launches Claude with the ARS plugin attached
+  unknown top-level args are forwarded to Claude
+
+Commands:
+  launch [claude-args...]          Launch Claude with the ARS plugin attached
+  setup [options]                  Initialize config, sync engine files, and patch CLAUDE.md
+  update [options]                 Backup and refresh the installed ARS engine
+  doctor [options]                 Validate config, engine install, plugin assets, and providers
+  episode <subcommand> [...]       Episode management
+  prepare <subcommand> [...]       Prepare release assets and metadata context
+  publish <subcommand> [...]       Package and publish outputs
+  audio <subcommand> [...]         Audio/TTS workflows
+  slides <series>/<epId>           Launch the slides viewer
+  review <subcommand> [...]        Review surface + review intent workflows
+  init <series-name>               Initialize a new series from template
+  theme <subcommand> [...]         Theme generation and preview tools
+  export <subcommand> [...]        Export cover or subtitle artifacts
+  upload <subcommand> [...]        Upload to YouTube
+  pipeline <series>/<epId>         Run the full production pipeline
+
+Root options:
+  -h, --help                       Show root help
+  -V, --version                    Show ARS CLI version
+`;
+
 async function loadCommandModule(command: string): Promise<CommandModule> {
   switch (command) {
-    case 'slides':
-      return import('./commands/slides');
+    case 'audio':
+      return import('./commands/audio');
+    case 'doctor':
+      return import('./commands/doctor');
     case 'episode':
       return import('./commands/episode');
+    case 'export':
+      return import('./commands/export');
+    case 'init':
+      return import('./commands/init');
+    case 'pipeline':
+      return import('./commands/pipeline');
     case 'prepare':
       return import('./commands/prepare');
     case 'publish':
       return import('./commands/publish');
-    case 'audio':
-      return import('./commands/audio');
-    case 'setup':
-      return import('./commands/setup');
-    case 'update':
-      return import('./commands/update');
-    case 'doctor':
-      return import('./commands/doctor');
-    case 'init':
-      return import('./commands/init');
-    case 'theme':
-      return import('./commands/theme');
-    case 'export':
-      return import('./commands/export');
-    case 'upload':
-      return import('./commands/upload');
-    case 'pipeline':
-      return import('./commands/pipeline');
     case 'review':
       return import('./commands/review');
+    case 'setup':
+      return import('./commands/setup');
+    case 'slides':
+      return import('./commands/slides');
+    case 'theme':
+      return import('./commands/theme');
+    case 'update':
+      return import('./commands/update');
+    case 'upload':
+      return import('./commands/upload');
     default:
-      console.error(`❌ Unknown command: "${command}"`);
-      console.log(HELP);
-      process.exit(1);
+      throw new Error(`Unknown command module: ${command}`);
   }
 }
 
-async function main() {
-  const argv = process.argv.slice(2);
+function isRootHelpRequest(args: string[]): boolean {
+  return (
+    args.length === 1 &&
+    (args[0] === '--help' || args[0] === '-h')
+  );
+}
 
-  let command: string | undefined;
-  const commandArgs: string[] = [];
+function isRootVersionRequest(args: string[]): boolean {
+  return (
+    args.length === 1 &&
+    (args[0] === '--version' || args[0] === '-V')
+  );
+}
 
-  for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--help' || argv[i] === '-h') {
-      console.log(HELP);
-      process.exit(0);
-    }
-    if (!command) {
-      command = argv[i];
-    } else {
-      commandArgs.push(argv[i]);
-    }
+function shouldLaunch(args: string[]): boolean {
+  if (args.length === 0) {
+    return true;
   }
 
-  if (!command) {
-    console.log(HELP);
-    process.exit(0);
+  const [firstArg] = args;
+  if (KNOWN_COMMANDS.has(firstArg)) {
+    return false;
+  }
+
+  if (isRootHelpRequest(args) || isRootVersionRequest(args)) {
+    return false;
+  }
+
+  return true;
+}
+
+function printHelp(): void {
+  console.log(HELP.trim());
+}
+
+function printVersion(): void {
+  const runtime = getRuntimePackageInfo(import.meta.url);
+  console.log(runtime.version);
+}
+
+async function dispatchKnownCommand(command: string, args: string[]): Promise<void> {
+  if (command === 'launch') {
+    await launchCommand(args);
+    return;
+  }
+
+  if (command === 'postinstall') {
+    await postinstallCommand();
+    return;
   }
 
   const mod = await loadCommandModule(command);
-  await mod.run(commandArgs);
+  await mod.run(args);
 }
 
-main().catch((err) => {
-  console.error('❌ CLI error:', err);
+async function main(): Promise<void> {
+  const argv = process.argv.slice(2);
+
+  if (isRootHelpRequest(argv)) {
+    printHelp();
+    return;
+  }
+
+  if (isRootVersionRequest(argv)) {
+    printVersion();
+    return;
+  }
+
+  if (shouldLaunch(argv)) {
+    await launchCommand(argv);
+    return;
+  }
+
+  const [command, ...rest] = argv;
+  await dispatchKnownCommand(command, rest);
+}
+
+main().catch((error) => {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(`[ars] CLI error: ${message}`);
   process.exit(1);
 });

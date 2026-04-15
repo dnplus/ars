@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import process from 'process';
 
+const CONFIG_SCHEMA_VERSION = 2;
 const VALID_LLM_DEFAULTS = new Set(['anthropic', 'openai', 'noop']);
 const VALID_TTS_PROVIDERS = new Set(['none', 'minimax']);
 
@@ -22,12 +23,30 @@ function main() {
   }
 
   const issues = [];
+  const warnings = [];
+  const configVersion = config?.version;
   const llmDefault = config?.llm?.default;
+  const llmFallbacks = config?.llm?.fallbacks;
   const ttsProvider = config?.tts?.provider;
   const youtubeEnabled = config?.publish?.youtube?.enabled;
 
+  if (typeof configVersion !== 'number') {
+    warnings.push(`version missing; expected schema ${CONFIG_SCHEMA_VERSION}`);
+  } else if (configVersion !== CONFIG_SCHEMA_VERSION) {
+    warnings.push(
+      `version=${configVersion}; latest supported schema is ${CONFIG_SCHEMA_VERSION}`,
+    );
+  }
+
   if (!VALID_LLM_DEFAULTS.has(llmDefault)) {
     issues.push('llm.default must be one of anthropic, openai, noop');
+  }
+
+  if (
+    !Array.isArray(llmFallbacks) ||
+    llmFallbacks.some((provider) => !VALID_LLM_DEFAULTS.has(provider))
+  ) {
+    issues.push('llm.fallbacks must be an array of anthropic, openai, noop');
   }
 
   if (!VALID_TTS_PROVIDERS.has(ttsProvider)) {
@@ -43,8 +62,12 @@ function main() {
     return;
   }
 
+  if (warnings.length > 0) {
+    console.log(`ARS: Config warnings: ${warnings.join('; ')}`);
+  }
+
   console.log(
-    `ARS: OK — llm.default=${llmDefault}, tts.provider=${ttsProvider}, publish.youtube.enabled=${String(youtubeEnabled)}`,
+    `ARS: OK — version=${typeof configVersion === 'number' ? configVersion : 'missing'}, llm.default=${llmDefault}, llm.fallbacks=${llmFallbacks.join(',') || '(none)'}, tts.provider=${ttsProvider}, publish.youtube.enabled=${String(youtubeEnabled)}`,
   );
 }
 

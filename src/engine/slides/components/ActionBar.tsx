@@ -104,6 +104,39 @@ export const ActionBar: React.FC<ActionBarProps> = ({
     setIsComposerOpen(true);
   }, []);
 
+  const handleQuickFlag = useCallback(async () => {
+    setIsSubmitting(true);
+    try {
+      const response = await fetch('/__ars/review-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: 'slides',
+          series,
+          epId,
+          stepId,
+          kind: DEFAULT_KIND,
+          severity: DEFAULT_SEVERITY,
+          message: buildDefaultMessage(series, epId, stepId),
+          hash: window.location.hash || undefined,
+        }),
+      });
+
+      const payload = (await response.json()) as ReviewIntentResponse;
+      if (!response.ok || !payload.intent) {
+        throw new Error(payload.error || `Request failed with ${response.status}`);
+      }
+
+      setLatestIntentId(payload.intent.id);
+      pushToast(`⚡ Flagged: ${payload.intent.id}`, 'success');
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      pushToast(detail, 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [epId, pushToast, series, stepId]);
+
   const handleCancelComposer = useCallback(() => {
     resetComposer();
   }, [resetComposer]);
@@ -234,6 +267,15 @@ export const ActionBar: React.FC<ActionBarProps> = ({
   return (
     <div className="action-bar">
       <div className="action-bar-row">
+        <button
+          className="action-bar-btn quick-flag"
+          onClick={handleQuickFlag}
+          disabled={isSubmitting}
+          type="button"
+          title="Quick flag this slide for review"
+        >
+          ⚡
+        </button>
         <button
           className="action-bar-btn primary"
           onClick={handleMarkForFix}

@@ -1,188 +1,356 @@
 import fs from 'fs';
 import path from 'path';
+import { spawnSync } from 'child_process';
 import {
+  CONFIG_SCHEMA_VERSION,
+  ArsConfig,
   configExists,
-  createDefaultConfig,
   getConfigPath,
   getRepoRoot,
   readArsConfig,
-  type ArsConfig,
+  readRawArsConfig,
 } from '../lib/ars-config';
-import { getEngineVersionPath } from '../lib/install';
+import { detectInstallState } from '../lib/install';
+import { getRuntimePackageInfo } from '../lib/runtime-package';
+import { hasVersionDrift, readInstalledVersion } from '../lib/version';
+import { isTmuxAvailable } from '../lib/tmux';
 
 interface CheckResult {
-  label: string;
+  id: string;
   status: 'pass' | 'warn' | 'fail';
   detail: string;
+  fixHint?: string;
 }
 
 const HELP = `
-Usage: npx ars doctor
+Usage: npx ars doctor [options]
 
-Validates .ars/config.json, engine install status, and provider credentials.
+Validates .ars/config.json, engine install status, plugin assets, Claude/tmux readiness, and provider credentials.
+
+Options:
+  --json     Output machine-readable JSON
+  --strict   Treat warnings as failures
 `;
 
 export async function run(args: string[]) {
-  if (args.includes('--help') || args.includes('-h')) {
-    console.log(HELP);
-    return;
+  const options = parseOptions(args);
+  const results = runDoctor(options);
+
+  if (options.json) {
+    console.log(JSON.stringify(results, null, 2));
+  } else {
+    printResults(results);
   }
 
+  const hasFailure = results.some((result) => result.status === 'fail');
+  const hasWarning = results.some((result) => result.status === 'warn');
+  if (hasFailure || (options.strict && hasWarning)) {
+    process.exit(1);
+  }
+}
+
+export function runDoctor(options: { json: boolean; strict: boolean }): CheckResult[] {
   const root = getRepoRoot();
   const configPath = getConfigPath(root);
+  const runtime = getRuntimePackageInfo(import.meta.url);
   const results: CheckResult[] = [];
+
+  validateCliRuntime(results);
 
   if (!configExists(root)) {
     results.push({
-      label: 'config',
+      id: 'config.exists',
       status: 'fail',
       detail: `Missing ${configPath}. Run "npx ars setup" first.`,
+      fixHint: 'npx ars setup --yes',
     });
-    printResults(results);
-    process.exit(1);
+    return results;
   }
 
   let config: ArsConfig;
   try {
     config = readArsConfig(root);
     results.push({
-      label: 'config',
+      id: 'config.exists',
       status: 'pass',
       detail: `Loaded ${configPath}`,
     });
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
     results.push({
-      label: 'config',
+      id: 'config.schema',
       status: 'fail',
-      detail,
+      detail: error instanceof Error ? error.message : String(error),
+      fixHint: 'Re-run npx ars setup --force-config',
     });
-    printResults(results);
-    process.exit(1);
+    return results;
+  }
+
+  validateConfigSchema(root, config, results);
+  validateVersion(root, runtime.version, results);
+  validateEngine(root, results);
+  validatePlugin(runtime.pluginRoot, results);
+  validateClaudeMd(root, results);
+  validateProviders(config, root, results);
+
+  return results;
+}
+
+function parseOptions(args: string[]): { json: boolean; strict: boolean } {
+  if (args.includes('--help') || args.includes('-h')) {
+    console.log(HELP);
+    process.exit(0);
+  }
+
+  return {
+    json: args.includes('--json'),
+    strict: args.includes('--strict'),
+  };
+}
+
+function validateCliRuntime(results: CheckResult[]): void {
+  const nodeMajor = Number.parseInt(process.versions.node.split('.')[0], 10);
+  results.push({
+    id: 'cli.node-version',
+    status: nodeMajor >= 22 ? 'pass' : 'fail',
+    detail: `Node ${process.versions.node}`,
+    fixHint: nodeMajor >= 22 ? undefined : 'Use Node 22.12.0 or newer.',
+  });
+
+  const claudeCheck = spawnSync('claude', ['--version'], {
+    encoding: 'utf-8',
+    stdio: 'pipe',
+  });
+  results.push({
+    id: 'cli.claude-binary',
+    status: claudeCheck.status === 0 ? 'pass' : 'warn',
+    detail:
+      claudeCheck.status === 0
+        ? `Claude CLI detected: ${claudeCheck.stdout.trim() || 'available'}`
+        : 'Claude CLI not found in PATH.',
+    fixHint:
+      claudeCheck.status === 0 ? undefined : 'Install Claude CLI before using bare `npx ars`.',
+  });
+
+  results.push({
+    id: 'cli.tmux',
+    status: isTmuxAvailable() ? 'pass' : 'warn',
+    detail: isTmuxAvailable()
+      ? 'tmux available for session wrapping.'
+      : 'tmux not available; bare `npx ars` will fall back to direct Claude launch.',
+  });
+}
+
+function validateConfigSchema(
+  root: string,
+  config: ArsConfig,
+  results: CheckResult[],
+): void {
+  const raw = readRawArsConfig(root) as Record<string, unknown>;
+  const version = typeof raw.version === 'number' ? raw.version : null;
+  results.push({
+    id: 'config.schema',
+    status:
+      version === CONFIG_SCHEMA_VERSION
+        ? 'pass'
+        : version === null
+          ? 'warn'
+          : 'warn',
+    detail:
+      version === CONFIG_SCHEMA_VERSION
+        ? `config version=${version}`
+        : version === null
+          ? `config version missing; normalized to ${config.version}`
+          : `config version=${version}; latest=${CONFIG_SCHEMA_VERSION}`,
+    fixHint:
+      version === CONFIG_SCHEMA_VERSION ? undefined : 'Re-run npx ars setup --force-config',
+  });
+
+}
+
+function validateVersion(
+  root: string,
+  runtimeVersion: string,
+  results: CheckResult[],
+): void {
+  const installed = readInstalledVersion(root);
+  if (!installed) {
+    results.push({
+      id: 'version.file',
+      status: 'warn',
+      detail: 'Missing .ars/.ars-version.json (and no legacy engine-version.json fallback found).',
+      fixHint: 'Run npx ars setup or npx ars update.',
+    });
     return;
   }
 
-  validateEngine(root, results);
-  validateTts(config, results);
-  validatePublish(config, root, results);
-  validateExtensions(config, results);
-  validateReview(root, config, results);
-
-  printResults(results);
-
-  const hasFailure = results.some((result) => result.status === 'fail');
-  if (hasFailure) {
-    process.exit(1);
-  }
+  results.push({
+    id: 'version.file',
+    status: 'pass',
+    detail: `installed=${installed.version}, runtime=${runtimeVersion}`,
+  });
+  results.push({
+    id: 'version.drift',
+    status: hasVersionDrift(installed.version, runtimeVersion) ? 'warn' : 'pass',
+    detail: hasVersionDrift(installed.version, runtimeVersion)
+      ? `Installed version ${installed.version} differs from current CLI runtime ${runtimeVersion}.`
+      : 'Installed version matches current CLI runtime.',
+    fixHint: hasVersionDrift(installed.version, runtimeVersion)
+      ? 'Re-run npx ars update --force-engine with the desired CLI version.'
+      : undefined,
+  });
 }
 
 function validateEngine(root: string, results: CheckResult[]): void {
-  const engineVersionPath = getEngineVersionPath(root);
-  results.push({
-    label: 'engine-version',
-    status: fs.existsSync(engineVersionPath) ? 'pass' : 'warn',
-    detail: fs.existsSync(engineVersionPath)
-      ? `Loaded ${engineVersionPath}`
-      : `Missing ${engineVersionPath}. Run "npx ars setup" or "npx ars update" to record the installed engine version.`,
-  });
+  const state = detectInstallState(root);
+  const checks = [
+    {
+      id: 'engine.root',
+      path: path.join(root, 'src', 'engine'),
+    },
+    {
+      id: 'engine.registry',
+      path: path.join(root, 'src', 'engine', 'cards', 'registry.ts'),
+    },
+    {
+      id: 'engine.template',
+      path: path.join(root, 'src', 'episodes', 'template'),
+    },
+    {
+      id: 'engine.composition',
+      path: path.join(root, 'src', 'engine', 'Composition.tsx'),
+    },
+  ];
 
-  const registryPath = path.join(root, 'src', 'engine', 'cards', 'registry.ts');
+  for (const check of checks) {
+    const exists = fs.existsSync(check.path);
+    results.push({
+      id: check.id,
+      status: exists ? 'pass' : 'fail',
+      detail: exists ? `Found ${check.path}` : `Missing ${check.path}`,
+      fixHint: exists ? undefined : 'Run npx ars setup --force-engine',
+    });
+  }
+
+  if (!state.engineExists) {
+    return;
+  }
+}
+
+function validatePlugin(pluginRoot: string, results: CheckResult[]): void {
+  const manifestPath = path.join(pluginRoot, '.claude-plugin', 'plugin.json');
+  const hooksPath = path.join(pluginRoot, 'hooks', 'hooks.json');
+  const skillsDir = path.join(pluginRoot, 'skills');
+  const skillCount = fs.existsSync(skillsDir)
+    ? fs.readdirSync(skillsDir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).length
+    : 0;
+
   results.push({
-    label: 'engine.registry',
-    status: fs.existsSync(registryPath) ? 'pass' : 'fail',
-    detail: fs.existsSync(registryPath)
-      ? `Found ${registryPath}`
-      : `Missing ${registryPath}. Reinstall the engine with "npx ars setup --force" or "npx ars update".`,
+    id: 'plugin.manifest',
+    status: fs.existsSync(manifestPath) ? 'pass' : 'fail',
+    detail: fs.existsSync(manifestPath)
+      ? `Found ${manifestPath}`
+      : `Missing ${manifestPath}`,
+  });
+  results.push({
+    id: 'plugin.hooks',
+    status: fs.existsSync(hooksPath) ? 'pass' : 'fail',
+    detail: fs.existsSync(hooksPath)
+      ? `Found ${hooksPath}`
+      : `Missing ${hooksPath}`,
+  });
+  results.push({
+    id: 'plugin.skills',
+    status: skillCount > 0 ? 'pass' : 'fail',
+    detail:
+      skillCount > 0
+        ? `Found ${skillCount} plugin skill(s) in ${skillsDir}`
+        : `No plugin skills found in ${skillsDir}`,
   });
 }
 
-function validateTts(config: ArsConfig, results: CheckResult[]): void {
-  if (config.tts.provider === 'none') {
+function validateClaudeMd(root: string, results: CheckResult[]): void {
+  const claudePath = path.join(root, 'CLAUDE.md');
+  if (!fs.existsSync(claudePath)) {
     results.push({
-      label: 'tts',
-      status: 'pass',
-      detail: 'NoOp TTS provider enabled.',
+      id: 'claude-md.marker',
+      status: 'warn',
+      detail: `Missing ${claudePath}`,
+      fixHint: 'Run npx ars setup --force-claude-md',
     });
     return;
   }
 
+  const content = fs.readFileSync(claudePath, 'utf-8');
+  const hasMarker =
+    content.includes('<!-- ars:begin -->') &&
+    content.includes('<!-- ars:end -->');
+
   results.push({
-    label: 'tts',
-    status: process.env.MINIMAX_API_KEY ? 'pass' : 'fail',
-    detail: process.env.MINIMAX_API_KEY
-      ? 'MiniMax API key is configured.'
-      : 'MiniMax enabled but MINIMAX_API_KEY is missing.',
+    id: 'claude-md.marker',
+    status: hasMarker ? 'pass' : 'warn',
+    detail: hasMarker
+      ? `Found ARS marker block in ${claudePath}`
+      : `ARS marker block missing from ${claudePath}`,
+    fixHint: hasMarker ? undefined : 'Run npx ars setup --force-claude-md',
   });
 }
 
-function validatePublish(
+function validateProviders(
   config: ArsConfig,
   root: string,
   results: CheckResult[],
 ): void {
+  if (config.tts.provider === 'none') {
+    results.push({
+      id: 'provider.minimax',
+      status: 'pass',
+      detail: 'MiniMax TTS disabled.',
+    });
+  } else {
+    results.push({
+      id: 'provider.minimax',
+      status: process.env.MINIMAX_API_KEY ? 'pass' : 'fail',
+      detail: process.env.MINIMAX_API_KEY
+        ? 'MiniMax API key is configured.'
+        : 'MiniMax enabled but MINIMAX_API_KEY is missing.',
+      fixHint: process.env.MINIMAX_API_KEY
+        ? undefined
+        : 'Export MINIMAX_API_KEY before running audio generation.',
+    });
+  }
+
   if (!config.publish.youtube.enabled) {
     results.push({
-      label: 'publish.youtube',
+      id: 'provider.youtube-credentials',
       status: 'pass',
       detail: 'YouTube publishing disabled.',
     });
     return;
   }
 
-  const defaults = createDefaultConfig();
   const credentialsPath = path.resolve(
     root,
-    config.publish.youtube.credentialsPath ??
-      defaults.publish.youtube.credentialsPath ??
-      '.ars/credentials/youtube/credentials.json',
+    config.publish.youtube.credentialsPath ?? '.ars/credentials/youtube/credentials.json',
   );
   const clientSecretPath = path.resolve(
     root,
-    config.publish.youtube.clientSecretPath ??
-      defaults.publish.youtube.clientSecretPath ??
-      '.ars/credentials/youtube/client_secret.json',
+    config.publish.youtube.clientSecretPath ?? '.ars/credentials/youtube/client_secret.json',
   );
-  const missing = [
-    !fs.existsSync(credentialsPath) && credentialsPath,
-    !fs.existsSync(clientSecretPath) && clientSecretPath,
-  ].filter(Boolean) as string[];
+  const missing = [credentialsPath, clientSecretPath].filter(
+    (filePath) => !fs.existsSync(filePath),
+  );
 
   results.push({
-    label: 'publish.youtube',
+    id: 'provider.youtube-credentials',
     status: missing.length === 0 ? 'pass' : 'fail',
     detail:
       missing.length === 0
-        ? `YouTube OAuth files found: ${credentialsPath}, ${clientSecretPath}`
-        : `YouTube OAuth files missing: ${missing.join(', ')}`,
-  });
-}
-
-function validateExtensions(config: ArsConfig, results: CheckResult[]): void {
-  const enabled = [
-    config.extensions.social.enabled && 'social',
-    config.extensions.analytics.enabled && 'analytics',
-  ].filter(Boolean);
-
-  results.push({
-    label: 'extensions',
-    status: enabled.length === 0 ? 'pass' : 'warn',
-    detail:
-      enabled.length === 0
-        ? 'All optional extensions are disabled.'
-        : `Optional extensions enabled: ${enabled.join(', ')}`,
-  });
-}
-
-function validateReview(
-  root: string,
-  config: ArsConfig,
-  results: CheckResult[],
-): void {
-  const reviewDir = `${root}/.ars/review-intents`;
-  results.push({
-    label: 'review',
-    status: 'pass',
-    detail: `preferredUi=${config.review.preferredUi}, experimentalStudio=${String(config.review.enableExperimentalStudio)}, inbox=${reviewDir}`,
+        ? `Found YouTube credential files: ${credentialsPath}, ${clientSecretPath}`
+        : `Missing YouTube credential files: ${missing.join(', ')}`,
+    fixHint:
+      missing.length === 0
+        ? undefined
+        : 'Create the OAuth credential files or disable publish.youtube.enabled.',
   });
 }
 
@@ -195,6 +363,9 @@ function printResults(results: CheckResult[]): void {
 
   console.log('ARS doctor report');
   for (const result of results) {
-    console.log(`${iconMap[result.status]} ${result.label}: ${result.detail}`);
+    console.log(`${iconMap[result.status]} ${result.id}: ${result.detail}`);
+    if (result.fixHint) {
+      console.log(`   fix: ${result.fixHint}`);
+    }
   }
 }

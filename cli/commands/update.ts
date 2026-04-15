@@ -1,63 +1,104 @@
-import fs from 'fs';
 import path from 'path';
-import { getArsDir } from '../lib/ars-config';
+import { CONFIG_SCHEMA_VERSION } from '../lib/ars-config';
 import {
-  copyDirectory,
-  getSourceGitCommit,
+  backupEngine,
+  detectInstallMethod,
   getTargetRepoRoot,
   locateSourcePackageRoot,
-  writeEngineVersion,
+  patchClaudeMd,
+  syncEngineFiles,
+  writeVersionMetadata,
 } from '../lib/install';
+import { getRuntimePackageInfo } from '../lib/runtime-package';
 
 const HELP = `
-Usage: npx ars update
+Usage: npx ars update [options]
 
 Backs up src/engine into .ars/backups/<timestamp>/engine and refreshes it from the installed ARS package.
+
+Options:
+  --force            Refresh engine, CLAUDE.md, and version metadata
+  --force-engine     Refresh engine and version metadata
+  --force-claude-md  Rebuild the ARS block in CLAUDE.md
+  -q, --quiet        Suppress non-error output
 `;
 
+export interface UpdateOptions {
+  force: boolean;
+  forceEngine: boolean;
+  forceClaudeMd: boolean;
+  quiet: boolean;
+}
+
 export async function run(args: string[]) {
-  if (args.includes('--help') || args.includes('-h')) {
-    console.log(HELP);
+  const options = parseOptions(args);
+  const result = await updateCommand(options);
+
+  if (options.quiet) {
     return;
   }
 
-  const root = getTargetRepoRoot();
-  const sourceRoot = locateSourcePackageRoot(import.meta.url);
-  const targetEngineDir = path.join(root, 'src', 'engine');
-
-  if (!fs.existsSync(targetEngineDir)) {
-    console.error(
-      `❌ Missing ${targetEngineDir}. Run "npx ars setup" before using update.`,
-    );
-    process.exit(1);
+  console.log(`✅ Backed up engine to ${result.backupDir}`);
+  console.log(`✅ Refreshed engine from ${path.join(result.sourceRoot, 'src', 'engine')}`);
+  if (result.claudeMdPath) {
+    console.log(`✅ Patched ${result.claudeMdPath}`);
   }
+  console.log(`✅ Wrote ${result.versionPath}`);
+  console.log('Rollback hint:');
+  console.log(`  rm -rf "${path.join(result.root, 'src', 'engine')}"`);
+  console.log(`  cp -R "${result.backupDir}" "${path.join(result.root, 'src', 'engine')}"`);
+}
 
-  const backupTimestamp = new Date().toISOString().replace(/:/g, '-');
-  const backupEngineDir = path.join(
-    getArsDir(root),
-    'backups',
-    backupTimestamp,
-    'engine',
-  );
+export async function updateCommand(options: UpdateOptions & { root?: string }):
+Promise<{
+  root: string;
+  sourceRoot: string;
+  backupDir: string;
+  versionPath: string;
+  claudeMdPath?: string;
+}> {
+  const root = options.root ?? getTargetRepoRoot();
+  const runtime = getRuntimePackageInfo(import.meta.url);
+  const sourceRoot = locateSourcePackageRoot(import.meta.url);
+  const backupDir = backupEngine(root);
 
-  copyDirectory(targetEngineDir, backupEngineDir, { overwrite: false });
-  copyDirectory(path.join(sourceRoot, 'src', 'engine'), targetEngineDir, {
-    overwrite: true,
+  syncEngineFiles({
+    root,
+    sourceRoot,
+    overwriteEngine: true,
+    overwriteSupportFiles: options.force || options.forceEngine,
   });
 
-  const engineVersionPath = writeEngineVersion(
-    {
-      commit: getSourceGitCommit(sourceRoot),
-      copiedAt: new Date().toISOString(),
-      source: sourceRoot,
-    },
+  const claudeMdPath =
+    options.force || options.forceClaudeMd ? patchClaudeMd(root) : undefined;
+  const versionPath = writeVersionMetadata({
     root,
-  );
+    sourceRoot,
+    runtimeVersion: runtime.version,
+    pluginVersion: runtime.version,
+    configSchemaVersion: CONFIG_SCHEMA_VERSION,
+    installMethod: detectInstallMethod(sourceRoot),
+  });
 
-  console.log(`✅ Backed up engine to ${backupEngineDir}`);
-  console.log(`✅ Refreshed engine from ${path.join(sourceRoot, 'src', 'engine')}`);
-  console.log(`✅ Wrote ${engineVersionPath}`);
-  console.log('Rollback hint:');
-  console.log(`  rm -rf "${targetEngineDir}"`);
-  console.log(`  cp -R "${backupEngineDir}" "${targetEngineDir}"`);
+  return {
+    root,
+    sourceRoot,
+    backupDir,
+    versionPath,
+    claudeMdPath,
+  };
+}
+
+function parseOptions(args: string[]): UpdateOptions {
+  if (args.includes('--help') || args.includes('-h')) {
+    console.log(HELP);
+    process.exit(0);
+  }
+
+  return {
+    force: args.includes('--force'),
+    forceEngine: args.includes('--force-engine'),
+    forceClaudeMd: args.includes('--force-claude-md'),
+    quiet: args.includes('--quiet') || args.includes('-q'),
+  };
 }

@@ -9,9 +9,8 @@ import { useSlideNavigation } from './hooks/useSlideNavigation';
 import { episodeToSlides, getEpisodeInfo } from './adapters/episodeToSlides';
 import { exportToPptx } from './utils/exportToPptx';
 import { exportToPdf } from './utils/exportToPdf';
-// 直接重用原本的 Layout 和 Scene
-import { StreamingLayout } from '../layouts/StreamingLayout';
-import { WebinarScene } from '../scenes/WebinarScene';
+import { resolveLayout } from '../layouts';
+import { getScene } from '../scenes';
 import { ThemeProvider } from '../shared/ThemeContext';
 import { ActionBar } from './components/ActionBar';
 
@@ -32,6 +31,7 @@ type FixAppliedResponse = {
 };
 
 export const SlideApp: React.FC<SlideAppProps> = ({ episode }) => {
+  const shell = episode.shell!;
   const slides = useMemo(() => episodeToSlides(episode), [episode]);
   const queryParams = useMemo(() => new URLSearchParams(window.location.search), []);
   const querySeries = queryParams.get('series')?.trim() || undefined;
@@ -56,7 +56,9 @@ export const SlideApp: React.FC<SlideAppProps> = ({ episode }) => {
     };
   }, [episode, fallbackEpId, fallbackSeries]);
   const appRef = useRef<HTMLDivElement>(null);
-  const theme = episode.shell!.theme!;
+  const theme = shell.theme!;
+  const Layout = resolveLayout(shell.layout);
+  const Scene = getScene(shell.scene);
 
   // Generate CSS variables from theme
   const themeStyles = useMemo(() => {
@@ -280,7 +282,7 @@ export const SlideApp: React.FC<SlideAppProps> = ({ episode }) => {
     },
   };
 
-  // 建立一個假的 audioSrc 給 StreamingLayout 讓 VTuber 顯示
+  // 建立一個假的 audioSrc 給 layout shell 讓 VTuber 顯示
   const dummyAudioSrc = currentSlide.audioSrc || 'shared/silence.mp3';
 
   // 計算當前和前一個 step 的 layoutMode
@@ -293,11 +295,11 @@ export const SlideApp: React.FC<SlideAppProps> = ({ episode }) => {
   return (
     <ThemeProvider theme={theme}>
     <div ref={appRef} className={`slide-app ${isFullscreen ? 'fullscreen' : ''}`} style={themeStyles}>
-      {/* 完整重用 StreamingLayout + WebinarScene，畫面與影片一致 */}
+      {/* 完整重用 shell + scene 組裝，畫面與影片一致 */}
       <div className="slide-viewport">
         <div ref={slideContainerRef} className="slide-content-wrapper">
           <div ref={reviewCaptureRef} className="slide-review-capture">
-            <StreamingLayout
+            <Layout
               config={slidesConfig}
               decorationText={episodeInfo.decorationText}
               audioSrc={dummyAudioSrc}
@@ -305,14 +307,14 @@ export const SlideApp: React.FC<SlideAppProps> = ({ episode }) => {
               prevLayoutMode={prevLayoutMode}
               backgroundPreset={step.backgroundPreset}
             >
-              <WebinarScene
+              <Scene
                 step={step}
                 episodeTitle={episodeInfo.title}
                 episodeSubtitle={episodeInfo.subtitle}
                 channelName={episodeInfo.channelName}
                 episodeTag={episodeInfo.episodeTag}
               />
-            </StreamingLayout>
+            </Layout>
           </div>
           <ActionBar
             stepId={step.id}

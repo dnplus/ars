@@ -17,6 +17,7 @@ import React from "react";
 import { Composition, Folder, Still, staticFile } from "remotion";
 import { EpisodeRenderer } from "./engine/Composition";
 import { ThumbnailCard } from "./engine/components/cards/ThumbnailCard";
+import { getLayoutKey } from "./engine/layouts";
 import { ThemePreviewCard } from "./engine/components/ThemePreviewCard";
 import { FALLBACK_THEME, ThemeProvider } from "./engine/shared/ThemeContext";
 import { Episode, SeriesConfig } from "./engine/shared/types";
@@ -131,7 +132,8 @@ export const RemotionRoot: React.FC = () => (
             return sum + stepDuration;
           }, 0);
           // Shorts auto-inserts a 1.5s cover in Composition
-          const shortsCoverSeconds = shell?.layout === 'shorts' ? 1.5 : 0;
+          const shortsCoverSeconds =
+            shell && getLayoutKey(shell.layout) === 'shorts' ? 1.5 : 0;
           const durationInFrames = Math.ceil((durationInSeconds + shortsCoverSeconds) * fps);
 
           return (

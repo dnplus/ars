@@ -16,6 +16,7 @@ import { analyzeEpisodeDuration, formatDurationReport } from '../lib/estimate-du
 import { loadEpisode } from '../lib/episode-file';
 import { captureUrlScreenshot } from '../lib/browser-screenshot';
 import { updateStepField } from '../lib/episode-ast';
+import { getLayoutKey } from '../../src/engine/layouts';
 import {
   AVAILABLE_CARD_TYPES,
   CARD_REGISTRY_BY_TYPE,
@@ -177,7 +178,7 @@ async function validate(args: string[]) {
     if (fs.existsSync(seriesConfigPath)) {
       const configMod = await import(seriesConfigPath);
       const seriesConfig = configMod.SERIES_CONFIG;
-      isShorts = seriesConfig?.shell?.layout === 'shorts';
+      isShorts = !!seriesConfig?.shell && getLayoutKey(seriesConfig.shell.layout) === 'shorts';
     }
 
     console.log(`✅ Episode "${series}/${epId}" loaded`);

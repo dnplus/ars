@@ -15,6 +15,7 @@
 
 import React from "react";
 import { AbsoluteFill } from "remotion";
+import type { LayoutSpec } from ".";
 import { useTheme } from '../shared/ThemeContext';
 import { AnimatedVTuber } from "../components/ui/AnimatedVTuber";
 import { SubtitleOverlay } from "../components/ui/SubtitleOverlay";
@@ -149,4 +150,10 @@ export const ShortsLayout: React.FC<StreamingLayoutProps> = ({
       )}
     </AbsoluteFill>
   );
+};
+
+export const layoutSpec: LayoutSpec = {
+  type: "shorts",
+  component: ShortsLayout,
+  description: "Vertical shorts shell for 9:16 output.",
 };

@@ -3,156 +3,181 @@ import path from 'path';
 import { stdin as input, stdout as output } from 'process';
 import { createInterface } from 'readline/promises';
 import {
+  CONFIG_SCHEMA_VERSION,
+  ArsConfig,
+  TTS_PROVIDER_IDS,
   configExists,
   createDefaultConfig,
   getConfigPath,
-  type ArsConfig,
+  readArsConfig,
   writeArsConfig,
 } from '../lib/ars-config';
 import {
-  copyDirectory,
-  copyFile,
-  getEngineVersionPath,
-  getSourceGitCommit,
+  detectInstallMethod,
+  detectInstallState,
   getTargetRepoRoot,
   isArsDevelopmentRepo,
   locateSourcePackageRoot,
   patchClaudeMd,
-  writeEngineVersion,
+  syncEngineFiles,
+  writeVersionMetadata,
 } from '../lib/install';
+import { getRuntimePackageInfo } from '../lib/runtime-package';
 
 const HELP = `
-Usage: npx ars setup [--force]
+Usage: npx ars setup [options]
 
-Initializes .ars/config.json, copies the ARS engine into this repo, and patches CLAUDE.md.
+Initializes .ars/config.json, copies the ARS engine into this repo, patches CLAUDE.md,
+and writes .ars/.ars-version.json.
+
+Options:
+  --force              Overwrite config, engine, CLAUDE.md, and version metadata
+  --force-engine       Overwrite engine files and version metadata only
+  --force-config       Overwrite config.json only
+  --force-claude-md    Rebuild the ARS block in CLAUDE.md
+  -y, --yes            Skip interactive confirmation and use defaults
+  -q, --quiet          Suppress non-error output
 `;
 
+export interface SetupOptions {
+  force: boolean;
+  forceEngine: boolean;
+  forceConfig: boolean;
+  forceClaudeMd: boolean;
+  yes: boolean;
+  quiet: boolean;
+}
+
 export async function run(args: string[]) {
-  if (args.includes('--help') || args.includes('-h')) {
-    console.log(HELP);
+  const options = parseOptions(args);
+  const result = await setupCommand(options);
+
+  if (options.quiet) {
     return;
   }
 
-  const force = args.includes('--force');
-  const root = getTargetRepoRoot();
-  const sourceRoot = locateSourcePackageRoot(import.meta.url);
-  const configPath = getConfigPath(root);
-  const engineVersionPath = getEngineVersionPath(root);
-  const existing = configExists(root);
-  const interactive = input.isTTY && output.isTTY;
-  const targetEnginePath = path.join(root, 'src', 'engine');
-  const hasExistingInstall =
-    existing ||
-    fs.existsSync(targetEnginePath) ||
-    fs.existsSync(engineVersionPath);
-  let overwriteEngine = force;
-
-  if (isArsDevelopmentRepo(root, sourceRoot) && !force) {
-    console.warn(
-      `⚠️ Refusing to run setup inside the ARS development repo (${root}). Re-run with --force if you really want to overwrite it.`,
+  if (result.configPath) {
+    console.log(`✅ Wrote ${result.configPath}`);
+    console.log(`   tts.provider = ${result.config.tts.provider}`);
+    console.log(
+      `   publish.youtube.enabled = ${String(result.config.publish.youtube.enabled)}`,
     );
-    return;
   }
-
-  if (hasExistingInstall && !force) {
-    if (interactive) {
-      const overwrite = await promptBoolean(
-        `Existing ARS install assets were found in ${root}. Overwrite config and engine files?`,
-        false,
-      );
-      if (!overwrite) {
-        console.log('Setup cancelled.');
-        return;
-      }
-      overwriteEngine = overwrite;
-    } else {
-      console.error(
-        `Existing ARS install assets were found in ${root}. Re-run with --force to overwrite them.`,
-      );
-      process.exit(1);
+  if (result.copiedFiles.length > 0) {
+    console.log(`✅ Synced engine into ${path.join(result.root, 'src', 'engine')}`);
+    for (const copiedFile of result.copiedFiles) {
+      console.log(`   ${copiedFile}`);
     }
   }
-
-  const config = interactive ? await promptForConfig() : createDefaultConfig();
-  const savedPath = writeArsConfig(config, root);
-  const copiedFiles = installEngine({
-    root,
-    sourceRoot,
-    overwriteEngine,
-    force,
-  });
-  const claudePath = patchClaudeMd(root);
-  const engineVersionRecord = {
-    commit: getSourceGitCommit(sourceRoot),
-    copiedAt: new Date().toISOString(),
-    source: sourceRoot,
-  };
-  const savedEngineVersionPath = writeEngineVersion(engineVersionRecord, root);
-
-  console.log(`✅ Wrote ${savedPath}`);
-  console.log(`   tts.provider = ${config.tts.provider}`);
-  console.log(`   publish.youtube.enabled = ${String(config.publish.youtube.enabled)}`);
-  console.log(`✅ Copied engine to ${path.join(root, 'src', 'engine')}`);
-  for (const copiedFile of copiedFiles) {
-    console.log(`   ${copiedFile}`);
+  if (result.claudeMdPath) {
+    console.log(`✅ Patched ${result.claudeMdPath}`);
   }
-  console.log(`✅ Patched ${claudePath}`);
-  console.log(`✅ Wrote ${savedEngineVersionPath}`);
-
-  if (!interactive) {
-    console.log('   Non-interactive shell detected, defaults were applied.');
+  console.log(`✅ Wrote ${result.versionPath}`);
+  if (result.usedDefaults) {
+    console.log('   Non-interactive defaults were applied.');
   }
 }
 
-function installEngine(options: {
+export async function setupCommand(options: SetupOptions & { root?: string }):
+Promise<{
   root: string;
-  sourceRoot: string;
-  overwriteEngine: boolean;
-  force: boolean;
-}): string[] {
-  const copied: string[] = [];
-  const sourceEngineDir = path.join(options.sourceRoot, 'src', 'engine');
-  const targetEngineDir = path.join(options.root, 'src', 'engine');
+  config: ArsConfig;
+  configPath?: string;
+  copiedFiles: string[];
+  claudeMdPath?: string;
+  versionPath: string;
+  usedDefaults: boolean;
+}> {
+  const root = options.root ?? getTargetRepoRoot();
+  const runtime = getRuntimePackageInfo(import.meta.url);
+  const sourceRoot = locateSourcePackageRoot(import.meta.url);
+  const configPath = getConfigPath(root);
+  const state = detectInstallState(root);
+  const interactive = !options.yes && input.isTTY && output.isTTY;
+  const overwriteEverything = options.force;
+  const overwriteEngine = overwriteEverything || options.forceEngine || !state.engineExists;
+  const overwriteConfig = overwriteEverything || options.forceConfig || !state.configExists;
+  const overwriteClaudeMd =
+    overwriteEverything || options.forceClaudeMd || !state.claudeMdPatched;
 
-  copyDirectory(sourceEngineDir, targetEngineDir, {
-    overwrite: options.overwriteEngine,
-  });
-  copied.push(`engine/ ← ${sourceEngineDir}`);
-
-  const sourceTemplateDir = path.join(
-    options.sourceRoot,
-    'src',
-    'episodes',
-    'template',
-  );
-  const targetTemplateDir = path.join(options.root, 'src', 'episodes', 'template');
-  if (options.force || !fs.existsSync(targetTemplateDir)) {
-    copyDirectory(sourceTemplateDir, targetTemplateDir, {
-      overwrite: options.force,
-    });
-    copied.push(`episodes/template/ ← ${sourceTemplateDir}`);
+  if (isArsDevelopmentRepo(root, sourceRoot) && !overwriteEverything && !options.forceEngine) {
+    throw new Error(
+      `Refusing to run setup inside the ARS development repo (${root}). Re-run with --force if you really want to overwrite it.`,
+    );
   }
 
-  const sourceRootFile = path.join(options.sourceRoot, 'src', 'Root.tsx');
-  const targetRootFile = path.join(options.root, 'src', 'Root.tsx');
-  if (options.force || !fs.existsSync(targetRootFile)) {
-    copyFile(sourceRootFile, targetRootFile, { overwrite: options.force });
-    copied.push(`Root.tsx ← ${sourceRootFile}`);
-  }
-
-  const sourceCompositionFile = path.join(options.sourceRoot, 'src', 'Composition.tsx');
-  const targetCompositionFile = path.join(options.root, 'src', 'Composition.tsx');
   if (
-    fs.existsSync(sourceCompositionFile) &&
-    (options.force || !fs.existsSync(targetCompositionFile))
+    !overwriteEverything &&
+    !options.forceEngine &&
+    !options.forceConfig &&
+    !options.forceClaudeMd &&
+    (state.configExists || state.engineExists || state.versionExists || state.claudeMdPatched)
   ) {
-    copyFile(sourceCompositionFile, targetCompositionFile, {
-      overwrite: options.force,
-    });
-    copied.push(`Composition.tsx ← ${sourceCompositionFile}`);
+    if (!interactive) {
+      throw new Error(
+        `Existing ARS install assets were found in ${root}. Re-run with --force, --force-engine, --force-config, or --force-claude-md.`,
+      );
+    }
+
+    const confirmed = await promptBoolean(
+      `Existing ARS install assets were found in ${root}. Overwrite config, engine, CLAUDE.md, and version metadata?`,
+      false,
+    );
+    if (!confirmed) {
+      throw new Error('Setup cancelled.');
+    }
   }
 
-  return copied;
+  const config = overwriteConfig
+    ? interactive
+      ? await promptForConfig()
+      : createDefaultConfig()
+    : readArsConfig(root);
+
+  const writtenConfigPath = overwriteConfig
+    ? writeArsConfig(config, root)
+    : undefined;
+  const copiedFiles = syncEngineFiles({
+    root,
+    sourceRoot,
+    overwriteEngine,
+    overwriteSupportFiles: overwriteEngine,
+  });
+  const claudeMdPath = overwriteClaudeMd ? patchClaudeMd(root) : undefined;
+  const versionPath = writeVersionMetadata({
+    root,
+    sourceRoot,
+    runtimeVersion: runtime.version,
+    pluginVersion: readPluginVersion(runtime.pluginRoot) ?? runtime.version,
+    configSchemaVersion: CONFIG_SCHEMA_VERSION,
+    installMethod: detectInstallMethod(sourceRoot),
+  });
+
+  return {
+    root,
+    config,
+    configPath: writtenConfigPath ?? configPath,
+    copiedFiles,
+    claudeMdPath,
+    versionPath,
+    usedDefaults: !interactive && overwriteConfig,
+  };
+}
+
+function parseOptions(args: string[]): SetupOptions {
+  if (args.includes('--help') || args.includes('-h')) {
+    console.log(HELP);
+    process.exit(0);
+  }
+
+  return {
+    force: args.includes('--force'),
+    forceEngine: args.includes('--force-engine'),
+    forceConfig: args.includes('--force-config'),
+    forceClaudeMd: args.includes('--force-claude-md'),
+    yes: args.includes('--yes') || args.includes('-y'),
+    quiet: args.includes('--quiet') || args.includes('-q'),
+  };
 }
 
 async function promptForConfig(): Promise<ArsConfig> {
@@ -163,7 +188,7 @@ async function promptForConfig(): Promise<ArsConfig> {
     const ttsProvider = await promptChoice(
       rl,
       'TTS provider',
-      ['none', 'minimax'],
+      TTS_PROVIDER_IDS,
       defaults.tts.provider,
     );
     const youtubeEnabled = await promptBooleanWithRl(
@@ -188,6 +213,7 @@ async function promptForConfig(): Promise<ArsConfig> {
     );
 
     return {
+      version: CONFIG_SCHEMA_VERSION,
       tts: {
         provider: ttsProvider,
       },
@@ -207,7 +233,7 @@ async function promptForConfig(): Promise<ArsConfig> {
         },
       },
       review: {
-        preferredUi: 'slides',
+        preferredUi: defaults.review.preferredUi,
         enableExperimentalStudio: experimentalStudio,
       },
     };
@@ -260,5 +286,21 @@ async function promptChoice<T extends string>(
     }
 
     console.log(`Please choose one of: ${choices.join(', ')}`);
+  }
+}
+
+function readPluginVersion(pluginRoot: string): string | null {
+  const pluginJsonPath = path.join(pluginRoot, '.claude-plugin', 'plugin.json');
+  if (!fs.existsSync(pluginJsonPath)) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(fs.readFileSync(pluginJsonPath, 'utf-8')) as {
+      version?: unknown;
+    };
+    return typeof parsed.version === 'string' ? parsed.version : null;
+  } catch {
+    return null;
   }
 }

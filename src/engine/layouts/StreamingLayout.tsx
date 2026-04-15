@@ -17,6 +17,7 @@
 
 import React from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate } from "remotion";
+import type { LayoutSpec } from ".";
 import { useTheme } from '../shared/ThemeContext';
 import { AnimatedVTuber } from "../components/ui/AnimatedVTuber";
 import { SubtitleOverlay } from "../components/ui/SubtitleOverlay";
@@ -228,4 +229,10 @@ export const StreamingLayout: React.FC<StreamingLayoutProps> = ({
       )}
     </AbsoluteFill>
   );
+};
+
+export const layoutSpec: LayoutSpec = {
+  type: "streaming",
+  component: StreamingLayout,
+  description: "Default 16:9 live-stream shell.",
 };

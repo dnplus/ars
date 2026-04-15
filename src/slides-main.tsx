@@ -63,7 +63,11 @@ for (const filePath in rawModules) {
     if (!seriesMap[series]) seriesMap[series] = {};
 
     const sc = seriesConfigs[series];
-    const shell = episode.shell ?? sc?.shell;
+    const scShell = sc?.shell;
+    const epShell = episode.shell;
+    const shell = epShell
+      ? { ...epShell, theme: epShell.theme ?? scShell?.theme }
+      : scShell;
     const defaults = sc?.episodeDefaults ?? {};
 
     seriesMap[series][epId] = {

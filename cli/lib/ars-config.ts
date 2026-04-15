@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
+export const CONFIG_SCHEMA_VERSION = 2;
 export const TTS_PROVIDER_IDS = ['none', 'minimax'] as const;
 export const REVIEW_UI_IDS = ['slides'] as const;
 
@@ -8,6 +9,7 @@ export type TTSProviderId = (typeof TTS_PROVIDER_IDS)[number];
 export type ReviewUiId = (typeof REVIEW_UI_IDS)[number];
 
 export interface ArsConfig {
+  version: number;
   tts: {
     provider: TTSProviderId;
   };
@@ -50,12 +52,13 @@ export function getConfigPath(root = getRepoRoot()): string {
 
 export function createDefaultConfig(): ArsConfig {
   return {
+    version: CONFIG_SCHEMA_VERSION,
     tts: {
       provider: 'none',
     },
     publish: {
       youtube: {
-        enabled: true,
+        enabled: false,
         credentialsPath: '.ars/credentials/youtube/credentials.json',
         clientSecretPath: '.ars/credentials/youtube/client_secret.json',
       },
@@ -88,10 +91,13 @@ export function writeArsConfig(config: ArsConfig, root = getRepoRoot()): string 
   return configPath;
 }
 
-export function readArsConfig(root = getRepoRoot()): ArsConfig {
+export function readRawArsConfig(root = getRepoRoot()): unknown {
   const configPath = getConfigPath(root);
-  const raw = fs.readFileSync(configPath, 'utf-8');
-  return parseArsConfig(JSON.parse(raw) as unknown);
+  return JSON.parse(fs.readFileSync(configPath, 'utf-8')) as unknown;
+}
+
+export function readArsConfig(root = getRepoRoot()): ArsConfig {
+  return parseArsConfig(readRawArsConfig(root));
 }
 
 export function configExists(root = getRepoRoot()): boolean {
@@ -99,76 +105,88 @@ export function configExists(root = getRepoRoot()): boolean {
 }
 
 export function parseArsConfig(input: unknown): ArsConfig {
+  const defaults = createDefaultConfig();
   if (!isRecord(input)) {
     throw new Error('Config root must be an object.');
   }
 
-  const tts = expectRecord(input.tts, 'tts');
-  const publish = expectRecord(input.publish, 'publish');
-  const youtube = expectRecord(publish.youtube, 'publish.youtube');
-  const extensions = expectRecord(input.extensions, 'extensions');
-  const social = expectRecord(extensions.social, 'extensions.social');
-  const analytics = expectRecord(extensions.analytics, 'extensions.analytics');
-  const review = expectRecord(input.review, 'review');
+  const publish = isRecord(input.publish) ? input.publish : {};
+  const youtube = isRecord(publish.youtube) ? publish.youtube : {};
+  const extensions = isRecord(input.extensions) ? input.extensions : {};
+  const social = isRecord(extensions.social) ? extensions.social : {};
+  const analytics = isRecord(extensions.analytics) ? extensions.analytics : {};
+  const review = isRecord(input.review) ? input.review : {};
 
   return {
+    version:
+      typeof input.version === 'number' && Number.isFinite(input.version)
+        ? input.version
+        : CONFIG_SCHEMA_VERSION,
     tts: {
-      provider: expectOneOf(tts.provider, TTS_PROVIDER_IDS, 'tts.provider'),
+      provider:
+        expectOptionalOneOf(ttsProviderValue(input), TTS_PROVIDER_IDS, 'tts.provider') ??
+        defaults.tts.provider,
     },
     publish: {
       youtube: {
-        enabled: expectBoolean(youtube.enabled, 'publish.youtube.enabled'),
-        credentialsPath: expectOptionalString(
-          youtube.credentialsPath,
-          'publish.youtube.credentialsPath',
-        ),
-        clientSecretPath: expectOptionalString(
-          youtube.clientSecretPath,
-          'publish.youtube.clientSecretPath',
-        ),
+        enabled:
+          expectOptionalBoolean(youtube.enabled, 'publish.youtube.enabled') ??
+          defaults.publish.youtube.enabled,
+        credentialsPath:
+          expectOptionalString(
+            youtube.credentialsPath,
+            'publish.youtube.credentialsPath',
+          ) ?? defaults.publish.youtube.credentialsPath,
+        clientSecretPath:
+          expectOptionalString(
+            youtube.clientSecretPath,
+            'publish.youtube.clientSecretPath',
+          ) ?? defaults.publish.youtube.clientSecretPath,
       },
     },
     extensions: {
       social: {
-        enabled: expectBoolean(social.enabled, 'extensions.social.enabled'),
+        enabled:
+          expectOptionalBoolean(social.enabled, 'extensions.social.enabled') ??
+          defaults.extensions.social.enabled,
       },
       analytics: {
-        enabled: expectBoolean(analytics.enabled, 'extensions.analytics.enabled'),
+        enabled:
+          expectOptionalBoolean(analytics.enabled, 'extensions.analytics.enabled') ??
+          defaults.extensions.analytics.enabled,
       },
     },
     review: {
-      preferredUi: expectOneOf(review.preferredUi, REVIEW_UI_IDS, 'review.preferredUi'),
-      enableExperimentalStudio: expectBoolean(
-        review.enableExperimentalStudio,
-        'review.enableExperimentalStudio',
-      ),
+      preferredUi:
+        expectOptionalOneOf(review.preferredUi, REVIEW_UI_IDS, 'review.preferredUi') ??
+        defaults.review.preferredUi,
+      enableExperimentalStudio:
+        expectOptionalBoolean(
+          review.enableExperimentalStudio,
+          'review.enableExperimentalStudio',
+        ) ?? defaults.review.enableExperimentalStudio,
     },
   };
+}
+
+function ttsProviderValue(input: JsonRecord): unknown {
+  if (!isRecord(input.tts)) {
+    return undefined;
+  }
+  return input.tts.provider;
 }
 
 function isRecord(value: unknown): value is JsonRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function expectRecord(value: unknown, field: string): JsonRecord {
-  if (!isRecord(value)) {
-    throw new Error(`Config field "${field}" must be an object.`);
+function expectOptionalBoolean(value: unknown, field: string): boolean | undefined {
+  if (value === undefined) {
+    return undefined;
   }
 
-  return value;
-}
-
-function expectBoolean(value: unknown, field: string): boolean {
   if (typeof value !== 'boolean') {
     throw new Error(`Config field "${field}" must be a boolean.`);
-  }
-
-  return value;
-}
-
-function expectStringArray(value: unknown, field: string): string[] {
-  if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
-    throw new Error(`Config field "${field}" must be an array of strings.`);
   }
 
   return value;
@@ -186,11 +204,30 @@ function expectOptionalString(value: unknown, field: string): string | undefined
   return value;
 }
 
-function expectOneOf<const T extends readonly string[]>(
+function expectOptionalStringArray(
+  value: unknown,
+  field: string,
+): string[] | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
+    throw new Error(`Config field "${field}" must be an array of strings.`);
+  }
+
+  return value;
+}
+
+function expectOptionalOneOf<const T extends readonly string[]>(
   value: unknown,
   allowed: T,
   field: string,
-): T[number] {
+): T[number] | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
   if (typeof value !== 'string' || !allowed.includes(value as T[number])) {
     throw new Error(
       `Config field "${field}" must be one of: ${allowed.join(', ')}.`,

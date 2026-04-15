@@ -1,11 +1,18 @@
 import fs from 'fs';
 import path from 'path';
 import { spawnSync } from 'child_process';
-import { fileURLToPath } from 'url';
 import { getArsDir } from './ars-config';
+import { getRuntimePackageInfo } from './runtime-package';
+import {
+  ArsInstallMethod,
+  ArsVersionMetadata,
+  assertNoDowngrade,
+  getLegacyEngineVersionPath,
+  readInstalledVersion,
+  writeInstalledVersion,
+} from './version';
 
 const PACKAGE_NAME = 'agentic-remotion-studio';
-const ENGINE_VERSION_FILE = 'engine-version.json';
 const ARS_MARKER_BEGIN = '<!-- ars:begin -->';
 const ARS_MARKER_END = '<!-- ars:end -->';
 const ARS_COMMANDS_BLOCK = `${ARS_MARKER_BEGIN}
@@ -21,13 +28,20 @@ ${ARS_MARKER_END}`;
 
 interface PackageJsonLike {
   name?: unknown;
-  gitHead?: unknown;
 }
 
-export interface EngineVersionRecord {
-  commit: string;
-  copiedAt: string;
-  source: string;
+export interface InstallState {
+  configExists: boolean;
+  engineExists: boolean;
+  versionExists: boolean;
+  claudeMdPatched: boolean;
+}
+
+export interface SyncEngineOptions {
+  root: string;
+  sourceRoot: string;
+  overwriteEngine: boolean;
+  overwriteSupportFiles: boolean;
 }
 
 export function getTargetRepoRoot(): string {
@@ -35,58 +49,64 @@ export function getTargetRepoRoot(): string {
 }
 
 export function getEngineVersionPath(root = getTargetRepoRoot()): string {
-  return path.join(getArsDir(root), ENGINE_VERSION_FILE);
-}
-
-export function writeEngineVersion(
-  record: EngineVersionRecord,
-  root = getTargetRepoRoot(),
-): string {
-  const outputPath = getEngineVersionPath(root);
-  fs.mkdirSync(path.dirname(outputPath), { recursive: true });
-  fs.writeFileSync(outputPath, `${JSON.stringify(record, null, 2)}\n`, 'utf-8');
-  return outputPath;
+  return getLegacyEngineVersionPath(root);
 }
 
 export function locateSourcePackageRoot(importMetaUrl: string): string {
-  const startDir = path.dirname(fileURLToPath(importMetaUrl));
-  let currentDir = startDir;
-  let fallbackRoot: string | null = null;
+  return getRuntimePackageInfo(importMetaUrl).packageRoot;
+}
 
-  while (true) {
-    const packageJsonPath = path.join(currentDir, 'package.json');
-    if (fs.existsSync(packageJsonPath)) {
-      const pkg = readPackageJson(packageJsonPath);
-      if (pkg.name === PACKAGE_NAME) {
-        return currentDir;
-      }
-
-      if (!fallbackRoot && hasArsSourceLayout(currentDir)) {
-        fallbackRoot = currentDir;
-      }
-    }
-
-    const parentDir = path.dirname(currentDir);
-    if (parentDir === currentDir) {
-      break;
-    }
-    currentDir = parentDir;
+export function resolveSetupTargetRoot(
+  env: NodeJS.ProcessEnv,
+  packageRoot: string,
+): string | null {
+  if (env.ARS_SKIP_POSTINSTALL === '1') {
+    return null;
   }
 
-  if (fallbackRoot) {
-    return fallbackRoot;
+  if (env.npm_config_global === 'true') {
+    return null;
   }
 
-  throw new Error(
-    `Could not locate ${PACKAGE_NAME} package root from ${startDir}.`,
-  );
+  const initCwd = env.INIT_CWD?.trim();
+  if (!initCwd) {
+    return null;
+  }
+
+  const resolved = path.resolve(initCwd);
+  const normalizedPackageRoot = path.resolve(packageRoot);
+  if (resolved === normalizedPackageRoot) {
+    return null;
+  }
+
+  if (resolved.includes(`${path.sep}node_modules${path.sep}`)) {
+    return null;
+  }
+
+  return resolved;
+}
+
+export function detectInstallState(root = getTargetRepoRoot()): InstallState {
+  const claudePath = path.join(root, 'CLAUDE.md');
+  const claudeContent = fs.existsSync(claudePath)
+    ? fs.readFileSync(claudePath, 'utf-8')
+    : '';
+
+  return {
+    configExists: fs.existsSync(path.join(getArsDir(root), 'config.json')),
+    engineExists: fs.existsSync(path.join(root, 'src', 'engine')),
+    versionExists: readInstalledVersion(root) !== null,
+    claudeMdPatched:
+      claudeContent.includes(ARS_MARKER_BEGIN) &&
+      claudeContent.includes(ARS_MARKER_END),
+  };
 }
 
 export function isArsDevelopmentRepo(
   targetRoot: string,
   sourceRoot: string,
 ): boolean {
-  if (isSamePath(targetRoot, sourceRoot)) {
+  if (samePath(targetRoot, sourceRoot)) {
     return true;
   }
 
@@ -141,7 +161,6 @@ export function patchClaudeMd(root = getTargetRepoRoot()): string {
   if (beginIndex !== -1 && endIndex !== -1 && endIndex > beginIndex) {
     const before = existing.slice(0, beginIndex).trimEnd();
     const after = existing.slice(endIndex + ARS_MARKER_END.length).trimStart();
-
     next = [before, ARS_COMMANDS_BLOCK, after].filter(Boolean).join('\n\n');
   } else if (next.length > 0) {
     next = `${next}\n\n${ARS_COMMANDS_BLOCK}`;
@@ -164,15 +183,16 @@ export function getSourceGitCommit(sourceRoot: string): string {
   }
 
   const packageJsonPath = path.join(sourceRoot, 'package.json');
-  const pkg = fs.existsSync(packageJsonPath)
-    ? readPackageJson(packageJsonPath)
-    : null;
-  if (typeof pkg?.gitHead === 'string' && pkg.gitHead.trim()) {
-    return pkg.gitHead.trim();
-  }
-
-  if (typeof pkg?.version === 'string' && pkg.version.trim()) {
-    return `version:${pkg.version.trim()}`;
+  if (fs.existsSync(packageJsonPath)) {
+    const pkg = JSON.parse(
+      fs.readFileSync(packageJsonPath, 'utf-8'),
+    ) as { gitHead?: unknown; version?: unknown };
+    if (typeof pkg.gitHead === 'string' && pkg.gitHead.trim()) {
+      return pkg.gitHead.trim();
+    }
+    if (typeof pkg.version === 'string' && pkg.version.trim()) {
+      return `version:${pkg.version.trim()}`;
+    }
   }
 
   throw new Error(
@@ -182,9 +202,140 @@ export function getSourceGitCommit(sourceRoot: string): string {
   );
 }
 
+export function syncEngineFiles(options: SyncEngineOptions): string[] {
+  const copied: string[] = [];
+  const sourceEngineDir = path.join(options.sourceRoot, 'src', 'engine');
+  const targetEngineDir = path.join(options.root, 'src', 'engine');
+  syncDirectoryIfNeeded(
+    sourceEngineDir,
+    targetEngineDir,
+    options.overwriteEngine,
+    'engine/',
+    copied,
+  );
+
+  const sourceTemplateDir = path.join(
+    options.sourceRoot,
+    'src',
+    'episodes',
+    'template',
+  );
+  const targetTemplateDir = path.join(options.root, 'src', 'episodes', 'template');
+  syncDirectoryIfNeeded(
+    sourceTemplateDir,
+    targetTemplateDir,
+    options.overwriteSupportFiles,
+    'episodes/template/',
+    copied,
+  );
+
+  syncFileIfNeeded(
+    path.join(options.sourceRoot, 'src', 'Root.tsx'),
+    path.join(options.root, 'src', 'Root.tsx'),
+    options.overwriteSupportFiles,
+    'Root.tsx',
+    copied,
+  );
+
+  return copied;
+}
+
+export function backupEngine(root = getTargetRepoRoot()): string {
+  const targetEngineDir = path.join(root, 'src', 'engine');
+  if (!fs.existsSync(targetEngineDir)) {
+    throw new Error(`Missing ${targetEngineDir}. Run "npx ars setup" first.`);
+  }
+
+  const backupTimestamp = new Date().toISOString().replace(/:/g, '-');
+  const backupEngineDir = path.join(
+    getArsDir(root),
+    'backups',
+    backupTimestamp,
+    'engine',
+  );
+  copyDirectory(targetEngineDir, backupEngineDir, { overwrite: false });
+  return backupEngineDir;
+}
+
+export function writeVersionMetadata(options: {
+  root: string;
+  sourceRoot: string;
+  runtimeVersion: string;
+  pluginVersion: string;
+  configSchemaVersion: number;
+  installMethod: ArsInstallMethod;
+}): string {
+  const current = readInstalledVersion(options.root);
+  assertNoDowngrade(current?.version ?? null, options.runtimeVersion);
+
+  const timestamp = new Date().toISOString();
+  const metadata: ArsVersionMetadata = {
+    version: options.runtimeVersion,
+    installedAt: current?.installedAt ?? timestamp,
+    lastUpdatedAt: timestamp,
+    installMethod: options.installMethod,
+    sourceCommit: getSourceGitCommit(options.sourceRoot),
+    sourcePath: options.sourceRoot,
+    pluginVersion: options.pluginVersion,
+    engineSource: 'src/engine',
+    configSchemaVersion: options.configSchemaVersion,
+  };
+
+  return writeInstalledVersion(metadata, options.root);
+}
+
+export function detectInstallMethod(
+  sourceRoot: string,
+  env: NodeJS.ProcessEnv = process.env,
+): ArsInstallMethod {
+  if (env.npm_config_global === 'true') {
+    return 'npm-global';
+  }
+
+  if (sourceRoot.includes(`${path.sep}node_modules${path.sep}`)) {
+    return 'npm-local';
+  }
+
+  return 'source';
+}
+
+function syncDirectoryIfNeeded(
+  sourcePath: string,
+  targetPath: string,
+  overwrite: boolean,
+  label: string,
+  copied: string[],
+): void {
+  if (!fs.existsSync(sourcePath)) {
+    return;
+  }
+  if (fs.existsSync(targetPath) && !overwrite) {
+    return;
+  }
+  copyDirectory(sourcePath, targetPath, { overwrite });
+  copied.push(`${label} ← ${sourcePath}`);
+}
+
+function syncFileIfNeeded(
+  sourcePath: string,
+  targetPath: string,
+  overwrite: boolean,
+  label: string,
+  copied: string[],
+): void {
+  if (!fs.existsSync(sourcePath)) {
+    return;
+  }
+  if (fs.existsSync(targetPath) && !overwrite) {
+    return;
+  }
+  copyFile(sourcePath, targetPath, { overwrite });
+  copied.push(`${label} ← ${sourcePath}`);
+}
+
 function hasArsSourceLayout(root: string): boolean {
   return (
-    fs.existsSync(path.join(root, 'plugin')) &&
+    fs.existsSync(path.join(root, 'plugin', '.claude-plugin', 'plugin.json')) &&
     fs.existsSync(path.join(root, 'src', 'engine'))
   );
 }
@@ -195,16 +346,12 @@ function readPackageName(root: string): string | null {
     return null;
   }
 
-  const pkg = readPackageJson(packageJsonPath);
+  const pkg = JSON.parse(
+    fs.readFileSync(packageJsonPath, 'utf-8'),
+  ) as PackageJsonLike;
   return typeof pkg.name === 'string' ? pkg.name : null;
 }
 
-function readPackageJson(packageJsonPath: string): PackageJsonLike {
-  return JSON.parse(
-    fs.readFileSync(packageJsonPath, 'utf-8'),
-  ) as PackageJsonLike;
-}
-
-function isSamePath(left: string, right: string): boolean {
+function samePath(left: string, right: string): boolean {
   return path.resolve(left) === path.resolve(right);
 }

@@ -14,7 +14,7 @@
 import React from "react";
 import { AbsoluteFill, Series, Audio, staticFile } from "remotion";
 import { Episode } from "./shared/types";
-import { getLayout } from "./layouts";
+import { getLayoutKey, resolveLayout } from "./layouts";
 import { getScene } from "./scenes";
 import { BackgroundMusic } from "./components/ui/BackgroundMusic";
 import { type SubtitlePhrase } from "./shared/subtitle";
@@ -40,11 +40,12 @@ export const EpisodeRenderer: React.FC<EpisodeRendererProps> = ({
   }
 
   const shell = episode.shell;
-  const Layout = getLayout(shell.layout);
+  const Layout = resolveLayout(shell.layout);
   const Scene = getScene(shell.scene);
   const totalSteps = episode.steps.length;
 
-  const isShorts = shell.layout === 'shorts';
+  const layoutKey = getLayoutKey(shell.layout);
+  const isShorts = layoutKey === 'shorts';
   const fps = episode.metadata.fps || 30;
   const shortsCoverDuration = 1.5; // seconds
 

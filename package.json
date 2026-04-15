@@ -1,5 +1,5 @@
 {
-  "name": "ars-ce",
+  "name": "agentic-remotion-studio",
   "version": "1.0.0",
   "description": "ARS CE starter repo for adapter-first Remotion episode production",
   "repository": {},
@@ -14,14 +14,17 @@
     "@remotion/cli": "4.0.435",
     "@remotion/google-fonts": "4.0.435",
     "@remotion/media": "4.0.435",
+    "@remotion/renderer": "4.0.435",
     "@remotion/transitions": "4.0.435",
     "@types/qrcode": "^1.5.6",
+    "dotenv": "^17.2.3",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.1.0",
     "mermaid": "^11.12.2",
     "pixi.js": "^8.16.0",
     "pptxgenjs": "^4.0.1",
     "prism-react-renderer": "^2.4.1",
+    "puppeteer-core": "^24.40.0",
     "qrcode": "^1.5.4",
     "qrcode.react": "^4.2.0",
     "react": "19.2.3",
@@ -32,15 +35,13 @@
     "remark-gfm": "^4.0.1",
     "remotion": "4.0.435",
     "tailwindcss": "4.0.0",
-    "dotenv": "^17.2.3",
     "tsx": "^4.20.6",
-    "typescript": "5.9.3",
-    "@remotion/renderer": "4.0.435",
-    "puppeteer-core": "^24.40.0"
+    "typescript": "5.9.3"
   },
   "devDependencies": {
     "@remotion/eslint-config-flat": "4.0.435",
     "@remotion/player": "4.0.435",
+    "@tailwindcss/postcss": "^4.2.2",
     "@types/jsdom": "^27.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "19.2.7",
@@ -49,17 +50,20 @@
     "eslint": "9.19.0",
     "jsdom": "^28.0.0",
     "prettier": "3.6.0",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "vitest": "^3.2.4"
   },
   "bin": {
-    "ars": "./cli/index.ts"
+    "ars": "./cli/bin/ars.js"
   },
   "scripts": {
     "ars": "tsx cli/index.ts",
+    "postinstall": "node ./cli/bin/ars.js postinstall",
     "dev": "remotion studio",
     "build": "remotion bundle",
     "upgrade": "remotion upgrade",
     "lint": "eslint src && tsc",
+    "test": "vitest run",
     "dev:slides": "vite --config vite.slides.config.ts",
     "build:slides": "vite build --config vite.slides.config.ts",
     "preview:slides": "vite preview --config vite.slides.config.ts"
