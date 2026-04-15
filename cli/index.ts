@@ -35,9 +35,9 @@ Commands:
     --no-subtitle                   Disable subtitle generation
     --step <id>                     Only generate one specific step (repeatable)
     --steps <id1,id2,...>           Only generate specific steps
-  setup                             Initialize .ars/config.json
+  setup [--force]                   Initialize config, copy engine, and patch CLAUDE.md
   update                            Backup src/engine and refresh it from the installed ARS package
-  doctor                            Validate .ars/config.json and provider environment
+  doctor                            Validate config, engine install, and provider credentials
   slides <series>/<epId>            Launch web slides viewer
   review open <series>/<epId>       Launch slides review surface
   review intent <subcommand>        Manage .ars/review-intents inbox
