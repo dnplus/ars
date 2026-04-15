@@ -12,15 +12,15 @@
  */
 
 import React from "react";
-import { AbsoluteFill, Series, Audio, staticFile } from "remotion";
+import { AbsoluteFill, Series, staticFile } from "remotion";
 import { Episode } from "./shared/types";
 import { getLayoutKey, resolveLayout } from "./layouts";
-import { getScene } from "./scenes";
 import { BackgroundMusic } from "./components/ui/BackgroundMusic";
 import { type SubtitlePhrase } from "./shared/subtitle";
 import { StepTransition } from "./shared/effects";
 import { ThemeProvider } from "./shared/ThemeContext";
 import { ThumbnailCard } from "./components/cards/ThumbnailCard";
+import { StepRenderer } from "./renderers/StepRenderer";
 
 export type EpisodeRendererProps = {
   episode: Episode;
@@ -40,8 +40,6 @@ export const EpisodeRenderer: React.FC<EpisodeRendererProps> = ({
   }
 
   const shell = episode.shell;
-  const Layout = resolveLayout(shell.layout);
-  const Scene = getScene(shell.scene);
   const totalSteps = episode.steps.length;
 
   const layoutKey = getLayoutKey(shell.layout);
@@ -103,30 +101,21 @@ export const EpisodeRenderer: React.FC<EpisodeRendererProps> = ({
             return (
               <Series.Sequence key={step.id} durationInFrames={durationInFrames}>
                 <StepTransition skipEnter={shouldSkipEnter} skipExit={shouldSkipExit}>
-                  <Layout
-                    config={shell.config}
-                    audioSrc={audioSrc}
-                    narration={step.narration}
-                    subtitles={stepSubtitles}
-                    decorationText={episode.metadata.decorationText}
-                    layoutMode={currentLayoutMode}
+                  <StepRenderer
+                    episode={episode}
+                    step={step}
                     prevLayoutMode={prevLayoutMode}
-                    backgroundPreset={step.backgroundPreset}
-                  >
-                    <Scene
-                      step={step}
-                      episodeTitle={episode.metadata.title}
-                      episodeSubtitle={episode.metadata.subtitle}
-                      channelName={episode.metadata.channelName}
-                      episodeTag={episode.metadata.episodeTag}
-                    />
-                  </Layout>
+                    audioSrc={audioSrc}
+                    subtitles={stepSubtitles}
+                    episodeInfo={{
+                      title: episode.metadata.title,
+                      subtitle: episode.metadata.subtitle,
+                      channelName: episode.metadata.channelName,
+                      decorationText: episode.metadata.decorationText,
+                      episodeTag: episode.metadata.episodeTag,
+                    }}
+                  />
                 </StepTransition>
-
-                {/* Audio Track - 只在有 narration 時載入 */}
-                {!episode.metadata.skipAudio && hasNarration && audioSrc && (
-                  <Audio src={staticFile(audioSrc)} />
-                )}
               </Series.Sequence>
             );
           })}

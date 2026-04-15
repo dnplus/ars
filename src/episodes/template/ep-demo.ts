@@ -42,7 +42,9 @@ export const epDemo: Episode = {
       contentType: 'cover',
       layoutMode: 'fullscreen',
       backgroundPreset: 'aurora',
-      animation: 'matrix',
+      data: {
+        animation: 'matrix',
+      },
       narration: '歡迎來到 Agentic Remotion Studio。這個 demo 只展示已正式接上新卡片系統的主路徑。',
       durationInSeconds: 5,
     },
@@ -55,14 +57,16 @@ export const epDemo: Episode = {
       phase: 'Part 1: Narrative Cards',
       title: 'Markdown Card',
       description: 'Registry-first renderer now drives the template path',
-      cardTitle: 'Why registry-first matters',
-      cardTag: 'MARKDOWN',
-      tagColor: 'blue',
-      cardContent: `## New card contract
+      data: {
+        cardTitle: 'Why registry-first matters',
+        cardTag: 'MARKDOWN',
+        tagColor: 'blue',
+        content: `## New card contract
 
 - 每張卡都由 \`CardSpec\` 註冊
 - component 明確吃 \`CardRenderProps<TData>\`
 - template 只展示已正式支援的卡種`,
+      },
       narration: '先看 markdown card。現在 template 只展示已經正式接上 registry 的卡種。',
       durationInSeconds: 6,
     },
@@ -72,8 +76,9 @@ export const epDemo: Episode = {
       layoutMode: 'card-only',
       backgroundPreset: 'minimal',
       effect: 'slideUp',
-      windowTitle: 'summary/spec.ts',
-      code: `import type { CardSpec } from "../types";
+      data: {
+        title: 'summary/spec.ts',
+        code: `import type { CardSpec } from "../types";
 
 export const cardSpec = {
   type: "summary",
@@ -81,7 +86,8 @@ export const cardSpec = {
   schemaVersion: 1,
   component: SummaryCardComponent,
 } satisfies CardSpec<SummaryCardData>;`,
-      language: 'typescript',
+        language: 'typescript',
+      },
       narration: 'Code card 也走同一套 spec contract，不再是各卡自己長自己的介面。',
       durationInSeconds: 6,
     },
@@ -91,9 +97,11 @@ export const cardSpec = {
       layoutMode: 'fullscreen',
       backgroundPreset: 'default',
       effect: 'scaleIn',
-      imageTitle: 'Ginseng YouTube Cover',
-      imageSrc: 'episodes/template/shared/reference/ginseng-yt-ep024.jpg',
-      imageCaption: 'Upstream ginseng-channel YouTube thumbnail reference',
+      data: {
+        title: 'Ginseng YouTube Cover',
+        src: 'episodes/template/shared/reference/ginseng-yt-ep024.jpg',
+        caption: 'Upstream ginseng-channel YouTube thumbnail reference',
+      },
       narration: '這張 image card 現在改用上游 ginseng-channel 的 YouTube 縮圖，方便拿來當 demo 參考。',
       durationInSeconds: 5,
     },
@@ -103,12 +111,14 @@ export const cardSpec = {
       layoutMode: 'card-only',
       backgroundPreset: 'default',
       effect: 'fadeIn',
-      mermaidTitle: 'Renderer Path',
-      mermaidChart: `graph TB
+      data: {
+        title: 'Renderer Path',
+        chart: `graph TB
     A[Episode Step] --> B[WebinarScene]
     B --> C[getCard type]
     C --> D[CardSpec component]
     D --> E[BaseSlide primitives]`,
+      },
       narration: 'Mermaid card 用來展示新的 registry-first renderer path。',
       durationInSeconds: 6,
     },
@@ -139,10 +149,12 @@ export const cardSpec = {
       contentType: 'ticker',
       layoutMode: 'card-only',
       backgroundPreset: 'spotlight',
-      cardTitle: 'Ticker',
-      cardContent: `One Schema
+      data: {
+        title: 'Ticker',
+        content: `One Schema
 One Registry
 One Renderer`,
+      },
       narration: 'Ticker card 現在也有新的 base-driven 實作。',
       durationInSeconds: 8,
     },
@@ -151,11 +163,13 @@ One Renderer`,
       contentType: 'ticker',
       layoutMode: 'card-only',
       backgroundPreset: 'spotlight',
-      tickerStyle: 'kinetic',
-      cardTitle: 'Kinetic',
-      cardContent: `Summary
+      data: {
+        style: 'kinetic',
+        title: 'Kinetic',
+        content: `Summary
 Ticker
 Mermaid`,
+      },
       narration: '這張展示 kinetic 模式，確認新的 ticker spec 也能工作。',
       durationInSeconds: 8,
     },
@@ -165,19 +179,21 @@ Mermaid`,
       layoutMode: 'fullscreen',
       backgroundPreset: 'aurora',
       effect: 'fadeIn',
-      summaryTitle: 'Registry-first baseline',
-      summaryPoints: [
-        'template 只保留正式支援的卡種',
-        'summary / ticker / mermaid 已遷到 CardSpec',
-        'ep-demo 現在多了一張 template scoped custom chart card',
-        'renderer 先走 registry，再 fallback 給少數舊卡',
-        'demo 不再展示 compare / stats / timeline / flowchart',
-      ],
-      summaryCtaButtons: [
-        { label: 'Ship episodes', icon: '🚀' },
-        { label: 'Keep cards narrow', icon: '🧩' },
-      ],
-      summaryShowCta: true,
+      data: {
+        title: 'Registry-first baseline',
+        points: [
+          'template 只保留正式支援的卡種',
+          'summary / ticker / mermaid 已遷到 CardSpec',
+          'ep-demo 現在多了一張 template scoped custom chart card',
+          'renderer 現在只走 registry-based card path',
+          'demo 不再展示 compare / stats / timeline / flowchart',
+        ],
+        ctaButtons: [
+          { label: 'Ship episodes', icon: '🚀' },
+          { label: 'Keep cards narrow', icon: '🧩' },
+        ],
+        showCta: true,
+      },
       narration: '這個 demo 現在專注於新的卡片主路徑，而不是把所有舊卡全部堆在一起。',
       durationInSeconds: 7,
     },

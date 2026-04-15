@@ -168,10 +168,6 @@ export type ShellConfig = {
 // Step（時間軸片段）- 統一類型
 // ========================================
 
-// Shared CTA types
-export type CTAButton = { label: string; icon?: string };
-export type QRCodeCTA = { url: string; title?: string; subtitle?: string };
-
 /**
  * Step - 統一的時間軸片段類型
  *
@@ -194,7 +190,7 @@ export type Step = {
     | "summary"
     | "ticker"
     | `${string}/${string}`;
-  /** Custom card payload for series-scoped CardSpec types. */
+  /** Card payload resolved by the CardSpec for this contentType. */
   data?: unknown;
   /** 佈局模式：title-card（預設）| card-only | fullscreen */
   layoutMode?: LayoutMode;
@@ -211,47 +207,11 @@ export type Step = {
   /** 跳過此 step 的 enter/exit 過場動畫（連續 fullscreen 不閃黑） */
   skipTransition?: boolean;
 
-  // Cover Card background effect
-  animation?: "matrix" | "none";
-
   // Card entrance effect (applied by CardEffect wrapper)
   /** 卡片進場特效，預設 'fadeIn' */
   effect?: StepEffect;
   /** 特效參數覆寫 */
   effectConfig?: EffectConfig;
-
-  // Text/Markdown Card
-  cardTitle?: string;
-  cardTag?: string;
-  tagColor?: string;
-  cardContent?: string;
-
-  // Code Card
-  windowTitle?: string;
-  code?: string;
-  language?: string;
-
-  // Image Card
-  imageTitle?: string;
-  imageSrc?: string;
-  imageCaption?: string;
-
-  // Mermaid Card
-  mermaidTitle?: string;
-  mermaidChart?: string;
-
-  // Video Card
-  videoSrc?: string;
-
-  // Summary Card
-  summaryTitle?: string;
-  summaryPoints?: string[];
-  summaryCtaButtons?: CTAButton[];
-  summaryQrCodes?: QRCodeCTA[];
-  summaryShowCta?: boolean;
-
-  // Ticker Card
-  tickerStyle?: "flash" | "kinetic";
 
   /** 此 step 的 TTS 聲音，覆蓋 episode.metadata.voiceId（多人對話用） */
   voiceId?: string;

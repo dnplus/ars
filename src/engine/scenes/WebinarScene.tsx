@@ -51,6 +51,14 @@ const resolveCardFrame = (layoutMode: LayoutMode) =>
 const resolveRegistryType = (contentType: Step["contentType"]) =>
   contentType === "text" ? "markdown" : contentType;
 
+const getStepDataRecord = (step: Step): Record<string, unknown> => {
+  if (!step.data || typeof step.data !== "object" || Array.isArray(step.data)) {
+    return {};
+  }
+
+  return step.data as Record<string, unknown>;
+};
+
 const isRegistryRenderable = (
   contentType: Step["contentType"],
 ): contentType is RegistryRenderableType | "text" => {
@@ -78,62 +86,88 @@ const buildRegistryCardData = (
 ) => {
   const resolvedType = resolveRegistryType(step.contentType);
   const frame = resolveCardFrame(layoutMode);
+  const data = getStepDataRecord(step);
 
   switch (resolvedType) {
     case "cover":
       return {
-        title: step.title || episode.title,
-        subtitle: step.description || episode.subtitle,
-        channelName: episode.channelName,
-        episodeTag: episode.episodeTag,
-        animation: step.animation ?? "none",
+        ...data,
+        title:
+          typeof data.title === "string" && data.title.trim().length > 0
+            ? data.title
+            : episode.title,
+        subtitle:
+          typeof data.subtitle === "string" && data.subtitle.trim().length > 0
+            ? data.subtitle
+            : episode.subtitle,
+        channelName:
+          typeof data.channelName === "string" &&
+          data.channelName.trim().length > 0
+            ? data.channelName
+            : episode.channelName,
+        episodeTag:
+          typeof data.episodeTag === "string" && data.episodeTag.trim().length > 0
+            ? data.episodeTag
+            : episode.episodeTag,
+        animation: data.animation ?? "none",
       };
     case "markdown":
       return {
-        cardTitle: step.cardTitle || step.title || "",
-        cardTag: step.cardTag || "",
-        tagColor: step.tagColor || "blue",
-        content: step.cardContent || step.description || "",
-        frame,
+        ...data,
+        cardTitle:
+          typeof data.cardTitle === "string" ? data.cardTitle : "",
+        cardTag: typeof data.cardTag === "string" ? data.cardTag : "",
+        tagColor: typeof data.tagColor === "string" ? data.tagColor : "blue",
+        content: typeof data.content === "string" ? data.content : "",
+        frame: data.frame ?? frame,
       };
     case "code":
       return {
-        title: step.windowTitle || step.cardTitle || step.title || "",
-        code: step.code || "",
-        language: step.language || "typescript",
-        frame,
+        ...data,
+        title: typeof data.title === "string" ? data.title : "",
+        code: typeof data.code === "string" ? data.code : "",
+        language: typeof data.language === "string" ? data.language : "typescript",
+        frame: data.frame ?? frame,
       };
     case "image":
       return {
-        title: step.imageTitle || step.cardTitle || step.title,
-        src: step.imageSrc || "",
-        caption: step.imageCaption || step.description,
-        objectFit: layoutMode === "fullscreen" ? "cover" : "contain",
-        frame,
-        animate: !step.skipTransition,
+        ...data,
+        title: typeof data.title === "string" ? data.title : undefined,
+        src: typeof data.src === "string" ? data.src : "",
+        caption: typeof data.caption === "string" ? data.caption : undefined,
+        objectFit:
+          data.objectFit ?? (layoutMode === "fullscreen" ? "cover" : "contain"),
+        frame: data.frame ?? frame,
+        animate: data.animate ?? !step.skipTransition,
       };
     case "mermaid":
       return {
-        title: step.mermaidTitle || step.cardTitle || step.title || "",
-        chart: step.mermaidChart || "",
-        frame,
+        ...data,
+        title: typeof data.title === "string" ? data.title : "",
+        chart: typeof data.chart === "string" ? data.chart : "",
+        frame: data.frame ?? frame,
       };
     case "summary":
       return {
-        title: step.summaryTitle || step.title || episode.title,
-        points: step.summaryPoints || [],
-        ctaButtons: step.summaryCtaButtons,
-        qrCodes: step.summaryQrCodes,
-        showCta: step.summaryShowCta ?? true,
+        ...data,
+        title:
+          typeof data.title === "string" && data.title.trim().length > 0
+            ? data.title
+            : episode.title,
+        points: Array.isArray(data.points) ? data.points : [],
+        ctaButtons: Array.isArray(data.ctaButtons) ? data.ctaButtons : undefined,
+        qrCodes: Array.isArray(data.qrCodes) ? data.qrCodes : undefined,
+        showCta: data.showCta ?? true,
       };
     case "ticker":
       return {
-        title: step.cardTitle || step.title,
-        content: step.cardContent || "",
-        style: step.tickerStyle || "flash",
+        ...data,
+        title: typeof data.title === "string" ? data.title : undefined,
+        content: typeof data.content === "string" ? data.content : "",
+        style: data.style ?? "flash",
       };
     default:
-      return step.data ?? step;
+      return data;
   }
 };
 

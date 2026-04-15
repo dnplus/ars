@@ -34,11 +34,19 @@ export function episodeToSlides(episode: Episode): Slide[] {
   const resolvedId = episode.metadata.id ?? '';
   return episode.steps.map((step, index) => {
     // Clone logic for specific modifications
-    const processedStep = { ...step };
+    const processedStep: Step = { ...step };
 
     // Slides Mode: Remove CTA buttons from summary steps
-    if (processedStep.contentType === 'summary') {
-      processedStep.summaryCtaButtons = [];
+    if (
+      processedStep.contentType === 'summary' &&
+      processedStep.data &&
+      typeof processedStep.data === 'object' &&
+      !Array.isArray(processedStep.data)
+    ) {
+      processedStep.data = {
+        ...processedStep.data,
+        ctaButtons: [],
+      };
     }
 
     return {

@@ -58,7 +58,7 @@ export const validateStep = (step: StepLike) => {
   }
 
   const card = getCard(type);
-  const rawData = step.data ?? step;
+  const rawData = step.data ?? {};
 
   if (!card.schema) {
     return {

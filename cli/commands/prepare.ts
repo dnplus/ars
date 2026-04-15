@@ -120,15 +120,15 @@ function formatDuration(totalSeconds: number): string {
 }
 
 function stepHeading(step: Step): string {
-  const stepData = step as unknown as Record<string, unknown>;
+  const stepData =
+    step.data && typeof step.data === 'object' && !Array.isArray(step.data)
+      ? (step.data as Record<string, unknown>)
+      : {};
   const candidates = [
+    step.title,
     stepData.title,
     stepData.cardTitle,
-    stepData.imageTitle,
-    stepData.windowTitle,
-    stepData.summaryTitle,
-    stepData.mermaidTitle,
-    stepData.phase,
+    step.phase,
   ];
 
   for (const candidate of candidates) {

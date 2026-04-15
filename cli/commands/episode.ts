@@ -24,7 +24,7 @@ import {
   AVAILABLE_CARD_TYPES,
   DEPRECATED_CARD_TYPES,
   GENERAL_PURPOSE_CARD_TYPES,
-} from '../../src/engine/shared/card-registry';
+} from '../../src/engine/shared/card-catalog';
 
 const HELP = `
 Usage: npx ars episode <subcommand> [target]
@@ -203,12 +203,20 @@ async function validate(args: string[]) {
       validationSuggestions.push('No summary step found. 長片通常應該有一張 summary 當收尾。');
     } else {
       const lastSummary = summarySteps[summarySteps.length - 1];
-      const summaryPoints = Array.isArray(lastSummary.summaryPoints) ? lastSummary.summaryPoints : [];
-      const summaryCtaButtons = Array.isArray(lastSummary.summaryCtaButtons) ? lastSummary.summaryCtaButtons : [];
-      const summaryQrCodes = Array.isArray(lastSummary.summaryQrCodes) ? lastSummary.summaryQrCodes : [];
+      const summaryData =
+        lastSummary.data && typeof lastSummary.data === 'object' && !Array.isArray(lastSummary.data)
+          ? (lastSummary.data as {
+              points?: string[];
+              ctaButtons?: unknown[];
+              qrCodes?: unknown[];
+            })
+          : {};
+      const summaryPoints = Array.isArray(summaryData.points) ? summaryData.points : [];
+      const summaryCtaButtons = Array.isArray(summaryData.ctaButtons) ? summaryData.ctaButtons : [];
+      const summaryQrCodes = Array.isArray(summaryData.qrCodes) ? summaryData.qrCodes : [];
 
       if (summaryPoints.length === 0) {
-        validationSuggestions.push(`Summary step "${lastSummary.id}" has no summaryPoints. 建議至少放 2-4 個 thesis 級結論。`);
+        validationSuggestions.push(`Summary step "${lastSummary.id}" has no data.points. 建議至少放 2-4 個 thesis 級結論。`);
       }
 
       if (summaryPoints.length > 4) {
@@ -233,7 +241,7 @@ async function validate(args: string[]) {
 
       if (summaryCtaButtons.length === 0 && summaryQrCodes.length === 0) {
         validationSuggestions.push(
-          `Summary step "${lastSummary.id}" has no CTA. 建議至少補上 summaryCtaButtons，例如：🔔 訂閱頻道 / 👍 按讚支持 / 💬 留言討論。`,
+          `Summary step "${lastSummary.id}" has no CTA. 建議至少補上 data.ctaButtons，例如：🔔 訂閱頻道 / 👍 按讚支持 / 💬 留言討論。`,
         );
       }
     }
