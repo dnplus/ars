@@ -23,7 +23,7 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
   const fixAppliedEntries = new Map<string, FixAppliedEntry>();
   let latestFixApplied: FixAppliedEntry | null = null;
 
-  // SERIES/EP 由 CLI slides.ts 傳入，用於自動開啟 URL
+  // SERIES/EP 由 CLI review.ts 傳入，用於自動開啟 URL
   const series = process.env.SERIES || 'template';
   const targetEp = process.env.EP || '';
   const targetStep = process.env.STEP || '';
@@ -66,7 +66,7 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
                   stepId: asRequiredString(body.stepId, 'stepId'),
                 },
                 source: {
-                  ui: asReviewUi(body.from ?? body.ui ?? 'slides'),
+                  ui: asReviewUi(body.from ?? body.ui ?? 'studio'),
                   hash: asOptionalString(body.hash),
                 },
                 feedback: {
@@ -295,9 +295,9 @@ function asReviewAttachments(body: Record<string, unknown>) {
   };
 }
 
-function asReviewUi(value: unknown): 'slides' | 'studio-exp' {
-  if (value === 'slides' || value === 'studio-exp') {
-    return value;
+function asReviewUi(value: unknown): 'studio' {
+  if (value === 'studio' || value === 'slides') {
+    return 'studio';
   }
 
   throw new Error('Invalid review source ui.');

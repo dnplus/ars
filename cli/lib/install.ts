@@ -19,9 +19,12 @@ const ARS_COMMANDS_BLOCK = `${ARS_MARKER_BEGIN}
 ## ARS Commands
 - \`/ars:setup\`：ARS 的正式首次入口；先訪談頻道風格，再安裝/同步 engine、初始化 series、套用主題
 - \`/ars:doctor\`：檢查 ARS 設定、engine 安裝狀態與 provider 憑證
-- \`/ars:episode-create\`：建立目前 repo 主 series 的新 episode
+- \`/ars:plan\`：討論主題、建立 episode 計畫，並寫入 \`.ars/episodes/<epId>/\` artifacts
+- \`/ars:build\`：依 \`plan.md\` / \`todo.json\` 實作 episode source
+- \`/ars:episode-create\`：低階 episode scaffold primitive，通常由 \`/ars:plan\` 自動觸發
 - \`/ars:review-open\`：開啟 review surface，針對目前 repo 的 episode 審稿
-- \`/ars:scene-fix\`：根據最新 review intent 或指定 intent 修正單一場景
+- \`/ars:apply-review\`：根據 review intents 將修正套回 episode source
+- \`/ars:polish\`：只做後段 refinement，不重寫整集結構
 - \`/ars:prepare-youtube\`：整理 YouTube metadata 與發布前檢查
 - \`/ars:publish-youtube\`：在人工確認後執行 YouTube 發布流程
 ${ARS_MARKER_END}`;

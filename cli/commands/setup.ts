@@ -199,11 +199,6 @@ async function promptForConfig(): Promise<ArsConfig> {
       'Enable YouTube publishing?',
       defaults.publish.youtube.enabled,
     );
-    const experimentalStudio = await promptBooleanWithRl(
-      rl,
-      'Enable experimental studio review UI?',
-      defaults.review.enableExperimentalStudio,
-    );
 
     return {
       version: CONFIG_SCHEMA_VERSION,
@@ -218,16 +213,12 @@ async function promptForConfig(): Promise<ArsConfig> {
         },
       },
       extensions: {
-        social: {
-          enabled: defaults.extensions.social.enabled,
-        },
         analytics: {
           enabled: defaults.extensions.analytics.enabled,
         },
       },
       review: {
         preferredUi: defaults.review.preferredUi,
-        enableExperimentalStudio: experimentalStudio,
       },
       project: {
         ...defaults.project,

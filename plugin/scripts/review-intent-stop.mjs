@@ -32,14 +32,14 @@ function main() {
 
   if (hasSessionEndFlag) {
     console.log(
-      `ARS: Review session completed with ${pendingCount} pending intents. Run /ars:scene-fix all to batch-process all fixes.`,
+      `ARS: Review session completed with ${pendingCount} pending intents. Run /ars:apply-review all to batch-process all fixes.`,
     );
     return;
   }
 
   if (pendingCount > 0) {
     console.log(
-      `ARS: You have ${pendingCount} unprocessed review intent(s). Run /ars:scene-fix latest to process them.`,
+      `ARS: You have ${pendingCount} unprocessed review intent(s). Run /ars:apply-review latest to process them.`,
     );
   }
 }

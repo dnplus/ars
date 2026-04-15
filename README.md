@@ -13,7 +13,7 @@ ARS is a Claude Code plugin-first workflow for building Remotion-based video epi
 ## What ARS does
 
 - Scaffolds a single-series episode repo around the ARS Remotion engine
-- Lets Claude Code plan, build, review, and fix episode scenes
+- Lets Claude Code plan, build, review, and refine complete episodes
 - Opens a local review surface that writes review intents into `.ars/review-intents/`
 - Prepares YouTube metadata artifacts for human review
 - Packages and uploads finished episodes to YouTube
@@ -66,17 +66,33 @@ Inside Claude Code:
 - write repo-level branding defaults into `.ars/config.json`
 - leave `src/episodes/<series>/series-config.ts` ready for the first episode
 
-### 4. Create the first episode
+### 4. Plan the first episode
 
 Inside Claude Code:
 
 ```text
-/ars:episode-create ep001
+/ars:plan ep001
 ```
 
-This uses the repo's active series from `.ars/config.json`.
+`/ars:plan` is the official episode planning entrypoint. It should:
 
-### 5. Open review
+- ensure the episode scaffold exists
+- write `.ars/episodes/ep001/topic.md`
+- write `.ars/episodes/ep001/plan.md`
+- write `.ars/episodes/ep001/todo.json`
+- emit `card-specs/` only if a custom card is needed
+
+### 5. Build the episode
+
+Inside Claude Code:
+
+```text
+/ars:build ep001
+```
+
+If the plan emitted `card-spec` todos, run `/ars:new-card` first and then come back to `/ars:build`.
+
+### 6. Open review
 
 Inside Claude Code:
 
@@ -90,7 +106,16 @@ Or directly from the terminal:
 npx ars review open ep001
 ```
 
-### 6. Prepare and publish to YouTube
+### 7. Apply review and polish
+
+Inside Claude Code:
+
+```text
+/ars:apply-review latest
+/ars:polish ep001
+```
+
+### 8. Prepare and publish to YouTube
 
 Inside Claude Code:
 
@@ -109,9 +134,12 @@ npx ars publish youtube ep001 --privacy private
 ## Core skills
 
 - `/ars:setup`: interview + orchestration for first-run onboarding
-- `/ars:episode-create`: scaffold a new episode in the active series
+- `/ars:plan`: official planning entrypoint for a new or existing episode
+- `/ars:build`: implement `ep.ts` from the approved planning artifacts
+- `/ars:episode-create`: low-level scaffold primitive for manual use
 - `/ars:review-open`: launch the review surface
-- `/ars:scene-fix`: apply review intents back into the episode source
+- `/ars:apply-review`: apply review intents back into the episode source
+- `/ars:polish`: late-stage tier B refinement
 - `/ars:prepare-youtube`: fill the prepare artifact with title, description, and tags
 - `/ars:publish-youtube`: confirmed YouTube publish flow
 
@@ -137,7 +165,6 @@ Notes:
 
 - `npx ars setup` is a low-level install/sync primitive. It is not the preferred first-run user experience.
 - `npx ars init <series>` is an advanced/internal scaffold primitive. It should only happen once per repo.
-- `npx ars slides <epId>` remains as a compatibility alias for `npx ars review open <epId>`.
 
 ## One repo = one series
 
@@ -149,11 +176,11 @@ Relevant config shape:
 {
   "version": 2,
   "project": {
-    "activeSeries": "gss",
-    "channelName": "Great Startup Show",
-    "visualDirection": "clean light product storytelling",
-    "tone": "direct, analytical, founder-friendly",
-    "mascot": "minimal VTuber host",
+    "activeSeries": "demo-series",
+    "channelName": "My Channel",
+    "visualDirection": "clean explanatory visuals",
+    "tone": "direct and practical",
+    "mascot": "minimal host",
     "visualDensity": "balanced",
     "layoutBias": "mixed"
   },
@@ -166,8 +193,7 @@ Relevant config shape:
     }
   },
   "review": {
-    "preferredUi": "slides",
-    "enableExperimentalStudio": false
+    "preferredUi": "studio"
   }
 }
 ```
@@ -232,6 +258,28 @@ export const ep001: Episode = {
 
 `shell` is usually injected from `src/episodes/<series>/series-config.ts`, so episode files do not need to hand-define it unless they are intentionally overriding the series default.
 
+## Planning artifacts
+
+ARS planning artifacts live under `.ars/episodes/<epId>/`.
+
+Expected files:
+
+- `topic.md`: discussion summary, audience, thesis, constraints, and open questions
+- `plan.md`: canonical build contract for the episode
+- `todo.json`: tracked execution state across planning, optional card work, build, and completion
+- `card-specs/<card-name>.md`: optional custom card briefs when the plan requires new cards
+
+The normal authoring flow is:
+
+```text
+/ars:plan ep001
+/ars:new-card ...   # only when plan emits card-spec todos
+/ars:build ep001
+/ars:review-open ep001
+/ars:apply-review latest
+/ars:polish ep001
+```
+
 ## Manual backend flows
 
 ### Validate install
@@ -244,7 +292,7 @@ npx ars doctor
 
 ```bash
 npx ars setup
-npx ars init gss
+npx ars init demo-series
 ```
 
 ### Review intents

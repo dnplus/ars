@@ -2,29 +2,29 @@ import process from 'process';
 
 const TRIGGER_RULES = [
   {
-    keywords: ['scene plan', '寫稿'],
+    keywords: ['scene plan', '寫稿', 'plan', '規劃'],
     suggestion:
-      'ARS: Detected planning intent. Use /ars:scene-plan <series>/<epId> to generate a read-only plan artifact in .ars/scene-plans/ before editing episode content.',
+      'ARS: Detected planning intent. Use /ars:plan <epId> to generate topic.md, plan.md, and todo.json under .ars/episodes/<epId>/ before editing episode content.',
   },
   {
-    keywords: ['scene build'],
+    keywords: ['scene build', 'build', '實作'],
     suggestion:
-      'ARS: Detected build intent. Use /ars:scene-build <series>/<epId> and apply the chosen plan variant strictly instead of inventing new scene structure.',
+      'ARS: Detected build intent. Use /ars:build <epId> and apply the approved episode plan from .ars/episodes/<epId>/plan.md instead of inventing new structure.',
   },
   {
-    keywords: ['scene polish'],
+    keywords: ['scene polish', 'polish', '潤稿'],
     suggestion:
-      'ARS: Detected polish intent. Use /ars:scene-polish <series>/<epId> and limit changes to tier B steps only.',
+      'ARS: Detected polish intent. Use /ars:polish <epId> and limit changes to tier B refinements only.',
   },
   {
-    keywords: ['scene fix'],
+    keywords: ['scene fix', 'fix', '修改'],
     suggestion:
-      'ARS: Detected fix intent. Use /ars:scene-fix [<intent-id>|latest] to process one review intent and validate the episode after the patch.',
+      'ARS: Detected fix intent. Use /ars:apply-review [<intent-id>|latest] to process one review intent and validate the episode after the patch.',
   },
   {
     keywords: ['review'],
     suggestion:
-      'ARS: Detected review intent. Use /ars:review-open <epId> to open review UI, then /ars:scene-fix latest after a review intent is created.',
+      'ARS: Detected review intent. Use /ars:review-open <epId> to open review UI, then /ars:apply-review latest after a review intent is created.',
   },
   {
     keywords: ['publish', '發布'],

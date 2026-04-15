@@ -14,7 +14,7 @@ import fs from 'fs';
 import { configExists, getRepoRoot, readArsConfig, writeArsConfig } from './ars-config';
 
 export interface SeriesContext {
-  /** Series 名稱 (e.g. 'gss', 'template') */
+  /** Series 名稱 (e.g. 'demo-series', 'template') */
   series: string;
   /** 向後相容 alias */
   project: string;
@@ -62,7 +62,7 @@ export function parseTarget(target: string): { series: string; epId: string } {
   const slashIdx = target.indexOf('/');
   if (slashIdx === -1) {
     console.error(`❌ Target 格式錯誤，需要 <series>/<epId>：${target}`);
-    console.error(`   例如：gss/ep005、gss/ep-my-topic`);
+    console.error(`   例如：demo-series/ep005、demo-series/ep-my-topic`);
     process.exit(1);
   }
   const series = target.slice(0, slashIdx);

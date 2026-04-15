@@ -18,7 +18,6 @@ const KNOWN_COMMANDS = new Set([
   'publish',
   'review',
   'setup',
-  'slides',
   'theme',
   'update',
   'upload',
@@ -75,8 +74,6 @@ async function loadCommandModule(command: string): Promise<CommandModule> {
       return import('./commands/review');
     case 'setup':
       return import('./commands/setup');
-    case 'slides':
-      return import('./commands/slides');
     case 'theme':
       return import('./commands/theme');
     case 'update':

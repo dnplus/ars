@@ -1,16 +1,15 @@
 ---
 name: scene-plan
-description: Generate a read-only scene plan artifact with planner for a target episode.
-argument-hint: "<series>/<epId>"
+description: Deprecated alias for /ars:plan.
+argument-hint: "<epId>"
 model: claude-opus-4-6
 effort: high
 ---
 
-Use the `planner` agent for this skill.
+This skill is deprecated. Prefer `/ars:plan <epId>`.
 
-Behavior:
-- Read the target episode context, series conventions, and any relevant review feedback.
-- Produce or revise a plan artifact under `.ars/scene-plans/`.
-- Keep the plan read-only with respect to episode source content.
-- Include continuity rules, tier A requirements, tier B opportunities, and explicit variant decisions so downstream build work is deterministic.
-- If the request asks for direct edits, keep those edits out of scope and return a plan artifact instead.
+Compatibility behavior:
+- Follow the exact same planning contract as `/ars:plan`.
+- Create or revise `.ars/episodes/<epId>/topic.md`, `plan.md`, and `todo.json`.
+- Auto-scaffold the episode container in the active series when it does not exist yet.
+- Do not present `.ars/scene-plans/` as the source of truth anymore.

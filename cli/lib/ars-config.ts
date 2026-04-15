@@ -3,7 +3,7 @@ import path from 'path';
 
 export const CONFIG_SCHEMA_VERSION = 2;
 export const TTS_PROVIDER_IDS = ['none', 'minimax'] as const;
-export const REVIEW_UI_IDS = ['slides'] as const;
+export const REVIEW_UI_IDS = ['studio'] as const;
 export const VISUAL_DENSITY_IDS = ['minimal', 'balanced', 'dense'] as const;
 export const LAYOUT_BIAS_IDS = ['mixed', 'title-card', 'card-only', 'fullscreen'] as const;
 
@@ -25,16 +25,12 @@ export interface ArsConfig {
     };
   };
   extensions: {
-    social: {
-      enabled: boolean;
-    };
     analytics: {
       enabled: boolean;
     };
   };
   review: {
     preferredUi: ReviewUiId;
-    enableExperimentalStudio: boolean;
   };
   project: {
     activeSeries?: string;
@@ -77,16 +73,12 @@ export function createDefaultConfig(): ArsConfig {
       },
     },
     extensions: {
-      social: {
-        enabled: false,
-      },
       analytics: {
         enabled: false,
       },
     },
     review: {
-      preferredUi: 'slides',
-      enableExperimentalStudio: false,
+      preferredUi: 'studio',
     },
     project: {
       activeSeries: undefined,
@@ -135,10 +127,10 @@ export function parseArsConfig(input: unknown): ArsConfig {
   const publish = isRecord(input.publish) ? input.publish : {};
   const youtube = isRecord(publish.youtube) ? publish.youtube : {};
   const extensions = isRecord(input.extensions) ? input.extensions : {};
-  const social = isRecord(extensions.social) ? extensions.social : {};
   const analytics = isRecord(extensions.analytics) ? extensions.analytics : {};
   const review = isRecord(input.review) ? input.review : {};
   const project = isRecord(input.project) ? input.project : {};
+  const normalizedPreferredUi = review.preferredUi === 'slides' ? 'studio' : review.preferredUi;
 
   return {
     version:
@@ -168,11 +160,6 @@ export function parseArsConfig(input: unknown): ArsConfig {
       },
     },
     extensions: {
-      social: {
-        enabled:
-          expectOptionalBoolean(social.enabled, 'extensions.social.enabled') ??
-          defaults.extensions.social.enabled,
-      },
       analytics: {
         enabled:
           expectOptionalBoolean(analytics.enabled, 'extensions.analytics.enabled') ??
@@ -181,13 +168,8 @@ export function parseArsConfig(input: unknown): ArsConfig {
     },
     review: {
       preferredUi:
-        expectOptionalOneOf(review.preferredUi, REVIEW_UI_IDS, 'review.preferredUi') ??
+        expectOptionalOneOf(normalizedPreferredUi, REVIEW_UI_IDS, 'review.preferredUi') ??
         defaults.review.preferredUi,
-      enableExperimentalStudio:
-        expectOptionalBoolean(
-          review.enableExperimentalStudio,
-          'review.enableExperimentalStudio',
-        ) ?? defaults.review.enableExperimentalStudio,
     },
     project: {
       activeSeries:

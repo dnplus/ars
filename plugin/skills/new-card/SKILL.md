@@ -8,6 +8,8 @@ effort: medium
 
 Generate a new series-scoped card using ARS engine primitives.
 
+Prefer using this only when `/ars:plan` produced a matching `card-spec` todo or a card brief under `.ars/episodes/<epId>/card-specs/`.
+
 ## Overview
 
 Cards in ARS are self-contained modules (CardSpec<TData>) consisting of:
@@ -23,7 +25,7 @@ Output path: `src/episodes/<series>/cards/<card-name>/`
 
 2. **Read series theme**: Check `src/episodes/<series>/series-config.ts` for theme seed / channel name to inform visual style.
 
-3. **Understand the card purpose**: If no description, ask one focused question: "What should this card display?"
+3. **Understand the card purpose**: If no description, first look for a matching brief under `.ars/episodes/*/card-specs/<card-name>.md`. Only ask one focused question if no brief exists.
 
 4. **Choose the right primitive**:
    - `BaseSlide` — fullscreen content, no chrome (default choice for most cards)

@@ -83,7 +83,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({ stepId, series, epId, kind
       const res = await fetch('/__ars/review-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from: 'slides', series, epId, stepId, kind, severity: 'medium', message: message.trim() }),
+        body: JSON.stringify({ from: 'studio', series, epId, stepId, kind, severity: 'medium', message: message.trim() }),
       });
       const payload = (await res.json()) as ReviewIntentResponse;
       if (!res.ok || !payload.intent) throw new Error(payload.error ?? `${res.status}`);

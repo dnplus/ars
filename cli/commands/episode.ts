@@ -51,7 +51,7 @@ Examples:
   npx ars episode bake ep005
   npx ars episode bake ep005 --dry-run
   npx ars episode stats ep005
-  npx ars episode stats gss --all
+  npx ars episode stats demo-series --all
   npx ars episode stats --all
 `;
 
@@ -670,7 +670,7 @@ async function loadEpisodesForStats(target?: string, allMode?: boolean) {
   if (!target) {
     console.error('❌ 單集 stats 請提供 epId。');
     console.log('Usage: npx ars episode stats ep005');
-    console.log('   or: npx ars episode stats gss --all');
+    console.log('   or: npx ars episode stats demo-series --all');
     process.exit(1);
   }
 

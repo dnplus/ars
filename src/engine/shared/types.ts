@@ -109,14 +109,6 @@ export type EpisodeMetadata = {
     tags: string[];
   };
 
-  /** 社群發文（Threads / FB Group 共用；prepare publish 會回寫到這裡） */
-  social?: {
-    /** posts[0] 是可獨立成立的主文；posts[1..n] 是 Threads reply chain */
-    posts: string[];
-    /** 圖卡路徑（repo root relative 或絕對路徑），省略則 upload 預設用 cover */
-    imageAssets?: string[];
-  };
-
   /** 發佈結果/外部平台資訊，由 upload 階段回寫 */
   publish?: {
     youtubeVideoId?: string;

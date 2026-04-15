@@ -5,7 +5,7 @@ export interface ReviewIntentTarget {
 }
 
 export interface ReviewIntentSource {
-  ui: 'slides' | 'studio-exp';
+  ui: 'studio';
   hash?: string;
 }
 

@@ -26,12 +26,12 @@ Behavior:
    - `episodeDefaults.channelName`
    - `episodeDefaults.decorationText`
    - any safe theme / VTuber / branding copy changes that should exist before the first episode
-6. Do not stop after raw file copies. The repo should be immediately usable for `/ars:episode-create`.
+6. Do not stop after raw file copies. The repo should be immediately usable for `/ars:plan`.
 
 Output requirements:
 - Report the active series.
 - Report where branding defaults were written.
 - Suggest the next commands:
-  - `/ars:episode-create <epId>`
-  - `/ars:review-open <epId>`
+  - `/ars:plan <epId>`
+  - `/ars:build <epId>`
 - If setup finds an existing active series, do not silently reinitialize a second series. Surface the current repo state and continue cautiously.

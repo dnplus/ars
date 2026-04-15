@@ -40,12 +40,10 @@ function writeConfig(repoDir: string): void {
       tts: { provider: 'none' },
       publish: { youtube: { enabled: false } },
       extensions: {
-        social: { enabled: false },
         analytics: { enabled: false },
       },
       review: {
-        preferredUi: 'slides',
-        enableExperimentalStudio: false,
+        preferredUi: 'studio',
       },
       project: {
         visualDensity: 'balanced',
@@ -78,20 +76,20 @@ describe('single-series workflow', () => {
     const repoDir = makeRepoCopy();
     writeConfig(repoDir);
 
-    runCli(repoDir, ['init', 'gss']);
+    runCli(repoDir, ['init', 'demo-series']);
     runCli(repoDir, ['episode', 'create', 'ep001']);
 
     const config = JSON.parse(fs.readFileSync(path.join(repoDir, '.ars', 'config.json'), 'utf-8'));
-    expect(config.project.activeSeries).toBe('gss');
-    expect(fs.existsSync(path.join(repoDir, 'src', 'episodes', 'gss', 'ep001.ts'))).toBe(true);
-    expect(fs.existsSync(path.join(repoDir, 'public', 'episodes', 'gss', 'ep001', 'audio'))).toBe(true);
+    expect(config.project.activeSeries).toBe('demo-series');
+    expect(fs.existsSync(path.join(repoDir, 'src', 'episodes', 'demo-series', 'ep001.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(repoDir, 'public', 'episodes', 'demo-series', 'ep001', 'audio'))).toBe(true);
   });
 
   it('rejects initializing a second series in the same repo', () => {
     const repoDir = makeRepoCopy();
     writeConfig(repoDir);
 
-    runCli(repoDir, ['init', 'gss']);
+    runCli(repoDir, ['init', 'demo-series']);
     const result = spawnSync(
       'node',
       ['--import', 'tsx', path.join(repoDir, 'cli', 'index.ts'), 'init', 'other-series'],
@@ -102,7 +100,7 @@ describe('single-series workflow', () => {
     );
 
     expect(result.status).toBe(1);
-    expect(result.stderr).toContain('already initialized for series "gss"');
+    expect(result.stderr).toContain('already initialized for series "demo-series"');
     expect(fs.existsSync(path.join(repoDir, 'src', 'episodes', 'other-series'))).toBe(false);
   });
 });

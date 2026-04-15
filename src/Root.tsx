@@ -77,7 +77,7 @@ const GLOBAL_FALLBACK = { width: 1920, height: 1080, fps: 30 } as const;
 const seriesMap: Record<string, Record<string, Episode>> = {};
 
 allEpisodeModules.keys().forEach((filePath: string) => {
-  // filePath 形如 './gss/ep001.ts' 或 './gss/ep-pixel-demo.ts'
+  // filePath 形如 './demo-series/ep001.ts' 或 './demo-series/ep-pixel-demo.ts'
   const match = filePath.match(/^\.\/([^/]+)\/(ep[^/]+)\.ts$/);
   if (!match) return;
   const [, series, epId] = match;

@@ -36,7 +36,7 @@ function readJsonIfExists<T>(filePath: string): T | null {
 export function getPrepareArtifactPath(
   series: string,
   epId: string,
-  phase: 'youtube' | 'social',
+  phase: 'youtube',
 ): string {
   return path.join(ROOT, 'output', 'publish', series, epId, `prepare-${phase}.json`);
 }

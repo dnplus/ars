@@ -3,9 +3,9 @@
  * @description Estimate TTS audio duration from narration text.
  *
  * Calibrated against MiniMax TTS (speech-02-hd) with real episode data:
- *   - EP002 (lobster-diary): formula=83s, actual=77s (+8%)
- *   - EP005 (lobster-diary): formula=268s, actual=256s (+5%)
- *   - EP006 (lobster-diary): formula=127s, actual=126s (+1%)
+ *   - EP002 (sample-series): formula=83s, actual=77s (+8%)
+ *   - EP005 (sample-series): formula=268s, actual=256s (+5%)
+ *   - EP006 (sample-series): formula=127s, actual=126s (+1%)
  *
  * Default rate: 5.5 chars/sec (JS string length, including Chinese, English, punctuation).
  * Slightly overestimates (1-8%), which is safer than underestimating.

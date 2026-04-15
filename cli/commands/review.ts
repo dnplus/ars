@@ -1,6 +1,6 @@
 /**
  * @command review
- * @description Review workflow helpers for slides preview and review intents.
+ * @description Review workflow helpers for the studio review surface and review intents.
  */
 import fs from 'fs';
 import path from 'path';
@@ -27,7 +27,7 @@ Subcommands:
   intent create [options]                 Create a review intent
 
 Intent create options:
-  --from <slides|studio-exp>
+  --from <studio>
   --series <series>
   --ep <epId>
   --step <stepId>
@@ -38,7 +38,7 @@ Intent create options:
   --screenshot-path <path>
 `;
 
-const SOURCE_UI_VALUES = new Set<ReviewIntentSource['ui']>(['slides', 'studio-exp']);
+const SOURCE_UI_VALUES = new Set<ReviewIntentSource['ui']>(['studio']);
 const FEEDBACK_KIND_VALUES = new Set<ReviewIntentFeedback['kind']>([
   'visual',
   'content',
