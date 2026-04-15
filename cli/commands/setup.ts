@@ -1,19 +1,30 @@
 import fs from 'fs';
+import path from 'path';
 import { stdin as input, stdout as output } from 'process';
 import { createInterface } from 'readline/promises';
 import {
   configExists,
   createDefaultConfig,
   getConfigPath,
-  getRepoRoot,
   type ArsConfig,
   writeArsConfig,
 } from '../lib/ars-config';
+import {
+  copyDirectory,
+  copyFile,
+  getEngineVersionPath,
+  getSourceGitCommit,
+  getTargetRepoRoot,
+  isArsDevelopmentRepo,
+  locateSourcePackageRoot,
+  patchClaudeMd,
+  writeEngineVersion,
+} from '../lib/install';
 
 const HELP = `
-Usage: npx ars setup
+Usage: npx ars setup [--force]
 
-Initializes .ars/config.json for this repo.
+Initializes .ars/config.json, copies the ARS engine into this repo, and patches CLAUDE.md.
 `;
 
 export async function run(args: string[]) {
@@ -22,33 +33,127 @@ export async function run(args: string[]) {
     return;
   }
 
-  const root = getRepoRoot();
+  const force = args.includes('--force');
+  const root = getTargetRepoRoot();
+  const sourceRoot = locateSourcePackageRoot(import.meta.url);
   const configPath = getConfigPath(root);
+  const engineVersionPath = getEngineVersionPath(root);
   const existing = configExists(root);
   const interactive = input.isTTY && output.isTTY;
+  const targetEnginePath = path.join(root, 'src', 'engine');
+  const hasExistingInstall =
+    existing ||
+    fs.existsSync(targetEnginePath) ||
+    fs.existsSync(engineVersionPath);
+  let overwriteEngine = force;
 
-  if (existing && interactive) {
-    const overwrite = await promptBoolean(
-      `Config already exists at ${configPath}. Overwrite?`,
-      false,
+  if (isArsDevelopmentRepo(root, sourceRoot) && !force) {
+    console.warn(
+      `⚠️ Refusing to run setup inside the ARS development repo (${root}). Re-run with --force if you really want to overwrite it.`,
     );
-    if (!overwrite) {
-      console.log('Setup cancelled.');
-      return;
+    return;
+  }
+
+  if (hasExistingInstall && !force) {
+    if (interactive) {
+      const overwrite = await promptBoolean(
+        `Existing ARS install assets were found in ${root}. Overwrite config and engine files?`,
+        false,
+      );
+      if (!overwrite) {
+        console.log('Setup cancelled.');
+        return;
+      }
+      overwriteEngine = overwrite;
+    } else {
+      console.error(
+        `Existing ARS install assets were found in ${root}. Re-run with --force to overwrite them.`,
+      );
+      process.exit(1);
     }
   }
 
   const config = interactive ? await promptForConfig() : createDefaultConfig();
   const savedPath = writeArsConfig(config, root);
+  const copiedFiles = installEngine({
+    root,
+    sourceRoot,
+    overwriteEngine,
+    force,
+  });
+  const claudePath = patchClaudeMd(root);
+  const engineVersionRecord = {
+    commit: getSourceGitCommit(sourceRoot),
+    copiedAt: new Date().toISOString(),
+    source: sourceRoot,
+  };
+  const savedEngineVersionPath = writeEngineVersion(engineVersionRecord, root);
 
   console.log(`✅ Wrote ${savedPath}`);
   console.log(`   llm.default = ${config.llm.default}`);
   console.log(`   tts.provider = ${config.tts.provider}`);
   console.log(`   publish.youtube.enabled = ${String(config.publish.youtube.enabled)}`);
+  console.log(`✅ Copied engine to ${path.join(root, 'src', 'engine')}`);
+  for (const copiedFile of copiedFiles) {
+    console.log(`   ${copiedFile}`);
+  }
+  console.log(`✅ Patched ${claudePath}`);
+  console.log(`✅ Wrote ${savedEngineVersionPath}`);
 
   if (!interactive) {
     console.log('   Non-interactive shell detected, defaults were applied.');
   }
+}
+
+function installEngine(options: {
+  root: string;
+  sourceRoot: string;
+  overwriteEngine: boolean;
+  force: boolean;
+}): string[] {
+  const copied: string[] = [];
+  const sourceEngineDir = path.join(options.sourceRoot, 'src', 'engine');
+  const targetEngineDir = path.join(options.root, 'src', 'engine');
+
+  copyDirectory(sourceEngineDir, targetEngineDir, {
+    overwrite: options.overwriteEngine,
+  });
+  copied.push(`engine/ ← ${sourceEngineDir}`);
+
+  const sourceTemplateDir = path.join(
+    options.sourceRoot,
+    'src',
+    'episodes',
+    'template',
+  );
+  const targetTemplateDir = path.join(options.root, 'src', 'episodes', 'template');
+  if (options.force || !fs.existsSync(targetTemplateDir)) {
+    copyDirectory(sourceTemplateDir, targetTemplateDir, {
+      overwrite: options.force,
+    });
+    copied.push(`episodes/template/ ← ${sourceTemplateDir}`);
+  }
+
+  const sourceRootFile = path.join(options.sourceRoot, 'src', 'Root.tsx');
+  const targetRootFile = path.join(options.root, 'src', 'Root.tsx');
+  if (options.force || !fs.existsSync(targetRootFile)) {
+    copyFile(sourceRootFile, targetRootFile, { overwrite: options.force });
+    copied.push(`Root.tsx ← ${sourceRootFile}`);
+  }
+
+  const sourceCompositionFile = path.join(options.sourceRoot, 'src', 'Composition.tsx');
+  const targetCompositionFile = path.join(options.root, 'src', 'Composition.tsx');
+  if (
+    fs.existsSync(sourceCompositionFile) &&
+    (options.force || !fs.existsSync(targetCompositionFile))
+  ) {
+    copyFile(sourceCompositionFile, targetCompositionFile, {
+      overwrite: options.force,
+    });
+    copied.push(`Composition.tsx ← ${sourceCompositionFile}`);
+  }
+
+  return copied;
 }
 
 async function promptForConfig(): Promise<ArsConfig> {
@@ -100,6 +205,8 @@ async function promptForConfig(): Promise<ArsConfig> {
       publish: {
         youtube: {
           enabled: youtubeEnabled,
+          credentialsPath: defaults.publish.youtube.credentialsPath,
+          clientSecretPath: defaults.publish.youtube.clientSecretPath,
         },
       },
       extensions: {

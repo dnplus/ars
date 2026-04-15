@@ -20,6 +20,8 @@ export interface ArsConfig {
   publish: {
     youtube: {
       enabled: boolean;
+      credentialsPath?: string;
+      clientSecretPath?: string;
     };
   };
   extensions: {
@@ -41,7 +43,7 @@ interface JsonRecord {
 }
 
 export function getRepoRoot(): string {
-  return path.resolve(__dirname, '../..');
+  return process.cwd();
 }
 
 export function getArsDir(root = getRepoRoot()): string {
@@ -64,6 +66,8 @@ export function createDefaultConfig(): ArsConfig {
     publish: {
       youtube: {
         enabled: true,
+        credentialsPath: '.ars/credentials/youtube/credentials.json',
+        clientSecretPath: '.ars/credentials/youtube/client_secret.json',
       },
     },
     extensions: {
@@ -134,6 +138,14 @@ export function parseArsConfig(input: unknown): ArsConfig {
     publish: {
       youtube: {
         enabled: expectBoolean(youtube.enabled, 'publish.youtube.enabled'),
+        credentialsPath: expectOptionalString(
+          youtube.credentialsPath,
+          'publish.youtube.credentialsPath',
+        ),
+        clientSecretPath: expectOptionalString(
+          youtube.clientSecretPath,
+          'publish.youtube.clientSecretPath',
+        ),
       },
     },
     extensions: {
@@ -177,6 +189,18 @@ function expectBoolean(value: unknown, field: string): boolean {
 function expectStringArray(value: unknown, field: string): string[] {
   if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
     throw new Error(`Config field "${field}" must be an array of strings.`);
+  }
+
+  return value;
+}
+
+function expectOptionalString(value: unknown, field: string): string | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value !== 'string') {
+    throw new Error(`Config field "${field}" must be a string when provided.`);
   }
 
   return value;
