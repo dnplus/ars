@@ -78,11 +78,11 @@ export const ActionBar: React.FC<ActionBarProps> = ({ stepId, series, epId, kind
         style={{
           background: isOpen ? 'rgba(255,200,0,0.22)' : 'rgba(8,15,29,0.75)',
           border: `1px solid ${isOpen ? 'rgba(255,200,0,0.6)' : 'rgba(255,255,255,0.2)'}`,
-          borderRadius: 8,
+          borderRadius: 10,
           color: '#fff',
-          fontSize: 18,
-          width: 36,
-          height: 36,
+          fontSize: 26,
+          width: 48,
+          height: 48,
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
@@ -90,7 +90,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({ stepId, series, epId, kind
           backdropFilter: 'blur(8px)',
         }}
       >
-        ⚡
+        ✨
       </button>
 
       {isOpen && (

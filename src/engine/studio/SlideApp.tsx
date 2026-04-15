@@ -246,8 +246,8 @@ export const SlideApp: React.FC<StudioAppProps> = ({ episode }) => {
                   style={{ width: compositionWidth, height: compositionHeight }}
                 />
 
-                {/* Card ⚡ — bottom-right of canvas */}
-                <div style={{ position: 'absolute', bottom: 16, right: 16, zIndex: 120 }}>
+                {/* Card ✨ — top-left of canvas */}
+                <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 120 }}>
                   <ActionBar stepId={step.id} series={fallbackSeries} epId={fallbackEpId} kind="visual" />
                 </div>
 
