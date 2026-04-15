@@ -17,10 +17,10 @@ const ARS_MARKER_BEGIN = '<!-- ars:begin -->';
 const ARS_MARKER_END = '<!-- ars:end -->';
 const ARS_COMMANDS_BLOCK = `${ARS_MARKER_BEGIN}
 ## ARS Commands
-- \`/ars:setup\`：初始化 ARS，建立設定並安裝/同步 engine 檔案
+- \`/ars:setup\`：ARS 的正式首次入口；先訪談頻道風格，再安裝/同步 engine、初始化 series、套用主題
 - \`/ars:doctor\`：檢查 ARS 設定、engine 安裝狀態與 provider 憑證
-- \`/ars:scene-plan\`：產生場景規劃 artifact，先定義每個 step 的內容與結構
-- \`/ars:scene-build\`：依 scene plan 實作 step 內容，不自由發明額外結構
+- \`/ars:episode-create\`：建立目前 repo 主 series 的新 episode
+- \`/ars:review-open\`：開啟 review surface，針對目前 repo 的 episode 審稿
 - \`/ars:scene-fix\`：根據最新 review intent 或指定 intent 修正單一場景
 - \`/ars:prepare-youtube\`：整理 YouTube metadata 與發布前檢查
 - \`/ars:publish-youtube\`：在人工確認後執行 YouTube 發布流程

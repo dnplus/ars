@@ -3,27 +3,27 @@
  * @description Audio generation using MiniMax TTS
  *
  * Usage:
- *   npx ars audio generate <series>/<epId> [--speed 0.5-2.0] [--no-subtitle] [--steps id1,id2,...] [--step <id>]
+ *   npx ars audio generate <epId> [--speed 0.5-2.0] [--no-subtitle] [--steps id1,id2,...] [--step <id>]
  */
 import path from 'path';
 import fs from 'fs';
-import { resolveSeriesContext, parseTarget } from '../lib/context';
+import { resolveEpisodeTarget, resolveSeriesContext } from '../lib/context';
 import type { Episode, SeriesConfig } from '../../src/engine/shared/types';
 
 const HELP = `
 Usage: npx ars audio <subcommand> [target]
 
 Subcommands:
-  generate <series>/<epId>    Generate audio using MiniMax TTS
+  generate <epId>             Generate audio using MiniMax TTS in the active series
     --speed <0.5-2.0>         Playback speed (default: 1.0)
     --no-subtitle             Disable subtitle generation
     --step <id>               Only generate one specific step (repeatable)
     --steps <id1,id2,...>     Only generate specific steps
 
 Examples:
-  npx ars audio generate gss/ep005
-  npx ars audio generate gss/ep005 --speed 1.2 --steps intro,content_1
-  npx ars audio generate gss/ep005 --step intro
+  npx ars audio generate ep005
+  npx ars audio generate ep005 --speed 1.2 --steps intro,content_1
+  npx ars audio generate ep005 --step intro
 `;
 
 // MiniMax API types
@@ -184,12 +184,12 @@ async function callTTS(
 async function generate(args: string[]) {
   const target = args[0];
   if (!target) {
-    console.error('❌ 請提供 target，格式：<series>/<epId>');
-    console.log('Usage: npx ars audio generate gss/ep005');
+    console.error('❌ 請提供 epId。');
+    console.log('Usage: npx ars audio generate ep005');
     process.exit(1);
   }
 
-  const { series, epId } = parseTarget(target);
+  const { series, epId } = resolveEpisodeTarget(target, path.resolve(__dirname, '../..'));
   const ctx = resolveSeriesContext(series);
 
   if (!process.env.MINIMAX_API_KEY || !process.env.MINIMAX_GROUP_ID) {
@@ -204,8 +204,8 @@ async function generate(args: string[]) {
     if (!arg.startsWith('--')) continue;
     if (!knownFlags.has(arg)) {
       console.error(`❌ Unknown option: ${arg}`);
-      console.log('Usage: npx ars audio generate gss/ep005 --steps intro,content_1');
-      console.log('   or: npx ars audio generate gss/ep005 --step intro');
+      console.log('Usage: npx ars audio generate ep005 --steps intro,content_1');
+      console.log('   or: npx ars audio generate ep005 --step intro');
       process.exit(1);
     }
     if ((arg === '--speed' || arg === '--steps' || arg === '--step') && !args[i + 1]) {

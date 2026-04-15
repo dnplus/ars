@@ -3,16 +3,16 @@
  * @description Export assets (cover thumbnail, SRT subtitles, etc.)
  *
  * Usage:
- *   npx ars export cover <series>/<epId>          Export a single cover
+ *   npx ars export cover <epId>                   Export a single cover
  *   npx ars export cover <series>/*               Export all covers for a series
  *   npx ars export social-single <series>/<epId>  Export a single social cover card
  *   npx ars export carousel-opener <series>/<epId> Export a single carousel opener card
- *   npx ars export srt <series>/<epId>            Export SRT subtitle for YouTube CC
+ *   npx ars export srt <epId>                     Export SRT subtitle for YouTube CC
  */
 import { execSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
-import { resolveSeriesContext, parseTarget, listAvailableSeries } from '../lib/context';
+import { resolveEpisodeTarget, resolveSeriesContext } from '../lib/context';
 import type { Episode } from '../../src/engine/shared/types';
 import type { SubtitlePhrase } from '../../src/engine/shared/subtitle';
 
@@ -20,18 +20,18 @@ const HELP = `
 📸 ARS Export — Cover / Social Cards / SRT Export
 
 Usage:
-  npx ars export cover <series>/<epId>    Export a single episode cover
+  npx ars export cover <epId>             Export a single episode cover
   npx ars export cover <series>/*         Export all covers for a series
   npx ars export social-single <series>/<epId>    Export a single social single-cover card
   npx ars export carousel-opener <series>/<epId>  Export a single carousel opener card
-  npx ars export srt <series>/<epId>      Export SRT subtitle for YouTube CC
+  npx ars export srt <epId>               Export SRT subtitle for YouTube CC
 
 Examples:
-  npx ars export cover template/ep001
+  npx ars export cover ep001
   npx ars export cover template/*
   npx ars export social-single template/ep001
   npx ars export carousel-opener template/ep001
-  npx ars export srt template/ep001
+  npx ars export srt ep001
 `;
 
 // ── SRT helpers ──────────────────────────────────────────
@@ -48,13 +48,13 @@ function toSrtTime(seconds: number): string {
 async function exportSrt(args: string[]) {
   const target = args[0];
   if (!target) {
-    console.error('❌ 請提供 target，格式：<series>/<epId>');
+    console.error('❌ 請提供 target，格式：<epId> 或 <series>/<epId>');
     process.exit(1);
   }
 
-  const { series, epId } = parseTarget(target);
-  const ctx = resolveSeriesContext(series);
   const root = path.resolve(__dirname, '../..');
+  const { series, epId } = resolveEpisodeTarget(target, root);
+  const ctx = resolveSeriesContext(series);
 
   // 載入 episode
   const epFilePath = path.join(ctx.episodesDir, `${epId}.ts`);
@@ -75,7 +75,7 @@ async function exportSrt(args: string[]) {
   const subFilePath = path.join(ctx.episodesDir, `${epId}.subtitles.ts`);
   if (!fs.existsSync(subFilePath)) {
     console.error(`❌ Subtitles not found: ${subFilePath}`);
-    console.error(`   Run: npx ars audio generate ${series}/${epId}`);
+    console.error(`   Run: npx ars audio generate ${epId}`);
     process.exit(1);
   }
 
@@ -159,21 +159,16 @@ export async function run(args: string[]) {
       ? path.join(root, 'output/covers')
       : path.join(root, 'output/social-covers', compositionPrefix);
 
-  // Parse target: series/epId or series/*
-  const slashIdx = target.indexOf('/');
-  if (slashIdx === -1) {
-    console.error(`❌ Target 格式錯誤，需要 <series>/<epId> 或 <series>/*`);
-    process.exit(1);
-  }
-
-  const series = target.slice(0, slashIdx);
-  const epPart = target.slice(slashIdx + 1);
-
   // Resolve episodes to export
   const targets: { series: string; epId: string }[] = [];
 
-  if (epPart === '*' || epPart === '') {
-    // Export all episodes in this series
+  if (target.endsWith('/*')) {
+    const series = target.slice(0, -2);
+    if (!series) {
+      console.error(`❌ Target 格式錯誤，需要 <series>/*`);
+      process.exit(1);
+    }
+
     const ctx = resolveSeriesContext(series);
     const files = fs.readdirSync(ctx.episodesDir)
       .filter(f => /^ep.*\.ts$/.test(f) && !f.includes('.subtitles.') && !f.includes('.template.'));
@@ -186,7 +181,7 @@ export async function run(args: string[]) {
       process.exit(1);
     }
   } else {
-    targets.push({ series, epId: epPart });
+    targets.push(resolveEpisodeTarget(target, root));
   }
 
   console.log(`\n📸 Exporting ${targets.length} ${subcommand}(s)...\n`);

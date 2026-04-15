@@ -1,18 +1,16 @@
 /**
  * @command prepare
- * @description Prepare publish context before upload/pipeline.
+ * @description Prepare publish context before upload.
  *
  * Usage:
- *   npx ars prepare youtube <series>/<epId>
- *   npx ars prepare social <series>/<epId>
- *   npx ars prepare social <series>/<epId> --apply --social social-1 --non-interactive
+ *   npx ars prepare youtube <epId>
  */
 import fs from 'fs';
 import path from 'path';
 import { createInterface } from 'readline';
 import * as ts from 'typescript';
 import type { EpisodeMetadata, Step } from '../../src/engine/shared/types';
-import { parseTarget } from '../lib/context';
+import { resolveEpisodeTarget } from '../lib/context';
 import { loadEpisode, type LoadedEpisode } from '../lib/episode-file';
 
 const ROOT = path.resolve(__dirname, '../..');
@@ -21,20 +19,15 @@ const HELP = `
 📝 ARS Prepare — Publish Context Preparation
 
 Usage:
-  npx ars prepare youtube <series>/<epId>
-  npx ars prepare social <series>/<epId>
-  npx ars prepare social <series>/<epId> --apply --social social-1 --non-interactive
+  npx ars prepare youtube <epId>
 
 Options:
   --dry-run              Preview context/candidates without writing metadata back to episode
-  --apply                Write selected social candidate back to episode metadata
-  --social <id>          Selected social candidate id (social phase)
-  --non-interactive      Skip readline prompts; requires --apply + --social
 
 Notes:
   - prepare youtube writes prepare-youtube.md/json and does not call any LLM CLI.
-  - After prepare youtube, run /ars:prepare-youtube <series>/<epId> in Claude Code.
-  - prepare social keeps a heuristic-only review/apply flow in core.
+  - After prepare youtube, run /ars:prepare-youtube <epId> in Claude Code.
+  - Social prepare has been removed from ARS core and should live in an extension.
 `;
 
 type PreparePhase = 'youtube' | 'social';
@@ -120,7 +113,13 @@ function parseArgs(args: string[]): PrepareOptions {
     process.exit(phase || target ? 1 : 0);
   }
 
-  const { series, epId } = parseTarget(target);
+  if (phase === 'social') {
+    console.error('❌ Social prepare has been removed from ARS core.');
+    console.error('   Move this flow into an extension or plugin-specific workflow.');
+    process.exit(1);
+  }
+
+  const { series, epId } = resolveEpisodeTarget(target, ROOT);
   const dryRun = args.includes('--dry-run');
   const apply = args.includes('--apply');
   const nonInteractive = args.includes('--non-interactive');
@@ -130,11 +129,6 @@ function parseArgs(args: string[]): PrepareOptions {
 
   if (phase === 'youtube' && apply) {
     console.error('❌ prepare youtube 不再直接回寫 metadata.youtube。請在 Claude Code 內執行 /ars:prepare-youtube。');
-    process.exit(1);
-  }
-
-  if (phase === 'social' && nonInteractive && (!apply || !socialCandidateId)) {
-    console.error('❌ --non-interactive 需要搭配 --apply 與 --social <id>');
     process.exit(1);
   }
 
@@ -739,5 +733,4 @@ export async function run(args: string[]) {
     return;
   }
 
-  await runPrepareSocial(options, episode);
 }

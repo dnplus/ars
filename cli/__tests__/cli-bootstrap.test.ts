@@ -43,6 +43,7 @@ describe('cli bootstrap', () => {
     const output = runCli(['--help']);
     expect(output).toContain('ARS — Agentic Remotion Studio CLI');
     expect(output).toContain('launch [claude-args...]');
+    expect(output).not.toContain('pipeline');
   });
 
   it('prints package version', () => {

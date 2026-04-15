@@ -3,15 +3,21 @@
  * @description Episode management: create, list, validate, bake, stats
  *
  * Usage:
- *   npx ars episode create <series>/<epId>
- *   npx ars episode list <series>
- *   npx ars episode validate <series>/<epId>
- *   npx ars episode bake <series>/<epId>
- *   npx ars episode stats <series>/<epId>
+ *   npx ars episode create <epId>
+ *   npx ars episode list [series]
+ *   npx ars episode validate <epId>
+ *   npx ars episode bake <epId>
+ *   npx ars episode stats <epId>
  */
 import fs from 'fs';
 import path from 'path';
-import { resolveSeriesContext, parseTarget, listAvailableSeries } from '../lib/context';
+import {
+  getActiveSeries,
+  listAvailableSeries,
+  resolveEpisodeTarget,
+  resolveSeriesArgument,
+  resolveSeriesContext,
+} from '../lib/context';
 import { analyzeEpisodeDuration, formatDurationReport } from '../lib/estimate-duration';
 import { loadEpisode } from '../lib/episode-file';
 import { captureUrlScreenshot } from '../lib/browser-screenshot';
@@ -29,22 +35,22 @@ const HELP = `
 Usage: npx ars episode <subcommand> [target]
 
 Subcommands:
-  create <series>/<epId>    Create a new episode (free-form epId)
-  list <series>             List all episodes in a series
-  validate <series>/<epId>  Validate an episode's structure
-  bake <series>/<epId>      Materialize pre-render episode assets and write back
-  stats <series>/<epId>     Card usage stats for an episode
+  create <epId>             Create a new episode in the active series
+  list [series]             List episodes in the active series (or explicit series)
+  validate <epId>           Validate an episode's structure
+  bake <epId>               Materialize pre-render episode assets and write back
+  stats <epId>              Card usage stats for an episode
   stats <series> --all      Aggregate stats for all episodes in a series
   stats --all               Aggregate stats for all series
 
 Examples:
-  npx ars episode create gss/ep-my-topic
-  npx ars episode create gss/ep007
-  npx ars episode list gss
-  npx ars episode validate gss/ep005
-  npx ars episode bake gss/ep005
-  npx ars episode bake gss/ep005 --dry-run
-  npx ars episode stats gss/ep005
+  npx ars episode create ep-my-topic
+  npx ars episode create ep007
+  npx ars episode list
+  npx ars episode validate ep005
+  npx ars episode bake ep005
+  npx ars episode bake ep005 --dry-run
+  npx ars episode stats ep005
   npx ars episode stats gss --all
   npx ars episode stats --all
 `;
@@ -53,12 +59,13 @@ Examples:
 async function create(args: string[]) {
   const target = args[0];
   if (!target) {
-    console.error('❌ 請提供 target，格式：<series>/<epId>');
-    console.log('Usage: npx ars episode create gss/ep-my-topic');
+    console.error('❌ 請提供 epId。');
+    console.log('Usage: npx ars episode create ep-my-topic');
     process.exit(1);
   }
 
-  const { series, epId } = parseTarget(target);
+  const root = path.resolve(__dirname, '../..');
+  const { series, epId } = resolveEpisodeTarget(target, root);
   const ctx = resolveSeriesContext(series);
 
   const epFilePath = path.join(ctx.episodesDir, `${epId}.ts`);
@@ -74,7 +81,6 @@ async function create(args: string[]) {
   console.log(`📁 Created: public/episodes/${series}/${epId}/`);
 
   // 複製 template（統一從 src/episodes/template/ 讀取）
-  const root = path.resolve(__dirname, '../..');
   const templatePath = path.join(root, 'src/episodes/template/episode.template.ts');
   if (!fs.existsSync(templatePath)) {
     console.error(`❌ Template not found: ${templatePath}`);
@@ -97,8 +103,8 @@ async function create(args: string[]) {
 
 Next steps:
   1. Edit src/episodes/${series}/${epId}.ts
-  2. npx ars audio generate ${series}/${epId}
-  3. npx ars studio
+  2. npx ars audio generate ${epId}
+  3. npx ars review open ${epId}
 `);
 }
 
@@ -108,17 +114,19 @@ async function list(args: string[]) {
   const root = path.resolve(__dirname, '../..');
 
   if (!seriesArg) {
-    // 沒有給 series，列出所有
-    const allSeries = listAvailableSeries(root);
-    if (allSeries.length === 0) {
-      console.log('📭 No series found in src/episodes/');
-      return;
+    const activeSeries = getActiveSeries(root);
+    if (activeSeries) {
+      return list([activeSeries]);
     }
-    console.log(`📋 Available series: ${allSeries.join(', ')}`);
+
+    const allSeries = listAvailableSeries(root).filter((series) => series !== 'template');
+    console.log(allSeries.length === 0
+      ? '📭 No user series found in src/episodes/'
+      : `📋 Available series: ${allSeries.join(', ')}`);
     return;
   }
 
-  const ctx = resolveSeriesContext(seriesArg);
+  const ctx = resolveSeriesContext(resolveSeriesArgument(seriesArg, root));
   const files = fs.readdirSync(ctx.episodesDir)
     .filter(f => f.match(/^ep.*\.ts$/) && !f.includes('.subtitles.') && !f.includes('template'))
     .sort();
@@ -148,12 +156,12 @@ async function list(args: string[]) {
 async function validate(args: string[]) {
   const target = args[0];
   if (!target) {
-    console.error('❌ 請提供 target，格式：<series>/<epId>');
-    console.log('Usage: npx ars episode validate gss/ep005');
+    console.error('❌ 請提供 epId。');
+    console.log('Usage: npx ars episode validate ep005');
     process.exit(1);
   }
 
-  const { series, epId } = parseTarget(target);
+  const { series, epId } = resolveEpisodeTarget(target, path.resolve(__dirname, '../..'));
   const ctx = resolveSeriesContext(series);
 
   const epFilePath = path.join(ctx.episodesDir, `${epId}.ts`);
@@ -386,12 +394,12 @@ async function bake(args: string[]) {
   const dryRun = args.includes('--dry-run');
 
   if (!target) {
-    console.error('❌ 請提供 target，格式：<series>/<epId>');
-    console.log('Usage: npx ars episode bake gss/ep005 [--dry-run]');
+    console.error('❌ 請提供 epId。');
+    console.log('Usage: npx ars episode bake ep005 [--dry-run]');
     process.exit(1);
   }
 
-  const { series, epId } = parseTarget(target);
+  const { series, epId } = resolveEpisodeTarget(target, path.resolve(__dirname, '../..'));
   const ctx = resolveSeriesContext(series);
   const epFilePath = path.join(ctx.episodesDir, `${epId}.ts`);
 
@@ -659,14 +667,14 @@ async function loadEpisodesForStats(target?: string, allMode?: boolean) {
     return loaded;
   }
 
-  if (!target || !target.includes('/')) {
-    console.error('❌ 單集 stats 請提供 target，格式：<series>/<epId>');
-    console.log('Usage: npx ars episode stats gss/ep005');
+  if (!target) {
+    console.error('❌ 單集 stats 請提供 epId。');
+    console.log('Usage: npx ars episode stats ep005');
     console.log('   or: npx ars episode stats gss --all');
     process.exit(1);
   }
 
-  const { series, epId } = parseTarget(target);
+  const { series, epId } = resolveEpisodeTarget(target, path.resolve(__dirname, '../..'));
   return [await loadEpisode(series, epId)];
 }
 

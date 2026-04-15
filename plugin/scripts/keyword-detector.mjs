@@ -24,12 +24,12 @@ const TRIGGER_RULES = [
   {
     keywords: ['review'],
     suggestion:
-      'ARS: Detected review intent. Use /ars:review-open <series>/<epId> to open review UI, then /ars:scene-fix latest after a review intent is created.',
+      'ARS: Detected review intent. Use /ars:review-open <epId> to open review UI, then /ars:scene-fix latest after a review intent is created.',
   },
   {
     keywords: ['publish', '發布'],
     suggestion:
-      'ARS: Detected publish intent. Run /ars:prepare-youtube <series>/<epId> first, wait for human confirmation, then use /ars:publish-youtube <series>/<epId>.',
+      'ARS: Detected publish intent. Run /ars:prepare-youtube <epId> first, wait for human confirmation, then use /ars:publish-youtube <epId>.',
   },
 ];
 

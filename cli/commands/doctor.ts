@@ -165,6 +165,28 @@ function validateConfigSchema(
       version === CONFIG_SCHEMA_VERSION ? undefined : 'Re-run npx ars setup --force-config',
   });
 
+  const activeSeries = config.project.activeSeries?.trim();
+  if (!activeSeries) {
+    results.push({
+      id: 'config.active-series',
+      status: 'warn',
+      detail: 'project.activeSeries is not set.',
+      fixHint: 'Use /ars:setup for guided onboarding or run npx ars init <series>.',
+    });
+    return;
+  }
+
+  const seriesConfigPath = path.join(root, 'src', 'episodes', activeSeries, 'series-config.ts');
+  results.push({
+    id: 'config.active-series',
+    status: fs.existsSync(seriesConfigPath) ? 'pass' : 'fail',
+    detail: fs.existsSync(seriesConfigPath)
+      ? `activeSeries=${activeSeries}`
+      : `activeSeries=${activeSeries}, but ${seriesConfigPath} is missing`,
+    fixHint: fs.existsSync(seriesConfigPath)
+      ? undefined
+      : 'Re-run npx ars init <series> or update .ars/config.json.',
+  });
 }
 
 function validateVersion(

@@ -1,12 +1,12 @@
 ---
 name: review-open
 description: Open the ARS review workflow for a target episode with npx ars review open.
-argument-hint: "<series>/<epId>"
+argument-hint: "<epId>"
 model: claude-sonnet-4-6
 effort: low
 ---
 
-Run `npx ars review open <series>/<epId>` from the repo root.
+Run `npx ars review open <epId>` from the repo root.
 
 Behavior:
 - Use this to open the review surface for the target episode.

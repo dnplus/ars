@@ -1,15 +1,17 @@
 /**
  * @module cli/lib/context
- * @description 解析 series/epId target，提供路徑解析。
+ * @description 解析 episode target 與 active series，提供路徑解析。
  *
- * 新語法：npx ars <command> <series>/<epId>
- * 例如：  npx ars episode create gss/ep-my-topic
- *         npx ars audio generate gss/ep005
- *         npx ars slides gss/ep005
- *         npx ars episode list gss
+ * 主要語法：npx ars <command> <epId>
+ * 相容語法：npx ars <command> <series>/<epId>
+ * 例如：  npx ars episode create ep-my-topic
+ *         npx ars audio generate ep005
+ *         npx ars review open ep005
+ *         npx ars episode list
  */
 import path from 'path';
 import fs from 'fs';
+import { configExists, getRepoRoot, readArsConfig, writeArsConfig } from './ars-config';
 
 export interface SeriesContext {
   /** Series 名稱 (e.g. 'gss', 'template') */
@@ -45,6 +47,13 @@ export function validateEpId(epId: string): void {
   }
 }
 
+export function validateSeriesName(series: string): void {
+  if (!series || /\s/.test(series) || series.includes('/')) {
+    console.error(`❌ Series name 不能包含空白或 /：${series}`);
+    process.exit(1);
+  }
+}
+
 /**
  * 解析 "series/epId" 字串
  * @returns { series, epId }
@@ -72,10 +81,73 @@ export function parseTarget(target: string): { series: string; epId: string } {
   return { series, epId };
 }
 
+export function getActiveSeries(root = getRepoRoot()): string | null {
+  if (!configExists(root)) {
+    return null;
+  }
+
+  const activeSeries = readArsConfig(root).project.activeSeries?.trim();
+  return activeSeries ? activeSeries : null;
+}
+
+export function requireActiveSeries(root = getRepoRoot()): string {
+  const activeSeries = getActiveSeries(root);
+  if (!activeSeries) {
+    console.error('❌ This repo has no active series configured.');
+    console.error('   Run /ars:setup for guided onboarding or `npx ars init <series>` after setup.');
+    process.exit(1);
+  }
+
+  return activeSeries;
+}
+
+export function setActiveSeries(series: string, root = getRepoRoot()): string {
+  validateSeriesName(series);
+
+  if (!configExists(root)) {
+    console.error('❌ Missing .ars/config.json. Run `npx ars setup` first.');
+    process.exit(1);
+  }
+
+  const config = readArsConfig(root);
+  config.project.activeSeries = series;
+  return writeArsConfig(config, root);
+}
+
+export function resolveEpisodeTarget(target: string, root = getRepoRoot()): { series: string; epId: string } {
+  if (!target) {
+    console.error('❌ Missing episode target.');
+    process.exit(1);
+  }
+
+  if (target.includes('/')) {
+    return parseTarget(target);
+  }
+
+  return {
+    series: requireActiveSeries(root),
+    epId: target,
+  };
+}
+
+export function resolveSeriesArgument(seriesArg?: string, root = getRepoRoot()): string {
+  if (!seriesArg) {
+    return requireActiveSeries(root);
+  }
+
+  if (seriesArg.includes('/')) {
+    console.error(`❌ Expected a series name, got episode target: ${seriesArg}`);
+    process.exit(1);
+  }
+
+  return seriesArg;
+}
+
 /**
  * 根據 series 名稱解析路徑 context
  */
 export function resolveSeriesContext(series: string): SeriesContext {
+  validateSeriesName(series);
   const root = path.resolve(__dirname, '../..');
   const episodesDir = path.join(root, 'src/episodes', series);
 

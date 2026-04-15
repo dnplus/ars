@@ -4,9 +4,13 @@ import path from 'path';
 export const CONFIG_SCHEMA_VERSION = 2;
 export const TTS_PROVIDER_IDS = ['none', 'minimax'] as const;
 export const REVIEW_UI_IDS = ['slides'] as const;
+export const VISUAL_DENSITY_IDS = ['minimal', 'balanced', 'dense'] as const;
+export const LAYOUT_BIAS_IDS = ['mixed', 'title-card', 'card-only', 'fullscreen'] as const;
 
 export type TTSProviderId = (typeof TTS_PROVIDER_IDS)[number];
 export type ReviewUiId = (typeof REVIEW_UI_IDS)[number];
+export type VisualDensityId = (typeof VISUAL_DENSITY_IDS)[number];
+export type LayoutBiasId = (typeof LAYOUT_BIAS_IDS)[number];
 
 export interface ArsConfig {
   version: number;
@@ -31,6 +35,15 @@ export interface ArsConfig {
   review: {
     preferredUi: ReviewUiId;
     enableExperimentalStudio: boolean;
+  };
+  project: {
+    activeSeries?: string;
+    channelName?: string;
+    visualDirection?: string;
+    tone?: string;
+    mascot?: string;
+    visualDensity: VisualDensityId;
+    layoutBias: LayoutBiasId;
   };
 }
 
@@ -75,6 +88,15 @@ export function createDefaultConfig(): ArsConfig {
       preferredUi: 'slides',
       enableExperimentalStudio: false,
     },
+    project: {
+      activeSeries: undefined,
+      channelName: undefined,
+      visualDirection: undefined,
+      tone: undefined,
+      mascot: undefined,
+      visualDensity: 'balanced',
+      layoutBias: 'mixed',
+    },
   };
 }
 
@@ -116,6 +138,7 @@ export function parseArsConfig(input: unknown): ArsConfig {
   const social = isRecord(extensions.social) ? extensions.social : {};
   const analytics = isRecord(extensions.analytics) ? extensions.analytics : {};
   const review = isRecord(input.review) ? input.review : {};
+  const project = isRecord(input.project) ? input.project : {};
 
   return {
     version:
@@ -165,6 +188,35 @@ export function parseArsConfig(input: unknown): ArsConfig {
           review.enableExperimentalStudio,
           'review.enableExperimentalStudio',
         ) ?? defaults.review.enableExperimentalStudio,
+    },
+    project: {
+      activeSeries:
+        expectOptionalString(project.activeSeries, 'project.activeSeries') ??
+        defaults.project.activeSeries,
+      channelName:
+        expectOptionalString(project.channelName, 'project.channelName') ??
+        defaults.project.channelName,
+      visualDirection:
+        expectOptionalString(project.visualDirection, 'project.visualDirection') ??
+        defaults.project.visualDirection,
+      tone:
+        expectOptionalString(project.tone, 'project.tone') ??
+        defaults.project.tone,
+      mascot:
+        expectOptionalString(project.mascot, 'project.mascot') ??
+        defaults.project.mascot,
+      visualDensity:
+        expectOptionalOneOf(
+          project.visualDensity,
+          VISUAL_DENSITY_IDS,
+          'project.visualDensity',
+        ) ?? defaults.project.visualDensity,
+      layoutBias:
+        expectOptionalOneOf(
+          project.layoutBias,
+          LAYOUT_BIAS_IDS,
+          'project.layoutBias',
+        ) ?? defaults.project.layoutBias,
     },
   };
 }

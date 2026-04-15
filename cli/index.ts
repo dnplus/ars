@@ -13,7 +13,6 @@ const KNOWN_COMMANDS = new Set([
   'export',
   'init',
   'launch',
-  'pipeline',
   'postinstall',
   'prepare',
   'publish',
@@ -45,13 +44,11 @@ Commands:
   prepare <subcommand> [...]       Prepare release assets and metadata context
   publish <subcommand> [...]       Package and publish outputs
   audio <subcommand> [...]         Audio/TTS workflows
-  slides <series>/<epId>           Launch the slides viewer
   review <subcommand> [...]        Review surface + review intent workflows
   init <series-name>               Initialize a new series from template
   theme <subcommand> [...]         Theme generation and preview tools
   export <subcommand> [...]        Export cover or subtitle artifacts
   upload <subcommand> [...]        Upload to YouTube
-  pipeline <series>/<epId>         Run the full production pipeline
 
 Root options:
   -h, --help                       Show root help
@@ -70,8 +67,6 @@ async function loadCommandModule(command: string): Promise<CommandModule> {
       return import('./commands/export');
     case 'init':
       return import('./commands/init');
-    case 'pipeline':
-      return import('./commands/pipeline');
     case 'prepare':
       return import('./commands/prepare');
     case 'publish':

@@ -3,11 +3,11 @@
  * @description Upload rendered video artifacts to YouTube.
  *
  * Usage:
- *   npx ars upload youtube <series>/<epId>
+ *   npx ars upload youtube <epId>
  */
 import fs from 'fs';
 import path from 'path';
-import { parseTarget, resolveSeriesContext } from '../lib/context';
+import { resolveEpisodeTarget, resolveSeriesContext } from '../lib/context';
 import { loadEpisodeMetadata, writeEpisodePublishState } from '../lib/episode-file';
 import { readPreparedYoutubeCandidate } from '../lib/prepare-artifact';
 import {
@@ -51,7 +51,7 @@ const HELP = `
 📤 ARS Upload — YouTube
 
 Usage:
-  npx ars upload youtube <series>/<epId>
+  npx ars upload youtube <epId>
 
 Options:
   --dry-run              Preview what would be uploaded without calling YouTube APIs
@@ -65,7 +65,7 @@ Notes:
   - This core command only handles YouTube.
   - Social uploads live in the optional social extension.
   - Run prepare first:
-      npx ars prepare youtube <series>/<epId>
+      npx ars prepare youtube <epId>
 `;
 
 function parseArgs(args: string[]): UploadOptions {
@@ -77,7 +77,7 @@ function parseArgs(args: string[]): UploadOptions {
     process.exit(platform && target ? 1 : 0);
   }
 
-  const { series, epId } = parseTarget(target);
+  const { series, epId } = resolveEpisodeTarget(target, ROOT);
   const dryRun = args.includes('--dry-run');
   const noThumbnail = args.includes('--no-thumbnail');
   const noSrt = args.includes('--no-srt');
@@ -118,7 +118,7 @@ function parseArgs(args: string[]): UploadOptions {
 }
 
 function prepareHint(series: string, epId: string): string {
-  return `npx ars prepare youtube ${series}/${epId}`;
+  return `npx ars prepare youtube ${epId}`;
 }
 
 function resolveAssets(series: string, epId: string, customVideoPath?: string): ResolvedAssets {
@@ -207,7 +207,7 @@ async function uploadToYouTube(
   if (!resolvedMetadata) {
     console.error(`Error: YouTube metadata not found.`);
     console.error(`   1. Run: ${prepareHint(opts.series, opts.epId)}`);
-    console.error(`   2. In Claude Code: /ars:prepare-youtube ${opts.series}/${opts.epId}`);
+    console.error(`   2. In Claude Code: /ars:prepare-youtube ${opts.epId}`);
     return null;
   }
 

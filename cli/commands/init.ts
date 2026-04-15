@@ -7,6 +7,8 @@
  */
 import fs from 'fs';
 import path from 'path';
+import { configExists } from '../lib/ars-config';
+import { getActiveSeries, listAvailableSeries, setActiveSeries, validateSeriesName } from '../lib/context';
 
 export async function run(args: string[]) {
   const seriesName = args[0];
@@ -18,8 +20,10 @@ export async function run(args: string[]) {
     process.exit(1);
   }
 
-  if (seriesName.includes('/') || /\s/.test(seriesName)) {
-    console.error('❌ Series name cannot contain / or spaces');
+  validateSeriesName(seriesName);
+
+  if (!configExists(root)) {
+    console.error('❌ Missing .ars/config.json. Run `npx ars setup` first.');
     process.exit(1);
   }
 
@@ -27,6 +31,21 @@ export async function run(args: string[]) {
   const publicDir = path.join(root, 'public/episodes', seriesName);
   const templateSrcDir = path.join(root, 'src/episodes/template');
   const templatePublicDir = path.join(root, 'public/episodes/template/shared');
+  const activeSeries = getActiveSeries(root);
+  const existingUserSeries = listAvailableSeries(root).filter((series) => series !== 'template');
+
+  if (activeSeries && activeSeries !== seriesName) {
+    console.error(`❌ This repo is already initialized for series "${activeSeries}".`);
+    console.error('   ARS now supports one active series per repo.');
+    process.exit(1);
+  }
+
+  const conflictingSeries = existingUserSeries.filter((series) => series !== seriesName);
+  if (conflictingSeries.length > 0) {
+    console.error(`❌ Found existing user series: ${conflictingSeries.join(', ')}`);
+    console.error('   ARS now supports one active series per repo.');
+    process.exit(1);
+  }
 
   if (fs.existsSync(srcDir)) {
     console.error(`❌ Series "${seriesName}" already exists at ${srcDir}`);
@@ -54,6 +73,9 @@ export async function run(args: string[]) {
     console.log(`✅ Created: public/episodes/${seriesName}/shared/`);
   }
 
+  const configPath = setActiveSeries(seriesName, root);
+  console.log(`✅ Updated active series in ${path.relative(root, configPath)}`);
+
   // Root.tsx 現在自動掃描 src/episodes/，不需要手動註冊
   console.log(`ℹ️  Series will be auto-discovered by Root.tsx require.context`);
 
@@ -63,8 +85,8 @@ export async function run(args: string[]) {
 Next steps:
   1. Edit src/episodes/${seriesName}/series-config.ts — Customize theme, VTuber, brand info
   2. Replace public/episodes/${seriesName}/shared/vtuber/ images
-  3. npx ars episode create ${seriesName}/ep001
-  4. npx ars studio
+  3. npx ars episode create ep001
+  4. npx ars review open ep001
 `);
 }
 

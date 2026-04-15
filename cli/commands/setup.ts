@@ -62,6 +62,9 @@ export async function run(args: string[]) {
     console.log(
       `   publish.youtube.enabled = ${String(result.config.publish.youtube.enabled)}`,
     );
+    if (result.config.project.activeSeries) {
+      console.log(`   project.activeSeries = ${result.config.project.activeSeries}`);
+    }
   }
   if (result.copiedFiles.length > 0) {
     console.log(`✅ Synced engine into ${path.join(result.root, 'src', 'engine')}`);
@@ -196,16 +199,6 @@ async function promptForConfig(): Promise<ArsConfig> {
       'Enable YouTube publishing?',
       defaults.publish.youtube.enabled,
     );
-    const socialEnabled = await promptBooleanWithRl(
-      rl,
-      'Enable social extension flags?',
-      defaults.extensions.social.enabled,
-    );
-    const analyticsEnabled = await promptBooleanWithRl(
-      rl,
-      'Enable analytics extension flags?',
-      defaults.extensions.analytics.enabled,
-    );
     const experimentalStudio = await promptBooleanWithRl(
       rl,
       'Enable experimental studio review UI?',
@@ -226,15 +219,18 @@ async function promptForConfig(): Promise<ArsConfig> {
       },
       extensions: {
         social: {
-          enabled: socialEnabled,
+          enabled: defaults.extensions.social.enabled,
         },
         analytics: {
-          enabled: analyticsEnabled,
+          enabled: defaults.extensions.analytics.enabled,
         },
       },
       review: {
         preferredUi: defaults.review.preferredUi,
         enableExperimentalStudio: experimentalStudio,
+      },
+      project: {
+        ...defaults.project,
       },
     };
   } finally {

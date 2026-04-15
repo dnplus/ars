@@ -3,20 +3,17 @@
  * @description High-level release commands that compose prepare/package/upload steps.
  *
  * Usage:
- *   npx ars publish package <series>/<epId>
- *   npx ars publish youtube <series>/<epId>
- *   npx ars publish social <series>/<epId>
- *   npx ars publish all <series>/<epId>
+ *   npx ars publish package <epId>
+ *   npx ars publish youtube <epId>
  */
 import fs from 'fs';
 import path from 'path';
 import { execFileSync } from 'child_process';
 import { createInterface } from 'readline';
-import { parseTarget } from '../lib/context';
-import { loadEpisodeMetadata } from '../lib/episode-file';
+import { resolveEpisodeTarget } from '../lib/context';
 import { readPreparedYoutubeCandidate } from '../lib/prepare-artifact';
 
-type PublishMode = 'package' | 'youtube' | 'social' | 'all';
+type PublishMode = 'package' | 'youtube';
 
 interface PublishOptions {
   mode: PublishMode;
@@ -34,10 +31,8 @@ const HELP = `
 🚀 ARS Publish — High-Level Release Commands
 
 Usage:
-  npx ars publish package <series>/<epId>   Export cover + SRT + render
-  npx ars publish youtube <series>/<epId>   Package + upload YouTube
-  npx ars publish social <series>/<epId>    Upload Threads + FB Group
-  npx ars publish all <series>/<epId>       Package + YouTube + social
+  npx ars publish package <epId>            Export cover + SRT + render
+  npx ars publish youtube <epId>            Package + upload YouTube
 
 Options:
   --dry-run              Execute local safe steps; keep external uploads in dry-run mode
@@ -48,23 +43,26 @@ Options:
 Notes:
   - Prefer publish* for daily release; use low-level upload* only for partial reruns/debugging.
   - publish youtube expects a prepared artifact from:
-      npx ars prepare youtube <series>/<epId>
-  - publish social expects metadata.social and metadata.publish.youtubeUrl to already exist.
-  - Generate metadata with:
-      npx ars prepare youtube <series>/<epId>
-      npx ars prepare social <series>/<epId>
+      npx ars prepare youtube <epId>
+  - Social publishing has been removed from ARS core. Move that workflow into an extension.
 `;
 
 function parseArgs(args: string[]): PublishOptions {
   const mode = args[0] as PublishMode;
   const target = args[1];
 
-  if (!mode || !target || !['package', 'youtube', 'social', 'all'].includes(mode)) {
+  if (mode === 'social' || mode === 'all') {
+    console.error('Social publishing has been removed from ARS core.');
+    console.error('Move this release flow into an extension or plugin-specific workflow.');
+    process.exit(1);
+  }
+
+  if (!mode || !target || !['package', 'youtube'].includes(mode)) {
     console.log(HELP);
     process.exit(mode && target ? 1 : 0);
   }
 
-  const { series, epId } = parseTarget(target);
+  const { series, epId } = resolveEpisodeTarget(target, ROOT);
   const privacyIdx = args.indexOf('--privacy');
   const privacy = privacyIdx !== -1 && args[privacyIdx + 1]
     ? args[privacyIdx + 1] as PublishOptions['privacy']
@@ -134,21 +132,8 @@ function tryRunLocalStep(label: string, bin: string, args: string[]): boolean {
 function ensureYoutubeReady(series: string, epId: string): void {
   if (!readPreparedYoutubeCandidate(series, epId)) {
     console.error(`Error: YouTube metadata not found.`);
-    console.error(`   1. Run: npx ars prepare youtube ${series}/${epId}`);
-    console.error(`   2. In Claude Code: /ars:prepare-youtube ${series}/${epId}`);
-    process.exit(1);
-  }
-}
-
-function ensureSocialReady(metadata: Awaited<ReturnType<typeof loadEpisodeMetadata>>, series: string, epId: string): void {
-  if (!metadata?.social?.posts?.[0]) {
-    console.error(`❌ Missing metadata.social`);
-    console.error(`   Run first: npx ars prepare social ${series}/${epId}`);
-    process.exit(1);
-  }
-  if (!metadata?.publish?.youtubeUrl) {
-    console.error(`❌ Missing metadata.publish.youtubeUrl`);
-    console.error(`   Upload YouTube first, then run: npx ars prepare social ${series}/${epId}`);
+    console.error(`   1. Run: npx ars prepare youtube ${epId}`);
+    console.error(`   2. In Claude Code: /ars:prepare-youtube ${epId}`);
     process.exit(1);
   }
 }
@@ -220,7 +205,6 @@ export async function run(args: string[]) {
   }
 
   if (opts.mode === 'youtube') {
-    const metadata = await loadEpisodeMetadata(opts.series, opts.epId);
     ensureYoutubeReady(opts.series, opts.epId);
     publishPackage(target, opts.series, opts.epId, opts.dryRun, opts.force);
     if (!opts.dryRun) ensurePackageOutputs(opts.series, opts.epId);
@@ -228,34 +212,5 @@ export async function run(args: string[]) {
       'YouTube upload',
       ...cliArgs('upload', 'youtube', target, '--privacy', opts.privacy, ...(opts.dryRun ? ['--dry-run'] : [])),
     );
-    return;
   }
-
-  if (opts.mode === 'social') {
-    const metadata = await loadEpisodeMetadata(opts.series, opts.epId);
-    ensureSocialReady(metadata, opts.series, opts.epId);
-    runStep('Threads upload', ...cliArgs('upload', 'threads', target, ...(opts.dryRun ? ['--dry-run'] : [])));
-    runStep('FB Group upload', ...cliArgs('upload', 'fbgroup', target, ...(opts.dryRun ? ['--dry-run'] : [])));
-    return;
-  }
-
-  const metadata = await loadEpisodeMetadata(opts.series, opts.epId);
-  ensureYoutubeReady(opts.series, opts.epId);
-  publishPackage(target, opts.series, opts.epId, opts.dryRun, opts.force);
-  if (!opts.dryRun) ensurePackageOutputs(opts.series, opts.epId);
-  runStep(
-    'YouTube upload',
-    ...cliArgs('upload', 'youtube', target, '--privacy', opts.privacy, ...(opts.dryRun ? ['--dry-run'] : [])),
-  );
-
-  const refreshed = await loadEpisodeMetadata(opts.series, opts.epId);
-  if (!refreshed?.publish?.youtubeUrl) {
-    console.log(`\n⚠️  YouTube uploaded, but social phase still requires prepare social.`);
-    console.log(`   Run next: npx ars prepare social ${target}`);
-    return;
-  }
-
-  ensureSocialReady(refreshed, opts.series, opts.epId);
-  runStep('Threads upload', ...cliArgs('upload', 'threads', target, ...(opts.dryRun ? ['--dry-run'] : [])));
-  runStep('FB Group upload', ...cliArgs('upload', 'fbgroup', target, ...(opts.dryRun ? ['--dry-run'] : [])));
 }

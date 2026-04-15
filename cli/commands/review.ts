@@ -5,7 +5,7 @@
 import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
-import { parseTarget, resolveSeriesContext } from '../lib/context';
+import { resolveEpisodeTarget, resolveSeriesContext } from '../lib/context';
 import {
   createReviewIntent,
   getReviewIntentsDir,
@@ -20,7 +20,7 @@ const HELP = `
 Usage: npx ars review <subcommand> [options]
 
 Subcommands:
-  open <series>/<epId>                    Launch slides review surface
+  open <epId>                             Launch the review surface for the active series
   intent list                             List review intents grouped by status
   intent show <id>                        Print a review intent JSON payload
   intent clear <id|all>                   Mark review intents as processed
@@ -88,12 +88,12 @@ async function openReview(args: string[]): Promise<void> {
   const root = path.resolve(__dirname, '../..');
 
   if (!target) {
-    console.error('❌ 請提供 target，格式：<series>/<epId>');
-    console.log('Usage: npx ars review open <series>/<epId>');
+    console.error('❌ 請提供 epId。');
+    console.log('Usage: npx ars review open <epId>');
     process.exit(1);
   }
 
-  const { series, epId } = parseTarget(target);
+  const { series, epId } = resolveEpisodeTarget(target, root);
   const ctx = resolveSeriesContext(series);
   const filePath = path.join(ctx.episodesDir, `${epId}.ts`);
   if (!fs.existsSync(filePath)) {
