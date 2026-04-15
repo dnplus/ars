@@ -61,8 +61,8 @@ const theme = {
 // ── VTuber ──
 const vtuber = {
   ...DEFAULT_VTUBER_CONFIG,
-  closedImg: 'episodes/template/shared/vtuber/luna.png',
-  openImg: 'episodes/template/shared/vtuber/luna.png',
+  closedImg: 'episodes/template/shared/vtuber/ginseng_closed.png',
+  openImg: 'episodes/template/shared/vtuber/ginseng_open.png',
 } as const;
 
 // ── Export ──

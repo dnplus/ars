@@ -51,12 +51,6 @@ function parseArgs(args: string[]): PublishOptions {
   const mode = args[0] as PublishMode;
   const target = args[1];
 
-  if (mode === 'social' || mode === 'all') {
-    console.error('Social publishing has been removed from ARS core.');
-    console.error('Move this release flow into an extension or plugin-specific workflow.');
-    process.exit(1);
-  }
-
   if (!mode || !target || !['package', 'youtube'].includes(mode)) {
     console.log(HELP);
     process.exit(mode && target ? 1 : 0);

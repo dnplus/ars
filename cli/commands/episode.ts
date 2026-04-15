@@ -102,9 +102,9 @@ async function create(args: string[]) {
 🎉 Episode ${series}/${epId} created!
 
 Next steps:
-  1. Edit src/episodes/${series}/${epId}.ts
-  2. npx ars audio generate ${epId}
-  3. npx ars review open ${epId}
+  1. /ars:plan ${epId}
+  2. /ars:new-card ...   (only if the plan emits card-spec todos)
+  3. /ars:build ${epId}
 `);
 }
 

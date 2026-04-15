@@ -85,8 +85,8 @@ export async function run(args: string[]) {
 Next steps:
   1. Edit src/episodes/${seriesName}/series-config.ts — Customize theme, VTuber, brand info
   2. Replace public/episodes/${seriesName}/shared/vtuber/ images
-  3. npx ars episode create ep001
-  4. npx ars review open ep001
+  3. /ars:plan ep001
+  4. /ars:build ep001
 `);
 }
 

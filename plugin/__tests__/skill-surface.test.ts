@@ -44,4 +44,20 @@ describe('plugin skill surface', () => {
     expect(output).not.toContain('/ars:scene-build');
     expect(output).not.toContain('/ars:scene-fix');
   });
+
+  it('keyword detector does not fire on generic review/fix prompts', () => {
+    const scriptPath = path.join(repoRoot, 'plugin', 'scripts', 'keyword-detector.mjs');
+    const payload = JSON.stringify({
+      prompt: 'please review this diff and help me fix the failing tests',
+    });
+
+    const output = execFileSync('node', [scriptPath], {
+      cwd: repoRoot,
+      input: payload,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    expect(output.trim()).toBe('');
+  });
 });

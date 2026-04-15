@@ -14,7 +14,7 @@ const collect = (): Map<string, CardSpec<unknown>> => {
   const engineSpecs = import.meta.glob("./*/spec.ts", {
     eager: true,
   }) as Record<string, GlobCardModule>;
-  const episodeSpecs = import.meta.glob("../../episodes/*/cards/*.tsx", {
+  const episodeSpecs = import.meta.glob("../../episodes/*/cards/*/spec.ts", {
     eager: true,
   }) as Record<string, GlobCardModule>;
   const registry = new Map<string, CardSpec<unknown>>();

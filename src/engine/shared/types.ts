@@ -183,7 +183,7 @@ export type QRCodeCTA = { url: string; title?: string; subtitle?: string };
  */
 export type Step = {
   id: string;
-  /** Primary: cover/ticker/summary/markdown/code/image/stats/compare/timeline/flowchart/mermaid/mockApp; Legacy: text/terminal/macApp/phone; Advanced: liveScene/threeScene */
+  /** Primary: cover/ticker/summary/markdown/code/image/stats/compare/timeline/flowchart/mermaid/mockApp; custom: <series>/<card-name>; Legacy: text/terminal/macApp/phone; Advanced: liveScene/threeScene */
   contentType:
     | "cover"
     | "text" // @legacy -> 改用 markdown
@@ -202,7 +202,10 @@ export type Step = {
     | "phone" // @legacy -> 改用 mockApp + appDevice:'mobile'
     | "macApp" // @legacy -> 改用 mockApp + appDevice:'desktop'
     | "mockApp"
-    | "flowchart";
+    | "flowchart"
+    | `${string}/${string}`;
+  /** Custom card payload for series-scoped CardSpec types. */
+  data?: unknown;
   /** 佈局模式：title-card（預設）| card-only | fullscreen */
   layoutMode?: LayoutMode;
   /** 背景預設：default | gradient-mesh | aurora | spotlight | minimal */

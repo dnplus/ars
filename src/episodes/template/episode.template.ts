@@ -27,11 +27,11 @@ export const epTemplate: Episode = {
     },
     {
       id: 'content_1',
-      contentType: 'text',
+      contentType: 'markdown',
       title: '內容標題',
       description: '內容描述',
       cardTitle: '卡片標題',
-      cardContent: '卡片內容\n• 第一點\n• 第二點',
+      cardContent: '卡片內容\n\n- 第一點\n- 第二點',
       narration: '旁白內容...',
       durationInSeconds: 15,
     },
