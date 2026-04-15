@@ -36,6 +36,7 @@ Commands:
     --step <id>                     Only generate one specific step (repeatable)
     --steps <id1,id2,...>           Only generate specific steps
   setup                             Initialize .ars/config.json
+  update                            Backup src/engine and refresh it from the installed ARS package
   doctor                            Validate .ars/config.json and provider environment
   slides <series>/<epId>            Launch web slides viewer
   review open <series>/<epId>       Launch slides review surface
@@ -78,6 +79,8 @@ async function loadCommandModule(command: string): Promise<CommandModule> {
       return import('./commands/audio');
     case 'setup':
       return import('./commands/setup');
+    case 'update':
+      return import('./commands/update');
     case 'doctor':
       return import('./commands/doctor');
     case 'init':
