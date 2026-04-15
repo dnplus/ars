@@ -70,6 +70,21 @@ const TRIGGER_RULES = [
   },
   {
     patterns: [
+      /\bars:new-card\b/,
+      /\bnew.?card\b/i,
+      /\badd.?card\b/i,
+      /\bcreate.?card\b/i,
+      /新增.*card/,
+      /建立.*card/,
+      /新增.*卡片/,
+      /建立.*卡片/,
+      /寫.*card.*spec/,
+    ],
+    suggestion:
+      'ARS: Detected new card intent. Use /ars:new-card <type> to scaffold spec.ts + component.tsx following the CardSpec contract. Series-scoped cards go under src/episodes/<series>/cards/<type>/.',
+  },
+  {
+    patterns: [
       /\bars:publish-youtube\b/,
       /\bpublish youtube\b/,
       /\bprepare youtube\b/,

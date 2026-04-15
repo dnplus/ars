@@ -9,7 +9,7 @@
  *           that needs character-level entrance animation.
  */
 
-import { interpolate, spring } from "remotion";
+import { interpolate } from "remotion";
 
 export const splitIntoChars = (text: string): string[] => {
     // 使用 Array.from 確保正確處理 Unicode 4-byte 字符 (如 Emoji)

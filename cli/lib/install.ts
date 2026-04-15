@@ -27,6 +27,9 @@ const ARS_COMMANDS_BLOCK = `${ARS_MARKER_BEGIN}
 - \`/ars:polish\`：只做後段 refinement，不重寫整集結構
 - \`/ars:prepare-youtube\`：整理 YouTube metadata 與發布前檢查
 - \`/ars:publish-youtube\`：在人工確認後執行 YouTube 發布流程
+- \`/ars:new-card\`：為指定 series 建立新的 custom card，scaffold spec.ts + component.tsx
+- \`/ars:theme\`：為指定 series 產生或調整視覺主題
+- \`/ars:analytics\`：查詢 YouTube analytics 並產出頻道摘要報告
 ${ARS_MARKER_END}`;
 
 interface PackageJsonLike {

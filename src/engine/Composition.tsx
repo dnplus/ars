@@ -14,7 +14,7 @@
 import React from "react";
 import { AbsoluteFill, Series, staticFile } from "remotion";
 import { Episode } from "./shared/types";
-import { getLayoutKey, resolveLayout } from "./layouts";
+import { getLayoutKey } from "./layouts";
 import { BackgroundMusic } from "./components/ui/BackgroundMusic";
 import { type SubtitlePhrase } from "./shared/subtitle";
 import { StepTransition } from "./shared/effects";
@@ -88,7 +88,6 @@ export const EpisodeRenderer: React.FC<EpisodeRendererProps> = ({
             // 取得前一個 step 的 layoutMode（用於過場動畫）
             const prevStep = index > 0 ? episode.steps[index - 1] : null;
             const prevLayoutMode = prevStep?.layoutMode;
-            const currentLayoutMode = step.layoutMode;
 
             const isFirst = index === 0;
             const isLast = index === totalSteps - 1;
