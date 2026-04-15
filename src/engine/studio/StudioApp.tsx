@@ -6,7 +6,7 @@ import React, { useMemo, useRef, useState, useCallback, useEffect, CSSProperties
 import { Player, type PlayerRef } from '@remotion/player';
 import type { Episode, Step } from '../shared/types';
 import { useStepNavigation } from './hooks/useStepNavigation';
-import { episodeToSlides, getEpisodeInfo } from './adapters/episodeToSlides';
+import { episodeToStudioSteps, getStudioEpisodeInfo } from './adapters/episodeToStudioSteps';
 import { ThemeProvider } from '../shared/ThemeContext';
 import { ActionBar } from './components/ActionBar';
 import { FixListSidebar } from './components/FixListSidebar';
@@ -34,7 +34,7 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode }) => {
   const [draftEpisode, setDraftEpisode] = useState(episode);
   const shell = draftEpisode.shell!;
   const theme = shell.theme!;
-  const slides = useMemo(() => episodeToSlides(draftEpisode), [draftEpisode]);
+  const studioSteps = useMemo(() => episodeToStudioSteps(draftEpisode), [draftEpisode]);
 
   // URL params
   const queryParams = useMemo(() => new URLSearchParams(window.location.search), []);
@@ -45,12 +45,12 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode }) => {
   const fallbackEpId = queryEpId ?? draftEpisode.metadata.id ?? 'unknown-episode';
 
   const initialStepIndex = useMemo(
-    () => (queryStepId ? slides.findIndex((s) => s.step.id === queryStepId) : -1),
-    [queryStepId, slides],
+    () => (queryStepId ? studioSteps.findIndex((s) => s.step.id === queryStepId) : -1),
+    [queryStepId, studioSteps],
   );
 
   const episodeInfo = useMemo(() => {
-    const info = getEpisodeInfo(draftEpisode);
+    const info = getStudioEpisodeInfo(draftEpisode);
     return {
       ...info,
       id: info.id ?? fallbackEpId,
@@ -102,9 +102,9 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode }) => {
     }
   }, []);
 
-  const { currentIndex, totalSlides, isFullscreen, next, prev, goTo } =
+  const { currentIndex, totalSteps, isFullscreen, next, prev, goTo } =
     useStepNavigation({
-      totalSlides: slides.length,
+      totalSteps: studioSteps.length,
       initialIndex: initialStepIndex >= 0 ? initialStepIndex : 0,
       onToggleFullscreen: handleToggleFullscreen,
     });
@@ -120,11 +120,11 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode }) => {
     }
   }, [currentIndex, goTo, initialStepIndex]);
 
-  const currentSlide = slides[currentIndex];
-  const prevSlide = currentIndex > 0 ? slides[currentIndex - 1] : null;
+  const currentStudioStep = studioSteps[currentIndex];
+  const prevStudioStep = currentIndex > 0 ? studioSteps[currentIndex - 1] : null;
   const durationInFrames = Math.max(
     1,
-    Math.round((currentSlide?.step.durationInSeconds ?? 5) * fps),
+    Math.round((currentStudioStep?.step.durationInSeconds ?? 5) * fps),
   );
 
   const applyDraftStep = useCallback((nextStep: Step) => {
@@ -175,12 +175,12 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode }) => {
   // Check if audio file exists for current slide
   useEffect(() => {
     setAudioExists(null);
-    const src = currentSlide.audioSrc;
+    const src = currentStudioStep.audioSrc;
     if (!src) { setAudioExists(false); return; }
     fetch(`/${src}`, { method: 'HEAD' })
       .then((r) => setAudioExists(r.ok))
       .catch(() => setAudioExists(false));
-  }, [currentSlide.audioSrc]);
+  }, [currentStudioStep.audioSrc]);
 
   // On slide change: seek to 0 and play
   useEffect(() => {
@@ -234,15 +234,15 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode }) => {
     };
   }, []);
 
-  if (!currentSlide) {
+  if (!currentStudioStep) {
     return (
       <div className="studio-app studio-app-error">
-        <p>No slides available</p>
+        <p>No steps available</p>
       </div>
     );
   }
 
-  const step = currentSlide.step;
+  const step = currentStudioStep.step;
   const sourceStep = episode.steps[currentIndex] ?? step;
 
   return (
@@ -269,11 +269,11 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode }) => {
                   ref={playerRef}
                   component={StudioComposition}
                   inputProps={{
-                    step: currentSlide.step,
-                    prevLayoutMode: prevSlide?.step.layoutMode,
+                    step: currentStudioStep.step,
+                    prevLayoutMode: prevStudioStep?.step.layoutMode,
                     episode: draftEpisode,
                     episodeInfo,
-                    audioSrc: currentSlide.audioSrc,
+                    audioSrc: currentStudioStep.audioSrc,
                   } satisfies StudioCompositionProps}
                   durationInFrames={durationInFrames}
                   compositionWidth={compositionWidth}
@@ -350,12 +350,12 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode }) => {
               ←
             </button>
             <span className="nav-progress">
-              {currentIndex + 1} / {totalSlides}
+              {currentIndex + 1} / {totalSteps}
             </span>
             <button
               className="nav-btn"
               onClick={next}
-              disabled={currentIndex === totalSlides - 1}
+              disabled={currentIndex === totalSteps - 1}
               title="下一張（→）"
             >
               →
@@ -429,7 +429,7 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode }) => {
           <div className="nav-progress-bar">
             <div
               className="nav-progress-fill"
-              style={{ width: `${((currentIndex + 1) / totalSlides) * 100}%` }}
+              style={{ width: `${((currentIndex + 1) / totalSteps) * 100}%` }}
             />
           </div>
         </nav>

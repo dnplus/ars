@@ -6,31 +6,31 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { NavigationState, NavigationActions } from '../types';
 
-type UseSlideNavigationOptions = {
-  totalSlides: number;
+type UseStepNavigationOptions = {
+  totalSteps: number;
   initialIndex?: number;
   onToggleFullscreen?: () => void;
 };
 
-type UseSlideNavigationReturn = NavigationState & NavigationActions;
+type UseStepNavigationReturn = NavigationState & NavigationActions;
 
 export function useStepNavigation({
-  totalSlides,
+  totalSteps,
   initialIndex = 0,
   onToggleFullscreen,
-}: UseSlideNavigationOptions): UseSlideNavigationReturn {
+}: UseStepNavigationOptions): UseStepNavigationReturn {
   // 從 URL hash 讀取初始 index
   const getIndexFromHash = useCallback((): number => {
     const hash = window.location.hash;
-    const match = hash.match(/^#slide-(\d+)$/);
-    if (match) {
-      const index = parseInt(match[1], 10) - 1; // hash 是 1-based
-      if (index >= 0 && index < totalSlides) {
-        return index;
+      const match = hash.match(/^#slide-(\d+)$/);
+      if (match) {
+        const index = parseInt(match[1], 10) - 1; // hash 是 1-based
+      if (index >= 0 && index < totalSteps) {
+          return index;
+        }
       }
-    }
     return initialIndex;
-  }, [totalSlides, initialIndex]);
+  }, [totalSteps, initialIndex]);
 
   const [currentIndex, setCurrentIndex] = useState<number>(getIndexFromHash);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
@@ -43,18 +43,18 @@ export function useStepNavigation({
   // 導航函數
   const goTo = useCallback(
     (index: number) => {
-      const clampedIndex = Math.max(0, Math.min(index, totalSlides - 1));
+      const clampedIndex = Math.max(0, Math.min(index, totalSteps - 1));
       setCurrentIndex(clampedIndex);
       window.location.hash = `slide-${clampedIndex + 1}`;
     },
-    [totalSlides]
+    [totalSteps]
   );
 
   const next = useCallback(() => {
-    if (currentIndex < totalSlides - 1) {
+    if (currentIndex < totalSteps - 1) {
       goTo(currentIndex + 1);
     }
-  }, [currentIndex, totalSlides, goTo]);
+  }, [currentIndex, totalSteps, goTo]);
 
   const prev = useCallback(() => {
     if (currentIndex > 0) {
@@ -67,8 +67,8 @@ export function useStepNavigation({
   }, [goTo]);
 
   const goToLast = useCallback(() => {
-    goTo(totalSlides - 1);
-  }, [goTo, totalSlides]);
+    goTo(totalSteps - 1);
+  }, [goTo, totalSteps]);
 
   const toggleFullscreen = useCallback(async () => {
     // 如果有提供自訂的 fullscreen handler，使用它
@@ -216,7 +216,7 @@ export function useStepNavigation({
 
   return {
     currentIndex,
-    totalSlides,
+    totalSteps,
     isFullscreen,
     showNotes,
     goTo,

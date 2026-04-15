@@ -1,37 +1,15 @@
 /**
- * @module slides/types
- * @description 網頁簡報的類型定義
+ * @module studio/types
+ * @description Studio preview/navigation 的類型定義
  */
 
 import { Step } from '../shared/types';
 
-// ========================================
-// Slide 類型定義
-// ========================================
-
-export type SlideType = 'cover' | 'content' | 'summary';
-
-export type Slide = {
+export type StudioStepEntry = {
   id: string;
   index: number;
-  type: SlideType;
   step: Step;
   audioSrc?: string;
-};
-
-export type CoverSlide = Slide & {
-  type: 'cover';
-  step: Step & { contentType: 'cover' };
-};
-
-export type ContentSlide = Slide & {
-  type: 'content';
-  step: Step;
-};
-
-export type SummarySlide = Slide & {
-  type: 'summary';
-  step: Step & { contentType: 'summary' };
 };
 
 // ========================================
@@ -40,7 +18,7 @@ export type SummarySlide = Slide & {
 
 export type NavigationState = {
   currentIndex: number;
-  totalSlides: number;
+  totalSteps: number;
   isFullscreen: boolean;
   showNotes: boolean;
 };
@@ -60,14 +38,14 @@ export type NavigationActions = {
 // ========================================
 
 export type SlideContainerProps = {
-  slide: Slide;
+  entry: StudioStepEntry;
   isActive: boolean;
   showNotes: boolean;
 };
 
 export type SlideNavigationProps = {
   currentIndex: number;
-  totalSlides: number;
+  totalSteps: number;
   onNavigate: (index: number) => void;
 };
 
