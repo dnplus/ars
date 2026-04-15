@@ -1,11 +1,5 @@
 #!/usr/bin/env tsx
 import 'dotenv/config';
-import {
-  configExists,
-  createDefaultConfig,
-  readArsConfig,
-  type ArsConfig,
-} from './lib/ars-config';
 
 /**
  * @module cli/index
@@ -35,8 +29,6 @@ Commands:
     note                            Requires metadata.publish.youtubeUrl
   publish package <series>/<epId>   Export cover + SRT + render
   publish youtube <series>/<epId>   Package + upload YouTube
-  publish social <series>/<epId>    Optional social extension
-  publish all <series>/<epId>       Optional social extension
 
   audio generate <series>/<epId>    Generate audio using MiniMax TTS
     --speed <0.5-2.0>               Playback speed (default: 1.0)
@@ -48,16 +40,12 @@ Commands:
   slides <series>/<epId>            Launch web slides viewer
   review open <series>/<epId>       Launch slides review surface
   review intent <subcommand>        Manage .ars/review-intents inbox
-  studio                            Launch Remotion Studio (all series)
   init <series-name>                Initialize a new series from template
   theme <subcommand> <series>       Generate, tweak, or preview a series theme
   export cover <series>/<epId>      Export cover image of an episode
   export srt <series>/<epId>        Export SRT subtitle for YouTube CC
 
   upload youtube <series>/<epId>    Upload video to YouTube
-  upload threads <series>/<epId>    Optional social extension
-  upload fbgroup <series>/<epId>    Optional social extension
-  upload all <series>/<epId>        Optional social extension
     --dry-run                       Preview without uploading
     --privacy <public|unlisted|private>  YouTube privacy (default: private)
     --schedule <ISO-8601>           Schedule YouTube publish time
@@ -76,43 +64,8 @@ Publish notes:
 
 type CommandModule = { run: (args: string[]) => Promise<void> };
 
-function loadCliConfig(): ArsConfig {
-  try {
-    if (!configExists()) {
-      return createDefaultConfig();
-    }
-    return readArsConfig();
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
-    console.warn(`⚠️  Failed to read .ars/config.json, using defaults: ${detail}`);
-    return createDefaultConfig();
-  }
-}
-
-function isSocialUploadSubcommand(args: string[]): boolean {
-  return ['threads', 'fbgroup', 'all'].includes(args[0] ?? '');
-}
-
-function isSocialPublishSubcommand(args: string[]): boolean {
-  return ['social', 'all'].includes(args[0] ?? '');
-}
-
-function exitExtensionDisabled(name: string, configKey: string): never {
-  console.error(`Error: ${name} extension is disabled. Enable ${configKey} in .ars/config.json to use this command.`);
-  process.exit(1);
-}
-
-function exitExtensionUnavailable(name: string): never {
-  console.error(`Error: ${name} extension is enabled but not installed in this repo.`);
-  process.exit(1);
-}
-
-async function loadCommandModule(command: string, commandArgs: string[]): Promise<CommandModule> {
-  const config = loadCliConfig();
-
+async function loadCommandModule(command: string): Promise<CommandModule> {
   switch (command) {
-    case 'studio':
-      return import('./commands/studio');
     case 'slides':
       return import('./commands/slides');
     case 'episode':
@@ -120,9 +73,6 @@ async function loadCommandModule(command: string, commandArgs: string[]): Promis
     case 'prepare':
       return import('./commands/prepare');
     case 'publish':
-      if (isSocialPublishSubcommand(commandArgs) && !config.extensions.social.enabled) {
-        exitExtensionDisabled('social', 'extensions.social.enabled');
-      }
       return import('./commands/publish');
     case 'audio':
       return import('./commands/audio');
@@ -137,26 +87,11 @@ async function loadCommandModule(command: string, commandArgs: string[]): Promis
     case 'export':
       return import('./commands/export');
     case 'upload':
-      if (isSocialUploadSubcommand(commandArgs)) {
-        if (!config.extensions.social.enabled) {
-          exitExtensionDisabled('social', 'extensions.social.enabled');
-        }
-        try {
-          return await import('../extensions/social/upload-social');
-        } catch {
-          exitExtensionUnavailable('social');
-        }
-      }
       return import('./commands/upload');
     case 'pipeline':
       return import('./commands/pipeline');
     case 'review':
       return import('./commands/review');
-    case 'analytics':
-      if (!config.extensions.analytics.enabled) {
-        exitExtensionDisabled('analytics', 'extensions.analytics.enabled');
-      }
-      exitExtensionUnavailable('analytics');
     default:
       console.error(`❌ Unknown command: "${command}"`);
       console.log(HELP);
@@ -187,7 +122,7 @@ async function main() {
     process.exit(0);
   }
 
-  const mod = await loadCommandModule(command, commandArgs);
+  const mod = await loadCommandModule(command);
   await mod.run(commandArgs);
 }
 
