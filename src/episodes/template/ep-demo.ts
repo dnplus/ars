@@ -17,7 +17,6 @@ export const epDemo: Episode = {
 
   shell: {
     layout: 'streaming',
-    scene: 'webinar',
     config: {
       vtuber: {
         enabled: true,

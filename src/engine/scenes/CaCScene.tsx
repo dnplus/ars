@@ -1,6 +1,15 @@
 /**
- * @scene WebinarScene
- * @description Main content renderer with registry-first card routing.
+ * @scene CaCScene — Content as Code Scene
+ *
+ * CaC (Content as Code) is the core philosophy of ARS:
+ * episode content is declared as structured data (Step), not authored as
+ * raw video edits. This scene is the bridge that translates a Step's intent
+ * — its contentType, layoutMode, and data — into a visual frame.
+ *
+ * Responsibilities:
+ * 1. Route `step.contentType` to the correct card via the registry
+ * 2. Normalize step data into the card's expected props
+ * 3. Render the episode header (title / phase / description) when layoutMode = 'title-card'
  */
 
 import React from "react";
@@ -14,7 +23,7 @@ import { getCard } from "../cards/registry";
 import { Step, type LayoutMode } from "../shared/types";
 import { useTheme } from "../shared/ThemeContext";
 
-export type WebinarSceneProps = {
+export type CaCSceneProps = {
   step: Step;
   episodeTitle: string;
   episodeSubtitle?: string;
@@ -194,7 +203,7 @@ const renderRegistryCard = (
   );
 };
 
-export const WebinarScene: React.FC<WebinarSceneProps> = ({
+export const CaCScene: React.FC<CaCSceneProps> = ({
   step,
   episodeTitle,
   episodeSubtitle,

@@ -5,7 +5,7 @@
  * @agent-note
  * This is the **Default Layout** for most long-form content.
  * **Structure:**
- * - **Content Box** (Left): Renders the `children` (usually `WebinarScene` output).
+ * - **Content Box** (Left): Renders the `children` (usually `CaCScene` output).
  * - **VTuber Slot** (Right): Renders `<AnimatedVTuber>` driven by audio.
  * - **Subtitle Slot** (Bottom): Renders `<SubtitleOverlay>`.
  * 

@@ -6,7 +6,7 @@
  * **Use Case**: YouTube Shorts / TikTok / Reels.
  * **Structure:**
  * - **Top**: Topic Code (#HashTag).
- * - **Middle** (Content Box): Compact container for `WebinarScene` output.
+ * - **Middle** (Content Box): Compact container for `CaCScene` output.
  * - **Bottom**: VTuber extends to screen bottom, subtitles overlay on top of VTuber.
  * 
  * **Constraint**:

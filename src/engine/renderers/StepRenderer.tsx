@@ -1,7 +1,7 @@
 import React from "react";
 import { Audio, staticFile } from "remotion";
 import { resolveLayout } from "../layouts";
-import { getScene } from "../scenes";
+import { CaCScene } from "../scenes";
 import type { Episode, LayoutMode, Step } from "../shared/types";
 import type { SubtitlePhrase } from "../shared/subtitle";
 
@@ -38,7 +38,7 @@ export const StepRenderer: React.FC<StepRendererProps> = ({
 }) => {
   const shell = episode.shell!;
   const Layout = resolveLayout(shell.layout);
-  const Scene = getScene(shell.scene);
+  const Scene = CaCScene;
   const config = disableSubtitles
     ? {
         ...shell.config,

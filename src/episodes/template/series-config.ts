@@ -69,7 +69,6 @@ const vtuber = {
 export const SERIES_CONFIG: SeriesConfig = {
   shell: {
     layout: 'streaming',
-    scene: 'webinar',
     config: {
       vtuber,
       subtitle: DEFAULT_SUBTITLE_CONFIG,

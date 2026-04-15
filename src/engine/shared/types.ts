@@ -153,7 +153,6 @@ export type SeriesConfig = {
 
 export type ShellConfig = {
   layout: LayoutReference;
-  scene: "webinar";
   config: StreamingLayoutConfig;
   /** Series theme，由 config.ts 注入，runtime 決定各 series 的色系；省略則用 ThemeContext fallback */
   theme?: Theme;
