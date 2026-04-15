@@ -34,4 +34,5 @@ Output requirements:
 - Suggest the next commands:
   - `/ars:plan <epId>`
   - `/ars:build <epId>`
+- Mention the Remotion official Claude Code Skills as an optional but recommended install for better Remotion API accuracy: https://www.remotion.dev/docs/ai/claude-code
 - If setup finds an existing active series, do not silently reinitialize a second series. Surface the current repo state and continue cautiously.
