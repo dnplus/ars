@@ -21,6 +21,16 @@ type SlideAppProps = {
   episode: Episode;
 };
 
+type FixAppliedEntry = {
+  timestamp: string;
+  stepIds: string[];
+};
+
+type FixAppliedResponse = {
+  ok: boolean;
+  latest: FixAppliedEntry | null;
+};
+
 export const SlideApp: React.FC<SlideAppProps> = ({ episode }) => {
   const slides = useMemo(() => episodeToSlides(episode), [episode]);
   const queryParams = useMemo(() => new URLSearchParams(window.location.search), []);
@@ -82,6 +92,10 @@ export const SlideApp: React.FC<SlideAppProps> = ({ episode }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const slideContainerRef = useRef<HTMLDivElement>(null);
+  const reviewCaptureRef = useRef<HTMLDivElement>(null);
+  const [fixAppliedBanner, setFixAppliedBanner] = useState<FixAppliedEntry | null>(null);
+  const latestFixAppliedTimestampRef = useRef<string | null>(null);
+  const fixAppliedInitializedRef = useRef(false);
 
   const toggleAudio = useCallback(() => {
     if (!audioRef.current) return;
@@ -201,6 +215,52 @@ export const SlideApp: React.FC<SlideAppProps> = ({ episode }) => {
     return () => window.removeEventListener('resize', updateScale);
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const pollFixApplied = async () => {
+      try {
+        const response = await fetch('/__ars/fix-applied');
+        if (!response.ok) {
+          return;
+        }
+
+        const payload = (await response.json()) as FixAppliedResponse;
+        const latest = payload.latest;
+        if (!latest) {
+          return;
+        }
+
+        if (!fixAppliedInitializedRef.current) {
+          latestFixAppliedTimestampRef.current = latest.timestamp;
+          fixAppliedInitializedRef.current = true;
+          return;
+        }
+
+        if (latestFixAppliedTimestampRef.current === latest.timestamp) {
+          return;
+        }
+
+        latestFixAppliedTimestampRef.current = latest.timestamp;
+        if (!cancelled) {
+          setFixAppliedBanner(latest);
+        }
+      } catch (error) {
+        console.warn('Fix-applied poll failed:', error);
+      }
+    };
+
+    void pollFixApplied();
+    const timer = window.setInterval(() => {
+      void pollFixApplied();
+    }, 3000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
+
   if (!currentSlide) {
     return (
       <div className="slide-app slide-app-error">
@@ -236,26 +296,29 @@ export const SlideApp: React.FC<SlideAppProps> = ({ episode }) => {
       {/* 完整重用 StreamingLayout + WebinarScene，畫面與影片一致 */}
       <div className="slide-viewport">
         <div ref={slideContainerRef} className="slide-content-wrapper">
-          <StreamingLayout
-            config={slidesConfig}
-            decorationText={episodeInfo.decorationText}
-            audioSrc={dummyAudioSrc}
-            layoutMode={currentLayoutMode}
-            prevLayoutMode={prevLayoutMode}
-            backgroundPreset={step.backgroundPreset}
-          >
-            <WebinarScene
-              step={step}
-              episodeTitle={episodeInfo.title}
-              episodeSubtitle={episodeInfo.subtitle}
-              channelName={episodeInfo.channelName}
-              episodeTag={episodeInfo.episodeTag}
-            />
-          </StreamingLayout>
+          <div ref={reviewCaptureRef} className="slide-review-capture">
+            <StreamingLayout
+              config={slidesConfig}
+              decorationText={episodeInfo.decorationText}
+              audioSrc={dummyAudioSrc}
+              layoutMode={currentLayoutMode}
+              prevLayoutMode={prevLayoutMode}
+              backgroundPreset={step.backgroundPreset}
+            >
+              <WebinarScene
+                step={step}
+                episodeTitle={episodeInfo.title}
+                episodeSubtitle={episodeInfo.subtitle}
+                channelName={episodeInfo.channelName}
+                episodeTag={episodeInfo.episodeTag}
+              />
+            </StreamingLayout>
+          </div>
           <ActionBar
             stepId={step.id}
             series={fallbackSeries}
             epId={fallbackEpId}
+            captureTargetRef={reviewCaptureRef}
           />
         </div>
 
@@ -266,6 +329,21 @@ export const SlideApp: React.FC<SlideAppProps> = ({ episode }) => {
           </div>
         )}
       </div>
+
+      {fixAppliedBanner && (
+        <div className="slide-fix-banner" role="status" aria-live="polite">
+          <div className="slide-fix-banner-message">
+            Steps fixed: {fixAppliedBanner.stepIds.join(', ')} — reload to confirm
+          </div>
+          <button
+            className="slide-fix-banner-btn"
+            type="button"
+            onClick={() => window.location.reload()}
+          >
+            Reload
+          </button>
+        </div>
+      )}
 
       {/* Slide Overview Panel */}
       {showOverview && (

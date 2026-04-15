@@ -17,6 +17,7 @@ export interface ReviewIntentFeedback {
 
 export interface ReviewIntentAttachments {
   screenshotPath?: string;
+  screenshotDataUrl?: string;
 }
 
 export interface ReviewIntent {

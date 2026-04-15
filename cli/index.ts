@@ -50,6 +50,7 @@ Commands:
   review intent <subcommand>        Manage .ars/review-intents inbox
   studio                            Launch Remotion Studio (all series)
   init <series-name>                Initialize a new series from template
+  theme <subcommand> <series>       Generate, tweak, or preview a series theme
   export cover <series>/<epId>      Export cover image of an episode
   export srt <series>/<epId>        Export SRT subtitle for YouTube CC
 
@@ -131,6 +132,8 @@ async function loadCommandModule(command: string, commandArgs: string[]): Promis
       return import('./commands/doctor');
     case 'init':
       return import('./commands/init');
+    case 'theme':
+      return import('./commands/theme');
     case 'export':
       return import('./commands/export');
     case 'upload':

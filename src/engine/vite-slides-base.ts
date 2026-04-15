@@ -20,6 +20,8 @@ export interface SlidesConfigOptions {
 
 export function createSlidesConfig(options: SlidesConfigOptions): UserConfig {
   const rootDir = process.cwd();
+  const fixAppliedEntries = new Map<string, FixAppliedEntry>();
+  let latestFixApplied: FixAppliedEntry | null = null;
 
   // SERIES/EP 由 CLI slides.ts 傳入，用於自動開啟 URL
   const series = process.env.SERIES || 'template';
@@ -72,9 +74,7 @@ export function createSlidesConfig(options: SlidesConfigOptions): UserConfig {
                   message: asRequiredString(body.message, 'message'),
                   severity: asReviewSeverity(body.severity ?? 'medium'),
                 },
-                attachments: asOptionalString(body.screenshotPath)
-                  ? { screenshotPath: asOptionalString(body.screenshotPath) }
-                  : undefined,
+                attachments: asReviewAttachments(body),
                 rootDir,
               });
 
@@ -87,6 +87,75 @@ export function createSlidesConfig(options: SlidesConfigOptions): UserConfig {
               res.setHeader('Content-Type', 'application/json');
               res.end(JSON.stringify({ ok: false, error: message }));
             }
+          });
+        },
+      },
+      {
+        name: 'review-session-api',
+        configureServer(server: any) {
+          server.middlewares.use(async (req: any, res: any, next: any) => {
+            const url = new URL(req.url, 'http://localhost');
+
+            if (url.pathname === '/__ars/review-session-end') {
+              if (req.method !== 'POST') {
+                writeJson(res, 405, { ok: false, error: 'Method not allowed' });
+                return;
+              }
+
+              try {
+                const reviewIntentsDir = path.join(rootDir, '.ars', 'review-intents');
+                fs.mkdirSync(reviewIntentsDir, { recursive: true });
+                const intentCount = fs.readdirSync(reviewIntentsDir)
+                  .filter((fileName) => fileName.endsWith('.json'))
+                  .length;
+                const payload = {
+                  timestamp: new Date().toISOString(),
+                  intentCount,
+                };
+
+                fs.writeFileSync(
+                  path.join(reviewIntentsDir, '_session-end.flag'),
+                  `${JSON.stringify(payload, null, 2)}\n`,
+                  'utf-8',
+                );
+
+                writeJson(res, 200, { ok: true, intentCount });
+              } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                writeJson(res, 500, { ok: false, error: message });
+              }
+              return;
+            }
+
+            if (url.pathname === '/__ars/fix-applied') {
+              if (req.method === 'POST') {
+                try {
+                  const body = await readJsonBody(req);
+                  const stepIds = asStepIds(body.stepIds);
+                  const timestamp = new Date().toISOString();
+                  const entry = { timestamp, stepIds };
+
+                  fixAppliedEntries.set(timestamp, entry);
+                  latestFixApplied = entry;
+
+                  writeJson(res, 200, { ok: true });
+                } catch (error) {
+                  const message = error instanceof Error ? error.message : String(error);
+                  writeJson(res, 400, { ok: false, error: message });
+                }
+                return;
+              }
+
+              if (req.method === 'GET') {
+                writeJson(res, 200, { ok: true, latest: latestFixApplied });
+                return;
+              }
+
+              writeJson(res, 405, { ok: false, error: 'Method not allowed' });
+              return;
+            }
+
+            next();
           });
         },
       },
@@ -140,6 +209,11 @@ export function createSlidesConfig(options: SlidesConfigOptions): UserConfig {
   }) as UserConfig;
 }
 
+type FixAppliedEntry = {
+  timestamp: string;
+  stepIds: string[];
+};
+
 async function readJsonBody(req: NodeJS.ReadableStream): Promise<Record<string, unknown>> {
   let raw = '';
   for await (const chunk of req) {
@@ -174,6 +248,28 @@ function asOptionalString(value: unknown): string | undefined {
   return value.trim();
 }
 
+function asReviewAttachments(body: Record<string, unknown>) {
+  const attachmentsValue = body.attachments;
+  const screenshotPath =
+    asOptionalString(body.screenshotPath) ||
+    (attachmentsValue && typeof attachmentsValue === 'object' && !Array.isArray(attachmentsValue)
+      ? asOptionalString((attachmentsValue as Record<string, unknown>).screenshotPath)
+      : undefined);
+  const screenshotDataUrl =
+    attachmentsValue && typeof attachmentsValue === 'object' && !Array.isArray(attachmentsValue)
+      ? asOptionalString((attachmentsValue as Record<string, unknown>).screenshotDataUrl)
+      : undefined;
+
+  if (!screenshotPath && !screenshotDataUrl) {
+    return undefined;
+  }
+
+  return {
+    screenshotPath,
+    screenshotDataUrl,
+  };
+}
+
 function asReviewUi(value: unknown): 'slides' | 'studio-exp' {
   if (value === 'slides' || value === 'studio-exp') {
     return value;
@@ -196,4 +292,27 @@ function asReviewSeverity(value: unknown): 'low' | 'medium' | 'high' {
   }
 
   throw new Error('Invalid review feedback severity.');
+}
+
+function asStepIds(value: unknown): string[] {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new Error('Invalid "stepIds" value.');
+  }
+
+  const stepIds = value.map((entry) => asRequiredString(entry, 'stepIds[]'));
+  return Array.from(new Set(stepIds));
+}
+
+function writeJson(
+  res: {
+    statusCode: number;
+    setHeader(name: string, value: string): void;
+    end(body: string): void;
+  },
+  statusCode: number,
+  payload: Record<string, unknown>,
+) {
+  res.statusCode = statusCode;
+  res.setHeader('Content-Type', 'application/json');
+  res.end(JSON.stringify(payload));
 }

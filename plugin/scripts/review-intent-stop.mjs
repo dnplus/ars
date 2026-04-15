@@ -8,6 +8,9 @@ function main() {
     return;
   }
 
+  const sessionEndFlagPath = path.join(reviewIntentDir, '_session-end.flag');
+  const hasSessionEndFlag = fs.existsSync(sessionEndFlagPath);
+
   const entries = fs.readdirSync(reviewIntentDir, { withFileTypes: true });
   let pendingCount = 0;
 
@@ -25,6 +28,13 @@ function main() {
     } catch {
       continue;
     }
+  }
+
+  if (hasSessionEndFlag) {
+    console.log(
+      `ARS: Review session completed with ${pendingCount} pending intents. Run /ars:scene-fix all to batch-process all fixes.`,
+    );
+    return;
   }
 
   if (pendingCount > 0) {
