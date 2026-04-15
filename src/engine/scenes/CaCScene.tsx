@@ -187,7 +187,7 @@ const renderRegistryCard = (
 ) => {
   const resolvedType = resolveRegistryType(step.contentType);
   const spec = getCard(resolvedType);
-  const CardComponent = spec.component as React.ComponentType<any>;
+  const CardComponent = spec.component as React.ComponentType<Record<string, unknown>>;
 
   return (
     <CardComponent

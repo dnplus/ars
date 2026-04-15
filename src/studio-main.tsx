@@ -56,7 +56,7 @@ for (const filePath in rawModules) {
   const mod = rawModules[filePath];
   const episode = Object.values(mod).find(
     (exp): exp is Episode =>
-      typeof exp === 'object' && exp !== null && 'steps' in (exp as any)
+      typeof exp === 'object' && exp !== null && 'steps' in (exp as Record<string, unknown>)
   ) as Episode | undefined;
 
   if (episode) {

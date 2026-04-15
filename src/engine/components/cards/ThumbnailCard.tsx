@@ -56,11 +56,11 @@ export const ThumbnailCard: React.FC<ThumbnailCardProps> = ({
 
   // 直式：在 #數字 後換行；橫式：去標點連在一起
   const titleLines: string[] = (() => {
-    const stripped = title.replace(/[！？。，、；：「」『』（）【】《》〈〉…—～\-!?,.:;'"()\[\]{}<>]/g, ' ').replace(/\s+/g, ' ').trim();
+    const stripped = title.replace(/[！？。，、；：「」『』（）【】《》〈〉…—～\-!?,.:;'"()[\]{}<>]/g, ' ').replace(/\s+/g, ' ').trim();
     if (isPortrait) {
       const match = title.match(/^(.+?#\d+)\s*[-—]?\s*(.+)$/);
       if (match) {
-        return [match[1].trim(), match[2].replace(/[！？。，、；：「」『』（）【】《》〈〉…—～\-!?,.:;'"()\[\]{}<>]/g, ' ').replace(/\s+/g, ' ').trim()].filter(Boolean);
+        return [match[1].trim(), match[2].replace(/[！？。，、；：「」『』（）【】《》〈〉…—～\-!?,.:;'"()[\]{}<>]/g, ' ').replace(/\s+/g, ' ').trim()].filter(Boolean);
       }
     }
     return [stripped];
@@ -270,7 +270,7 @@ export const ThumbnailCard: React.FC<ThumbnailCardProps> = ({
             WebkitTextStroke: `6px #2a1f10`,
             paintOrder: 'stroke fill',
             maxWidth: '100%',
-            wordBreak: isPortrait ? 'break-word' as any : 'keep-all',
+            wordBreak: isPortrait ? 'break-word' as React.CSSProperties['wordBreak'] : 'keep-all',
             letterSpacing: titleFontSize > 100 ? -2 : -1,
           }}
         >

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import mermaid from "mermaid";
+import { random } from "remotion";
 import { WindowSlide } from "../../primitives/WindowSlide";
 import type { WindowFrameKind } from "../../primitives/types";
 import { useTheme } from "../../shared/ThemeContext";
@@ -72,7 +73,7 @@ export const MermaidCardComponent: React.FC<
       }
 
       try {
-        const id = `ars-mermaid-${Math.random().toString(36).slice(2)}`;
+        const id = `ars-mermaid-${random(null).toString(36).slice(2)}`;
         const result = await mermaid.render(id, data.chart);
 
         if (!active) {
