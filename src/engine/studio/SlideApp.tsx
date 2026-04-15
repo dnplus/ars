@@ -11,6 +11,7 @@ import { ThemeProvider } from '../shared/ThemeContext';
 import { ActionBar } from './components/ActionBar';
 import { FixListSidebar } from './components/FixListSidebar';
 import { SlideComposition, type SlideCompositionProps } from './SlideComposition';
+import { EPISODE_SCOPE_ID } from './constants';
 
 import './styles/studio.css';
 
@@ -81,6 +82,8 @@ export const SlideApp: React.FC<StudioAppProps> = ({ episode }) => {
   const playerRef = useRef<PlayerRef>(null);
   const [fixAppliedBanner, setFixAppliedBanner] = useState<FixAppliedEntry | null>(null);
   const [showFixList, setShowFixList] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
+  const [audioExists, setAudioExists] = useState<boolean | null>(null);
   const latestFixTimestampRef = useRef<string | null>(null);
   const fixInitializedRef = useRef(false);
 
@@ -122,8 +125,8 @@ export const SlideApp: React.FC<StudioAppProps> = ({ episode }) => {
   );
 
   const viewportRef = useRef<HTMLDivElement>(null);
-  const [canvasScreenRect, setCanvasScreenRect] = useState<DOMRect | null>(null);
-  const [currentScale, setCurrentScale] = useState(1);
+  type CanvasOverlay = { scale: number; top: number; left: number; width: number; height: number };
+  const [canvasOverlay, setCanvasOverlay] = useState<CanvasOverlay | null>(null);
 
   // Scale canvas to fit the left pane (sidebar-aware via flex)
   useEffect(() => {
@@ -136,16 +139,27 @@ export const SlideApp: React.FC<StudioAppProps> = ({ episode }) => {
         pane.clientHeight / compositionHeight,
       );
       canvas.style.transform = `scale(${scale})`;
-      setCurrentScale(scale);
-      // After transform applied, measure canvas screen position
+      // rAF: browser must commit the transform before we can measure
       requestAnimationFrame(() => {
-        setCanvasScreenRect(canvas.getBoundingClientRect());
+        const cr = canvas.getBoundingClientRect();
+        const vr = pane.getBoundingClientRect();
+        setCanvasOverlay({ scale, top: cr.top - vr.top, left: cr.left - vr.left, width: cr.width, height: cr.height });
       });
     };
     updateScale();
     window.addEventListener('resize', updateScale);
     return () => window.removeEventListener('resize', updateScale);
   }, [compositionWidth, compositionHeight, showFixList]);
+
+  // Check if audio file exists for current slide
+  useEffect(() => {
+    setAudioExists(null);
+    const src = currentSlide.audioSrc;
+    if (!src) { setAudioExists(false); return; }
+    fetch(`/${src}`, { method: 'HEAD' })
+      .then((r) => setAudioExists(r.ok))
+      .catch(() => setAudioExists(false));
+  }, [currentSlide.audioSrc]);
 
   // On slide change: seek to 0 and play
   useEffect(() => {
@@ -256,19 +270,12 @@ export const SlideApp: React.FC<StudioAppProps> = ({ episode }) => {
               </div>
             </div>
 
-            {/* Card ✨ — top-left of canvas (outside scaled canvas) */}
-            {canvasScreenRect && (() => {
-              const vp = viewportRef.current?.getBoundingClientRect();
-              if (!vp) return null;
-              const topOffset = canvasScreenRect.top - vp.top;
-              const leftOffset = canvasScreenRect.left - vp.left;
-              const pad = 16 * currentScale;
-              return (
-                <div style={{ position: 'absolute', top: topOffset + pad, left: leftOffset + pad, zIndex: 120 }}>
-                  <ActionBar stepId={step.id} series={fallbackSeries} epId={fallbackEpId} kind="visual" />
-                </div>
-              );
-            })()}
+            {/* Card ✨ — top-left of canvas (outside scaled canvas, no transform interference) */}
+            {canvasOverlay && (
+              <div style={{ position: 'absolute', top: canvasOverlay.top + 16 * canvasOverlay.scale, left: canvasOverlay.left + 16 * canvasOverlay.scale, zIndex: 120 }}>
+                <ActionBar stepId={step.id} series={fallbackSeries} epId={fallbackEpId} kind="visual" />
+              </div>
+            )}
           </div>
 
           {/* Narration bar — between viewport and nav */}
@@ -335,10 +342,17 @@ export const SlideApp: React.FC<StudioAppProps> = ({ episode }) => {
 
           <div className="nav-center">
             {/* Global ✨ — center of nav bar */}
-            <ActionBar stepId="__episode__" series={fallbackSeries} epId={fallbackEpId} kind="other" />
+            <ActionBar stepId={EPISODE_SCOPE_ID} series={fallbackSeries} epId={fallbackEpId} kind="other" />
           </div>
 
-          <div className="nav-right">
+          <div className="nav-right" style={{ position: 'relative' }}>
+            <button
+              className={`nav-btn${showInfo ? ' active' : ''}`}
+              onClick={() => setShowInfo((v) => !v)}
+              title="步驟資訊"
+            >
+              📊
+            </button>
             <button
               className="nav-btn"
               onClick={() => setShowFixList((v) => !v)}
@@ -353,6 +367,34 @@ export const SlideApp: React.FC<StudioAppProps> = ({ episode }) => {
             >
               ⛶
             </button>
+
+            {showInfo && (
+              <div style={{
+                position: 'absolute',
+                bottom: 'calc(100% + 8px)',
+                right: 0,
+                width: 240,
+                background: 'rgba(8,15,29,0.92)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                borderRadius: 12,
+                padding: '12px 14px',
+                backdropFilter: 'blur(16px)',
+                zIndex: 300,
+                fontSize: 12,
+                color: '#ccc',
+                lineHeight: 1.8,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 2,
+              }}>
+                <div><span style={{ color: '#888' }}>series / ep</span>　{fallbackSeries} / {fallbackEpId}</div>
+                <div><span style={{ color: '#888' }}>step</span>　{step.id}</div>
+                <div><span style={{ color: '#888' }}>卡片類型</span>　{step.layoutMode ?? '—'}</div>
+                <div><span style={{ color: '#888' }}>duration</span>　{step.durationInSeconds ?? 5}s</div>
+                <div><span style={{ color: '#888' }}>語音</span>　{audioExists === null ? '…' : audioExists ? '✓ 已生成' : '✗ 未生成'}</div>
+                <div><span style={{ color: '#888' }}>口播字數</span>　{step.narration ? `${step.narration.length} 字` : '—'}</div>
+              </div>
+            )}
           </div>
 
           <div className="nav-progress-bar">

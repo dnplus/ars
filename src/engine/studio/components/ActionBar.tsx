@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReviewIntentFeedback } from '../../../types/review-intent';
+import { INTENT_SUBMITTED_EVENT } from '../constants';
 
 type ActionBarProps = {
   stepId: string;
@@ -88,7 +89,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({ stepId, series, epId, kind
       if (!res.ok || !payload.intent) throw new Error(payload.error ?? `${res.status}`);
       setToast({ tone: 'success', message: `已記錄 ${payload.intent.id}` });
       setIsOpen(false);
-      window.dispatchEvent(new CustomEvent('ars:intent-submitted'));
+      window.dispatchEvent(new CustomEvent(INTENT_SUBMITTED_EVENT));
     } catch (err) {
       setToast({ tone: 'error', message: err instanceof Error ? err.message : String(err) });
     } finally {

@@ -4,6 +4,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import type { ReviewIntent } from '../../../types/review-intent';
+import { EPISODE_SCOPE_ID, INTENT_SUBMITTED_EVENT, KIND_LABELS } from '../constants';
 
 type FixListSidebarProps = {
   onClose: () => void;
@@ -45,11 +46,11 @@ export const FixListSidebar: React.FC<FixListSidebarProps> = ({ onClose }) => {
 
     void fetchIntents();
     const timer = window.setInterval(() => void fetchIntents(), 5000);
-    window.addEventListener('ars:intent-submitted', fetchIntents);
+    window.addEventListener(INTENT_SUBMITTED_EVENT, fetchIntents);
     return () => {
       cancelled = true;
       window.clearInterval(timer);
-      window.removeEventListener('ars:intent-submitted', fetchIntents);
+      window.removeEventListener(INTENT_SUBMITTED_EVENT, fetchIntents);
     };
   }, []);
 
@@ -146,7 +147,7 @@ export const FixListSidebar: React.FC<FixListSidebarProps> = ({ onClose }) => {
                     flexShrink: 0,
                   }}
                 >
-                  {({'visual': '卡片', 'content': '口播', 'other': '整集', 'timing': '時序'} as Record<string, string>)[intent.feedback.kind] ?? intent.feedback.kind}
+                  {KIND_LABELS[intent.feedback.kind] ?? intent.feedback.kind}
                 </span>
                 <span
                   style={{
@@ -159,7 +160,7 @@ export const FixListSidebar: React.FC<FixListSidebarProps> = ({ onClose }) => {
                     flex: 1,
                   }}
                 >
-                  {intent.target.stepId === '__episode__' ? '整集' : intent.target.stepId}
+                  {intent.target.stepId === EPISODE_SCOPE_ID ? '整集' : intent.target.stepId}
                 </span>
                 {intent.processedAt ? (
                   <span style={{ fontSize: 11, color: '#777', flexShrink: 0 }}>✓ 已修正</span>
