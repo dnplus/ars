@@ -121,14 +121,17 @@ export const SlideApp: React.FC<StudioAppProps> = ({ episode }) => {
     Math.round((currentSlide?.step.durationInSeconds ?? 5) * fps),
   );
 
-  // Scale canvas to fit viewport
+  const SIDEBAR_WIDTH = 320;
+
+  // Scale canvas to fit viewport (sidebar-aware)
   useEffect(() => {
     const updateScale = () => {
       const viewport = appRef.current?.querySelector('.studio-viewport') as HTMLElement | null;
       const canvas = canvasRef.current;
       if (!viewport || !canvas) return;
+      const availableWidth = viewport.clientWidth - (showFixList ? SIDEBAR_WIDTH : 0);
       const scale = Math.min(
-        viewport.clientWidth / compositionWidth,
+        availableWidth / compositionWidth,
         viewport.clientHeight / compositionHeight,
       );
       canvas.style.transform = `scale(${scale})`;
@@ -136,7 +139,7 @@ export const SlideApp: React.FC<StudioAppProps> = ({ episode }) => {
     updateScale();
     window.addEventListener('resize', updateScale);
     return () => window.removeEventListener('resize', updateScale);
-  }, [compositionWidth, compositionHeight]);
+  }, [compositionWidth, compositionHeight, showFixList]);
 
   // On slide change: seek to 0 and play
   useEffect(() => {
@@ -208,7 +211,7 @@ export const SlideApp: React.FC<StudioAppProps> = ({ episode }) => {
         style={themeStyles}
       >
         {/* Main viewport */}
-        <div className="studio-viewport" style={{ position: 'relative' }}>
+        <div className="studio-viewport" style={{ position: 'relative', overflow: 'hidden' }}>
           <div className="studio-scale-wrapper">
             {/* Fixed-resolution canvas scaled to fit */}
             <div
