@@ -23,3 +23,4 @@ Behavior:
 Batch mode:
 - `/ars:apply-review all` processes all pending intents in batch.
 - Group intents by target episode when practical, patch each affected step, and validate once at the end of the batch for each touched episode.
+- `_session-end.flag` is written automatically by the Vite Studio plugin when the review session window is closed. It is not a manual file. If it is missing, the review session has not been formally closed yet — ask the user to close the Studio window first.

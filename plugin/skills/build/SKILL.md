@@ -19,5 +19,6 @@ Behavior:
 - If the plan is missing or ambiguous, stop and ask for `/ars:plan <epId>` instead of guessing.
 
 Completion:
-- Mark build-related todo items as done when `ep.ts` reflects the approved plan.
+- Run `npx ars episode validate <epId>` after writing `ep.ts`. Fix any validation errors before marking build done.
+- Mark build-related todo items as done when `ep.ts` reflects the approved plan and validation passes.
 - Report any remaining polish or review follow-up work separately.
