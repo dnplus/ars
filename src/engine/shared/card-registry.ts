@@ -16,8 +16,6 @@ export const CARD_REGISTRY: CardRegistryEntry[] = [
   { type: "markdown", status: "active", generalPurpose: true },
   { type: "summary", status: "active", generalPurpose: true },
   { type: "ticker", status: "active", generalPurpose: true },
-  { type: "liveScene", status: "active" },
-  { type: "threeScene", status: "active" },
 ];
 
 export const CARD_REGISTRY_BY_TYPE = new Map(

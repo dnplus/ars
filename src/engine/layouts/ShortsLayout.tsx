@@ -34,13 +34,10 @@ export const ShortsLayout: React.FC<StreamingLayoutProps> = ({
   const theme = useTheme();
   const isFullscreen = layoutMode === 'fullscreen';
 
-  // liveScene uses shared background from Composition level
-  const isLiveScene = (backgroundPreset as string) === 'live-scene';
-
-  // 1. 背景 - liveScene 時透明，否則使用 Cream/Beige
+  // 1. 背景
   const containerStyle: React.CSSProperties = {
     fontFamily: theme.fonts.main,
-    background: isLiveScene ? 'transparent' : theme.colors.surfaceLight,
+    background: theme.colors.surfaceLight,
   };
 
   // 2. 內容框 (Card Container)
@@ -75,11 +72,11 @@ export const ShortsLayout: React.FC<StreamingLayoutProps> = ({
     textAlign: "center",
     fontSize: 56,
     fontWeight: 900,
-    color: isLiveScene ? theme.colors.onDark : theme.colors.onLight,
+    color: theme.colors.onLight,
     letterSpacing: "0.1em",
     opacity: isFullscreen ? 0 : 1,
     zIndex: 2,
-    textShadow: isLiveScene ? '0 2px 8px rgba(0,0,0,0.6)' : 'none',
+    textShadow: 'none',
   };
 
   // 是否顯示 VTuber (enabled 且有提供圖片路徑)

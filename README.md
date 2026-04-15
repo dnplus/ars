@@ -17,6 +17,7 @@ ARS is a Claude Code plugin-first workflow for building Remotion-based video epi
 - Opens a local review surface that writes review intents into `.ars/review-intents/`
 - Prepares YouTube metadata artifacts for human review
 - Packages and uploads finished episodes to YouTube
+- Lets Claude Code generate optional YouTube analytics reports from the existing API helpers
 
 ## Requirements
 
@@ -132,6 +133,16 @@ npx ars prepare youtube ep001
 npx ars publish youtube ep001 --privacy private
 ```
 
+### 9. Optional analytics report
+
+Inside Claude Code:
+
+```text
+/ars:analytics --days 28
+```
+
+This skill uses the existing YouTube analytics helpers to produce a concise report under `.ars/analytics/`.
+
 ## Core skills
 
 - `/ars:setup`: interview + orchestration for first-run onboarding
@@ -143,6 +154,7 @@ npx ars publish youtube ep001 --privacy private
 - `/ars:polish`: late-stage tier B refinement
 - `/ars:prepare-youtube`: fill the prepare artifact with title, description, and tags
 - `/ars:publish-youtube`: confirmed YouTube publish flow
+- `/ars:analytics`: optional Claude Code report for recent YouTube channel performance
 
 ## CLI surface
 

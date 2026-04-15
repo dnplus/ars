@@ -5,8 +5,6 @@
  * Usage:
  *   npx ars export cover <epId>                   Export a single cover
  *   npx ars export cover <series>/*               Export all covers for a series
- *   npx ars export social-single <series>/<epId>  Export a single social cover card
- *   npx ars export carousel-opener <series>/<epId> Export a single carousel opener card
  *   npx ars export srt <epId>                     Export SRT subtitle for YouTube CC
  */
 import { execSync } from 'child_process';
@@ -17,20 +15,16 @@ import type { Episode } from '../../src/engine/shared/types';
 import type { SubtitlePhrase } from '../../src/engine/shared/subtitle';
 
 const HELP = `
-📸 ARS Export — Cover / Social Cards / SRT Export
+📸 ARS Export — Cover / SRT Export
 
 Usage:
   npx ars export cover <epId>             Export a single episode cover
   npx ars export cover <series>/*         Export all covers for a series
-  npx ars export social-single <series>/<epId>    Export a single social single-cover card
-  npx ars export carousel-opener <series>/<epId>  Export a single carousel opener card
   npx ars export srt <epId>               Export SRT subtitle for YouTube CC
 
 Examples:
   npx ars export cover ep001
   npx ars export cover template/*
-  npx ars export social-single template/ep001
-  npx ars export carousel-opener template/ep001
   npx ars export srt ep001
 `;
 
@@ -134,7 +128,7 @@ export async function run(args: string[]) {
     return exportSrt(args.slice(1));
   }
 
-  if (!['cover', 'social-single', 'carousel-opener'].includes(subcommand)) {
+  if (subcommand !== 'cover') {
     console.error('❌ Unknown export subcommand:', subcommand);
     console.log(HELP);
     process.exit(1);
@@ -148,16 +142,8 @@ export async function run(args: string[]) {
   }
 
   const root = path.resolve(__dirname, '../..');
-  const compositionPrefix =
-    subcommand === 'cover'
-      ? 'cover'
-      : subcommand === 'social-single'
-        ? 'social-single'
-        : 'carousel-opener';
-  const outBase =
-    subcommand === 'cover'
-      ? path.join(root, 'output/covers')
-      : path.join(root, 'output/social-covers', compositionPrefix);
+  const compositionPrefix = 'cover';
+  const outBase = path.join(root, 'output/covers');
 
   // Resolve episodes to export
   const targets: { series: string; epId: string }[] = [];

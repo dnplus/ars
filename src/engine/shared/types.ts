@@ -9,7 +9,6 @@
  *   - Primary: `cover|ticker|summary|markdown|code|image|mermaid`
  *   - Custom: `<series>/<card-name>`
  *   - Legacy alias: `text`
- *   - Advanced: `liveScene|threeScene`
  *
  * @architectural-role Dictionary
  * Used by: `src/episodes/*.ts`, `src/Composition.tsx`, `scripts/*.ts`
@@ -72,7 +71,7 @@ export type EpisodeMetadata = {
   id?: string;
   /**
    * Series 名稱（已棄用 - 現由目錄名自動推導）
-   * @deprecated Root.tsx 和 slides-main.tsx 會自動從目錄名注入
+   * @deprecated Root.tsx 會自動從目錄名注入
    */
   series?: string;
   title: string;
@@ -120,7 +119,7 @@ export type EpisodeMetadata = {
 
 /**
  * SeriesConfig — 每個 series 的統一配置
- * 由 series-config.ts 匯出，Root.tsx / slides-main.tsx 自動載入
+ * 由 series-config.ts 匯出，Root.tsx 自動載入
  */
 export type SeriesConfig = {
   shell: ShellConfig;
@@ -181,11 +180,10 @@ export type QRCodeCTA = { url: string; title?: string; subtitle?: string };
  * - Primary: `cover|ticker|summary|markdown|code|image|mermaid`
  * - Custom: `<series>/<card-name>`
  * - Legacy alias: `text`
- * - Advanced: `liveScene|threeScene`
  */
 export type Step = {
   id: string;
-  /** Primary: cover/ticker/summary/markdown/code/image/mermaid; custom: <series>/<card-name>; legacy alias: text; advanced: liveScene/threeScene */
+  /** Primary: cover/ticker/summary/markdown/code/image/mermaid; custom: <series>/<card-name>; legacy alias: text */
   contentType:
     | "cover"
     | "text" // @legacy -> 改用 markdown
@@ -195,8 +193,6 @@ export type Step = {
     | "markdown"
     | "summary"
     | "ticker"
-    | "liveScene" // @advanced
-    | "threeScene" // @advanced
     | `${string}/${string}`;
   /** Custom card payload for series-scoped CardSpec types. */
   data?: unknown;
@@ -256,32 +252,6 @@ export type Step = {
 
   // Ticker Card
   tickerStyle?: "flash" | "kinetic";
-
-  // Live Scene Card (動態像素房間背景)
-  /** JSON stringified LiveSceneData object */
-  liveScene?: string;
-
-  // Three.js Scene Card
-  /** Three.js scene preset: 'particles' | 'orbit' | 'nodes' | 'orb' */
-  threeSceneType?: "particles" | "orbit" | "nodes" | "orb";
-  /** Headline text overlay on 3D scene */
-  threeHeadline?: string;
-  /** Body text overlay on 3D scene */
-  threeBodyText?: string;
-  /** Text overlay style: 'glass' (glassmorphism card) | 'bare' (text with shadow) | 'none' */
-  threeTextStyle?: "glass" | "bare" | "none";
-  /** Node data for 'nodes' scene type */
-  threeNodes?: {
-    label: string;
-    position: [number, number, number];
-    color: string;
-    delay?: number;
-    broken?: boolean;
-  }[];
-  /** Override primary color for Three.js scene */
-  threePrimaryColor?: string;
-  /** Override secondary color for Three.js scene */
-  threeSecondaryColor?: string;
 
   /** 此 step 的 TTS 聲音，覆蓋 episode.metadata.voiceId（多人對話用） */
   voiceId?: string;

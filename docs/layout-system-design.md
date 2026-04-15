@@ -24,8 +24,7 @@
   - `ShellConfig.layout` 也是固定 union
 - [src/engine/Composition.tsx](/Users/dylan_lu/cowork-workspace/ars/src/engine/Composition.tsx:43)
   - 影片渲染直接 `getLayout(shell.layout)`
-- [src/slides-main.tsx](/Users/dylan_lu/cowork-workspace/ars/src/slides-main.tsx:56)
-  - slides runtime 會把 `series-config.ts` 的 `shell` 注入 episode
+- runtime 會把 `series-config.ts` 的 `shell` 注入 episode
 
 對照 card system：
 
@@ -189,7 +188,7 @@ const isShorts = layoutKey === 'shorts';
 
 - `layout: 'streaming'` 與 `layout: 'shorts'` 不需改
 - `StreamingLayoutConfig` 與 `shell.config` 結構不需改
-- `Root.tsx`、`slides-main.tsx` 注入 `SeriesConfig.shell` 的流程不需改
+- `Root.tsx` 注入 `SeriesConfig.shell` 的流程不需改
 
 唯一要同步更新的是型別和所有使用 `shell.layout === ...` 的地方。
 

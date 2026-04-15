@@ -38,7 +38,7 @@ Date: 2026-04-15
 - `.ars/config.json` 實際內容與 `ArsConfig` 型別已經漂移，doctor 目前只是剛好沒有檢查到 `llm`
 - `.ars/engine-version.json` 無法支援 CLI 版本比對、防降級、drift 檢查
 - `setup` / `update` 只做到 copy engine，沒有完整 force option family、也沒有深度 doctor checks
-- `package.json.name = "ars-ce"`，但 `cli/lib/install.ts` 的 `PACKAGE_NAME = "agentic-remotion-studio"`，存在安裝/定位 drift 風險
+- package metadata 與 install/runtime package lookup 需要保持一致，避免安裝/定位 drift
 
 ## 3. 目標架構
 
@@ -461,7 +461,7 @@ export interface ArsConfig {
 | P1 | setup/update force option family | 在 service 穩定後補齊 CLI surface |
 | P1 | doctor 深度檢查 + `--json` | 作為 e2e 與使用者診斷入口 |
 | P2 | 完整 e2e matrix + fake tmux/claude harness | 可與 P1 併行，但建議在 CLI surface 定案後補齊 |
-| P2 | package name / publish metadata 清理 | `ars-ce` vs `agentic-remotion-studio` drift 建議一起處理，但不阻塞本輪 CLI refactor |
+| P2 | package name / publish metadata 清理 | package metadata 與 install/runtime package lookup 需持續保持一致，但不阻塞本輪 CLI refactor |
 
 ## 6. 工作量估計
 
