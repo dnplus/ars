@@ -4,12 +4,13 @@
  */
 import React, { useMemo, useRef, useState, useCallback, useEffect, CSSProperties } from 'react';
 import { Player, type PlayerRef } from '@remotion/player';
-import type { Episode } from '../shared/types';
+import type { Episode, Step } from '../shared/types';
 import { useStepNavigation } from './hooks/useStepNavigation';
 import { episodeToSlides, getEpisodeInfo } from './adapters/episodeToSlides';
 import { ThemeProvider } from '../shared/ThemeContext';
 import { ActionBar } from './components/ActionBar';
 import { FixListSidebar } from './components/FixListSidebar';
+import { StepEditorPanel } from './components/StepEditorPanel';
 import { StudioComposition, type StudioCompositionProps } from './StudioComposition';
 import { EPISODE_SCOPE_ID } from './constants';
 
@@ -30,17 +31,18 @@ type FixAppliedResponse = {
 };
 
 export const StudioApp: React.FC<StudioAppProps> = ({ episode }) => {
-  const shell = episode.shell!;
+  const [draftEpisode, setDraftEpisode] = useState(episode);
+  const shell = draftEpisode.shell!;
   const theme = shell.theme!;
-  const slides = useMemo(() => episodeToSlides(episode), [episode]);
+  const slides = useMemo(() => episodeToSlides(draftEpisode), [draftEpisode]);
 
   // URL params
   const queryParams = useMemo(() => new URLSearchParams(window.location.search), []);
   const querySeries = queryParams.get('series')?.trim() || undefined;
   const queryEpId = queryParams.get('ep')?.trim() || undefined;
   const queryStepId = queryParams.get('step')?.trim() || undefined;
-  const fallbackSeries = querySeries ?? episode.metadata.series ?? 'unknown-series';
-  const fallbackEpId = queryEpId ?? episode.metadata.id ?? 'unknown-episode';
+  const fallbackSeries = querySeries ?? draftEpisode.metadata.series ?? 'unknown-series';
+  const fallbackEpId = queryEpId ?? draftEpisode.metadata.id ?? 'unknown-episode';
 
   const initialStepIndex = useMemo(
     () => (queryStepId ? slides.findIndex((s) => s.step.id === queryStepId) : -1),
@@ -48,7 +50,7 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode }) => {
   );
 
   const episodeInfo = useMemo(() => {
-    const info = getEpisodeInfo(episode);
+    const info = getEpisodeInfo(draftEpisode);
     return {
       ...info,
       id: info.id ?? fallbackEpId,
@@ -58,7 +60,7 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode }) => {
       decorationText: info.decorationText ?? fallbackSeries,
       episodeTag: info.episodeTag ?? `${fallbackSeries}/${fallbackEpId}`,
     };
-  }, [episode, fallbackEpId, fallbackSeries]);
+  }, [draftEpisode, fallbackEpId, fallbackSeries]);
 
   // CSS variables from theme
   const themeStyles = useMemo(() => ({
@@ -73,15 +75,16 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode }) => {
     '--font-code': theme.fonts.code,
   } as CSSProperties), [theme]);
 
-  const compositionWidth = episode.metadata.width ?? 1920;
-  const compositionHeight = episode.metadata.height ?? 1080;
-  const fps = episode.metadata.fps ?? 30;
+  const compositionWidth = draftEpisode.metadata.width ?? 1920;
+  const compositionHeight = draftEpisode.metadata.height ?? 1080;
+  const fps = draftEpisode.metadata.fps ?? 30;
 
   const appRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<PlayerRef>(null);
   const [fixAppliedBanner, setFixAppliedBanner] = useState<FixAppliedEntry | null>(null);
   const [showFixList, setShowFixList] = useState(false);
+  const [showStepEditor, setShowStepEditor] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [audioExists, setAudioExists] = useState<boolean | null>(null);
   const latestFixTimestampRef = useRef<string | null>(null);
@@ -124,6 +127,24 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode }) => {
     Math.round((currentSlide?.step.durationInSeconds ?? 5) * fps),
   );
 
+  const applyDraftStep = useCallback((nextStep: Step) => {
+    setDraftEpisode((current) => ({
+      ...current,
+      steps: current.steps.map((existingStep, index) => (
+        index === currentIndex ? nextStep : existingStep
+      )),
+    }));
+  }, [currentIndex]);
+
+  const resetDraftStep = useCallback(() => {
+    const originalStep = episode.steps[currentIndex];
+    if (!originalStep) {
+      return;
+    }
+
+    applyDraftStep(originalStep);
+  }, [applyDraftStep, currentIndex, episode.steps]);
+
   const viewportRef = useRef<HTMLDivElement>(null);
   type CanvasOverlay = { scale: number; top: number; left: number; width: number; height: number };
   const [canvasOverlay, setCanvasOverlay] = useState<CanvasOverlay | null>(null);
@@ -149,7 +170,7 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode }) => {
     updateScale();
     window.addEventListener('resize', updateScale);
     return () => window.removeEventListener('resize', updateScale);
-  }, [compositionWidth, compositionHeight, showFixList]);
+  }, [compositionWidth, compositionHeight, showFixList, showStepEditor]);
 
   // Check if audio file exists for current slide
   useEffect(() => {
@@ -222,6 +243,7 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode }) => {
   }
 
   const step = currentSlide.step;
+  const sourceStep = episode.steps[currentIndex] ?? step;
 
   return (
     <ThemeProvider theme={theme}>
@@ -249,7 +271,7 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode }) => {
                   inputProps={{
                     step: currentSlide.step,
                     prevLayoutMode: prevSlide?.step.layoutMode,
-                    episode,
+                    episode: draftEpisode,
                     episodeInfo,
                     audioSrc: currentSlide.audioSrc,
                   } satisfies StudioCompositionProps}
@@ -347,6 +369,13 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode }) => {
 
           <div className="nav-right" style={{ position: 'relative' }}>
             <button
+              className={`nav-btn${showStepEditor ? ' active' : ''}`}
+              onClick={() => setShowStepEditor((v) => !v)}
+              title="Step 編輯器"
+            >
+              ✎
+            </button>
+            <button
               className={`nav-btn${showInfo ? ' active' : ''}`}
               onClick={() => setShowInfo((v) => !v)}
               title="步驟資訊"
@@ -409,6 +438,15 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode }) => {
         {/* Right column: fix list sidebar (full height) */}
         {showFixList && (
           <FixListSidebar onClose={() => setShowFixList(false)} />
+        )}
+        {showStepEditor && sourceStep && (
+          <StepEditorPanel
+            step={step}
+            sourceStep={sourceStep}
+            onApply={applyDraftStep}
+            onReset={resetDraftStep}
+            onClose={() => setShowStepEditor(false)}
+          />
         )}
       </div>
     </ThemeProvider>
