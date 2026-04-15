@@ -315,11 +315,12 @@ export const SlideApp: React.FC<StudioAppProps> = ({ episode }) => {
             </button>
           </div>
 
-          <div className="nav-center" />
+          <div className="nav-center">
+            {/* Global ✨ — center of nav bar */}
+            <ActionBar stepId={step.id} series={fallbackSeries} epId={fallbackEpId} kind="other" />
+          </div>
 
           <div className="nav-right">
-            {/* Global ⚡ — in nav bar */}
-            <ActionBar stepId={step.id} series={fallbackSeries} epId={fallbackEpId} kind="other" />
             <button
               className="nav-btn"
               onClick={() => setShowFixList((v) => !v)}
