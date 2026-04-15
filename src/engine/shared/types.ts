@@ -6,8 +6,9 @@
  * This is the **Source of Truth** for the "Content as Code" schema.
  * - `Episode`: Root structure map to a video.
  * - `Step`: The polymorphic unit of content. Check `contentType` to discriminate.
- *   - Primary: `cover|ticker|summary|markdown|code|image|stats|compare|timeline|flowchart|mermaid|mockApp`
- *   - Legacy: `text|terminal|macApp|phone`
+ *   - Primary: `cover|ticker|summary|markdown|code|image|mermaid`
+ *   - Custom: `<series>/<card-name>`
+ *   - Legacy alias: `text`
  *   - Advanced: `liveScene|threeScene`
  *
  * @architectural-role Dictionary
@@ -38,7 +39,7 @@ export type LayoutMode = "title-card" | "card-only" | "fullscreen";
 /**
  * BackgroundPreset 控制每個 Step 的背景氛圍
  * - 'default': 深咖啡漸層（theme.colors.gradientDark）
- * - 'gradient-mesh': 多色 radial-gradient 疊加，適合 StatsCard / 重要數據
+ * - 'gradient-mesh': 多色 radial-gradient 疊加，適合重要數據或強調型畫面
  * - 'aurora': 柔和極光色帶 + 微動，適合章節開頭 / 里程碑
  * - 'spotlight': 中心高光 + 暗邊 (vignette)，適合聚焦重點
  * - 'minimal': 純深色 + 微紋理，適合 Code / Markdown
@@ -90,12 +91,12 @@ export type EpisodeMetadata = {
    */
   decorationText?: string;
   /**
-   * CoverCard 左上角標籤文字，例如 'EP5 · GSS'
+   * Cover 畫面左上角標籤文字，例如 'EP5 · Demo'
    * 省略則不顯示
    */
   episodeTag?: string;
   /**
-   * 頻道名稱，顯示在 CoverCard 標題列，例如 'Agentic Studio'
+   * 頻道名稱，顯示在 Cover 畫面標題列，例如 'Agentic Studio'
    * 省略則不顯示
    */
   channelName?: string;
@@ -177,13 +178,14 @@ export type QRCodeCTA = { url: string; title?: string; subtitle?: string };
  *
  * @agent-note
  * 使用 `contentType` 決定渲染的卡片類型。
- * - Primary: `cover|ticker|summary|markdown|code|image|stats|compare|timeline|flowchart|mermaid|mockApp`
- * - Legacy: `text|terminal|macApp|phone`
+ * - Primary: `cover|ticker|summary|markdown|code|image|mermaid`
+ * - Custom: `<series>/<card-name>`
+ * - Legacy alias: `text`
  * - Advanced: `liveScene|threeScene`
  */
 export type Step = {
   id: string;
-  /** Primary: cover/ticker/summary/markdown/code/image/stats/compare/timeline/flowchart/mermaid/mockApp; custom: <series>/<card-name>; Legacy: text/terminal/macApp/phone; Advanced: liveScene/threeScene */
+  /** Primary: cover/ticker/summary/markdown/code/image/mermaid; custom: <series>/<card-name>; legacy alias: text; advanced: liveScene/threeScene */
   contentType:
     | "cover"
     | "text" // @legacy -> 改用 markdown
@@ -193,16 +195,8 @@ export type Step = {
     | "markdown"
     | "summary"
     | "ticker"
-    | "compare"
-    | "stats"
-    | "timeline"
     | "liveScene" // @advanced
     | "threeScene" // @advanced
-    | "terminal" // @legacy -> 改用 mockApp + appType:'terminal'
-    | "phone" // @legacy -> 改用 mockApp + appDevice:'mobile'
-    | "macApp" // @legacy -> 改用 mockApp + appDevice:'desktop'
-    | "mockApp"
-    | "flowchart"
     | `${string}/${string}`;
   /** Custom card payload for series-scoped CardSpec types. */
   data?: unknown;
@@ -246,31 +240,12 @@ export type Step = {
   imageSrc?: string;
   imageCaption?: string;
 
-  // Dashboard / chart primitive（供 mockApp dashboard 重用）
-  chartType?: "bar" | "line" | "pie";
-  chartData?: Array<{
-    label: string;
-    value: number;
-    color?: string;
-  }>;
-  chartValuePrefix?: string;
-  chartValueSuffix?: string;
-  chartYMax?: number;
-  chartHighlightIndex?: number;
-  chartShowLegend?: boolean;
-  chartSourceLabel?: string;
-
   // Mermaid Card
   mermaidTitle?: string;
   mermaidChart?: string;
 
   // Video Card
   videoSrc?: string;
-
-  // Context Visualizer
-  ctx?: Record<string, string | number | boolean>;
-  visTitle?: string;
-  visIcon?: string;
 
   // Summary Card
   summaryTitle?: string;
@@ -280,22 +255,7 @@ export type Step = {
   summaryShowCta?: boolean;
 
   // Ticker Card
-  tickerDirection?: "horizontal" | "vertical";
   tickerStyle?: "flash" | "kinetic";
-
-  // Compare Card
-  compareLeftTitle?: string;
-  compareLeftItems?: string[];
-  compareRightTitle?: string;
-  compareRightItems?: string[];
-  compareLeftColor?: string;
-  compareRightColor?: string;
-
-  // Stats Card
-  stats?: { value: string; label: string; prefix?: string; suffix?: string }[];
-
-  // Timeline Card
-  timelineItems?: { title: string; description?: string; icon?: string }[];
 
   // Live Scene Card (動態像素房間背景)
   /** JSON stringified LiveSceneData object */
@@ -322,68 +282,6 @@ export type Step = {
   threePrimaryColor?: string;
   /** Override secondary color for Three.js scene */
   threeSecondaryColor?: string;
-
-  // Terminal Card（CLI 打字機動畫；@legacy，新稿優先改用 mockApp + appType:'terminal'）
-  terminalLines?: {
-    type: "command" | "output";
-    text: string;
-    pauseAfter?: number;
-  }[];
-  terminalTitle?: string;
-  terminalCharsPerSecond?: number;
-
-  // App Card（手機 mockup 或 mac 視窗 + App 內容；@legacy alias 支援 phone/macApp，mockApp 也共用這組欄位）
-  /** App 類型：legacy 'claude' 或 mockApp 的 'chat' | 'terminal' | 'browser' | 'dashboard' */
-  appType?: "claude" | "chat" | "terminal" | "browser" | "dashboard";
-  /** mockApp 載體：desktop | mobile */
-  appDevice?: "desktop" | "mobile";
-  appMessages?: {
-    role: "user" | "assistant";
-    text: string;
-    pauseAfter?: number;
-    /** 程式碼 / 文件 artifact */
-    artifact?: {
-      label: string;
-      language?: string;
-      preview?: string;
-      lines?: string;
-    };
-    /** Diff / View PR 等 badge 按鈕 */
-    badges?: { label: string; value?: string; color: string }[];
-    /** Git branch name */
-    branch?: string;
-    /** 簡易 placeholder 色塊 */
-    placeholder?: { label: string; color: string; height?: number };
-  }[];
-  appName?: string;
-  appCharsPerSecond?: number;
-  appInputPlaceholder?: string;
-  /** mockApp browser mode */
-  appBrowserMode?: "meta" | "snapshot";
-  /** mockApp browser screenshot preset */
-  appBrowserLayout?: "normal" | "square" | "mobile";
-  appUrl?: string;
-  /** image/browser preview 共用資源，避免再引入另一組欄位 */
-  appImageSrc?: string;
-  appInsight?: string;
-  /** mockApp dashboard 專用欄位，scene 會回退到通用 chart* 欄位 */
-  dashboardChartType?: "bar" | "line" | "pie";
-  dashboardChartData?: Array<{
-    label: string;
-    value: number;
-    color?: string;
-  }>;
-  dashboardValuePrefix?: string;
-  dashboardValueSuffix?: string;
-  dashboardSourceLabel?: string;
-  dashboardInsight?: string;
-
-  // Flowchart Card（純 React SVG + dagre 自動排版）
-  flowchartNodes?: { id: string; label: string; icon?: string }[];
-  flowchartEdges?: { from: string; to: string; label?: string }[];
-  flowchartDirection?: 'TB' | 'LR';
-  /** 節點揭露順序；省略則全部一次顯示（無動畫） */
-  flowchartFocusOrder?: string[];
 
   /** 此 step 的 TTS 聲音，覆蓋 episode.metadata.voiceId（多人對話用） */
   voiceId?: string;

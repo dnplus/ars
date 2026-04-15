@@ -23,7 +23,7 @@ type AdaptiveFontSizeOptions = {
   max?: number;
   /** 文字長度斷點 [short, medium, long]，用於分段計算 */
   breakpoints?: [number, number, number];
-  /** 結果倍率 (預設 1.0)，用於特定 card 需要更大字級 (e.g. CompareCard: 1.4) */
+  /** 結果倍率 (預設 1.0)，用於特定卡片需要更大字級 */
   scale?: number;
 };
 
@@ -67,30 +67,30 @@ export function getAdaptiveFontSize(
 }
 
 /**
- * Preset configurations for common card types
+ * Preset configurations for common content patterns
  */
 export const FONT_SIZE_PRESETS = {
-  /** InfoCard / MarkdownCard — 主要內容文字 */
+  /** Markdown / general body copy */
   body: { min: 22, max: 38, breakpoints: [60, 150, 400] } as Required<AdaptiveFontSizeOptions>,
 
-  /** CompareCard — 列表項目 */
+  /** Short list items */
   listItem: { min: 22, max: 32, breakpoints: [40, 100, 250] } as Required<AdaptiveFontSizeOptions>,
 
-  /** StatsCard — 數據標籤 */
+  /** Metric labels */
   label: { min: 18, max: 28, breakpoints: [20, 60, 120] } as Required<AdaptiveFontSizeOptions>,
 
-  /** TimelineCard — 項目描述 */
+  /** Supporting descriptions */
   description: { min: 20, max: 30, breakpoints: [50, 120, 300] } as Required<AdaptiveFontSizeOptions>,
 
-  /** CompareCard / TimelineCard — 標題 */
+  /** Section headings */
   heading: { min: 22, max: 34, breakpoints: [10, 30, 80] } as Required<AdaptiveFontSizeOptions>,
 
-  /** SummaryCard / CoverCard — 大標題 */
+  /** Large titles */
   title: { min: 36, max: 64, breakpoints: [10, 30, 60] } as Required<AdaptiveFontSizeOptions>,
 
-  /** SummaryCard — 副標題 */
+  /** Secondary titles */
   subtitle: { min: 28, max: 42, breakpoints: [20, 50, 120] } as Required<AdaptiveFontSizeOptions>,
 
-  /** ImageCard — caption 文字 */
+  /** Captions */
   caption: { min: 18, max: 28, breakpoints: [20, 60, 150] } as Required<AdaptiveFontSizeOptions>,
 } as const;

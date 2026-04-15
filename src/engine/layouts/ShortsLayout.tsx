@@ -10,7 +10,7 @@
  * - **Bottom**: VTuber extends to screen bottom, subtitles overlay on top of VTuber.
  * 
  * **Constraint**:
- * - Content is much narrower. Ensure inner Cards (`TickerCard`, `InfoCard`) are responsive.
+ * - Content is much narrower. Ensure inner card content stays responsive.
  */
 
 import React from "react";

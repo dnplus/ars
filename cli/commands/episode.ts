@@ -1,12 +1,11 @@
 /**
  * @command episode
- * @description Episode management: create, list, validate, bake, stats
+ * @description Episode management: create, list, validate, stats
  *
  * Usage:
  *   npx ars episode create <epId>
  *   npx ars episode list [series]
  *   npx ars episode validate <epId>
- *   npx ars episode bake <epId>
  *   npx ars episode stats <epId>
  */
 import fs from 'fs';
@@ -20,15 +19,11 @@ import {
 } from '../lib/context';
 import { analyzeEpisodeDuration, formatDurationReport } from '../lib/estimate-duration';
 import { loadEpisode } from '../lib/episode-file';
-import { captureUrlScreenshot } from '../lib/browser-screenshot';
-import { updateStepField } from '../lib/episode-ast';
 import { getLayoutKey } from '../../src/engine/layouts';
 import {
   AVAILABLE_CARD_TYPES,
-  CARD_REGISTRY_BY_TYPE,
   DEPRECATED_CARD_TYPES,
   GENERAL_PURPOSE_CARD_TYPES,
-  LEGACY_CARD_TYPES,
 } from '../../src/engine/shared/card-registry';
 
 const HELP = `
@@ -38,7 +33,6 @@ Subcommands:
   create <epId>             Create a new episode in the active series
   list [series]             List episodes in the active series (or explicit series)
   validate <epId>           Validate an episode's structure
-  bake <epId>               Materialize pre-render episode assets and write back
   stats <epId>              Card usage stats for an episode
   stats <series> --all      Aggregate stats for all episodes in a series
   stats --all               Aggregate stats for all series
@@ -48,8 +42,6 @@ Examples:
   npx ars episode create ep007
   npx ars episode list
   npx ars episode validate ep005
-  npx ars episode bake ep005
-  npx ars episode bake ep005 --dry-run
   npx ars episode stats ep005
   npx ars episode stats demo-series --all
   npx ars episode stats --all
@@ -194,24 +186,14 @@ async function validate(args: string[]) {
     console.log(`   Steps: ${episode.steps?.length || 0}`);
 
     const stepsWithNarration = (episode.steps || []).filter((s: any) => s.narration);
-    const legacySteps = (episode.steps || []).filter((s: any) => LEGACY_CARD_TYPES.has(s.contentType));
     const deprecatedSteps = (episode.steps || []).filter((s: any) => DEPRECATED_CARD_TYPES.has(s.contentType));
     console.log(`   Narrated: ${stepsWithNarration.length}`);
     console.log(`   FPS: ${episode.metadata?.fps}`);
     console.log(`   Resolution: ${episode.metadata?.width}x${episode.metadata?.height}`);
 
-    for (const step of legacySteps) {
-      const entry = CARD_REGISTRY_BY_TYPE.get(step.contentType);
-      if (!entry?.replacement) continue;
-      validationSuggestions.push(
-        `Step "${step.id}" uses legacy card "${step.contentType}". 建議改成 ${entry.replacement}。`,
-      );
-    }
-
     for (const step of deprecatedSteps) {
-      const entry = CARD_REGISTRY_BY_TYPE.get(step.contentType);
       validationSuggestions.push(
-        `Step "${step.id}" uses deprecated card "${step.contentType}". 建議改成 ${entry?.replacement || '其他 active card'}。`,
+        `Step "${step.id}" uses deprecated card "${step.contentType}". 建議改成 markdown。`,
       );
     }
 
@@ -388,99 +370,6 @@ async function validate(args: string[]) {
   }
 }
 
-// ── bake ────────────────────────────────────────────────
-async function bake(args: string[]) {
-  const target = args.find((arg) => !arg.startsWith('--'));
-  const dryRun = args.includes('--dry-run');
-
-  if (!target) {
-    console.error('❌ 請提供 epId。');
-    console.log('Usage: npx ars episode bake ep005 [--dry-run]');
-    process.exit(1);
-  }
-
-  const { series, epId } = resolveEpisodeTarget(target, path.resolve(__dirname, '../..'));
-  const ctx = resolveSeriesContext(series);
-  const epFilePath = path.join(ctx.episodesDir, `${epId}.ts`);
-
-  if (!fs.existsSync(epFilePath)) {
-    console.error(`❌ Episode not found: ${epFilePath}`);
-    process.exit(1);
-  }
-
-  try {
-    const mod = await import(epFilePath);
-    const episode = mod[sanitizeIdentifier(epId)] || mod[epId] || mod.default;
-    if (!episode) {
-      console.error(`❌ No recognizable export found in ${epFilePath}`);
-      process.exit(1);
-    }
-
-    const browserStepsNeedingScreenshot = (episode.steps || []).filter((step: any) => (
-      step.contentType === 'mockApp' &&
-      step.appType === 'browser' &&
-      step.appUrl &&
-      !step.appImageSrc
-    ));
-
-    console.log(`🧁 Baking "${series}/${epId}"`);
-    console.log(`   Browser screenshots needed: ${browserStepsNeedingScreenshot.length}`);
-
-    if (browserStepsNeedingScreenshot.length === 0) {
-      console.log('\n✅ Nothing to bake');
-      return;
-    }
-
-    if (dryRun) {
-      console.log('\n   Dry run:');
-      for (const step of browserStepsNeedingScreenshot) {
-        console.log(`   - ${step.id}: would capture ${step.appUrl}`);
-      }
-      console.log('\n✅ Bake dry run complete');
-      return;
-    }
-
-    const bakeIssues: string[] = [];
-
-    for (const step of browserStepsNeedingScreenshot) {
-      try {
-        const screenshotPath = await captureUrlScreenshot(
-          step.appUrl,
-          series,
-          epId,
-          step.id,
-          ctx,
-          step.appBrowserLayout || 'normal',
-        );
-        if (!screenshotPath) {
-          bakeIssues.push(`Step "${step.id}" browser 截圖失敗，請手動提供 appImageSrc。`);
-          continue;
-        }
-
-        updateStepField(epFilePath, step.id, 'appImageSrc', screenshotPath);
-        updateStepField(epFilePath, step.id, 'appBrowserMode', 'snapshot');
-        console.log(`   ✅ ${step.id}: ${screenshotPath}`);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        bakeIssues.push(`Step "${step.id}" browser 截圖寫回失敗：${message}`);
-      }
-    }
-
-    if (bakeIssues.length > 0) {
-      console.error('\n❌ Bake finished with errors:');
-      for (const issue of bakeIssues) {
-        console.error(`   - ${issue}`);
-      }
-      process.exit(1);
-    }
-
-    console.log('\n✅ Bake complete');
-  } catch (e: any) {
-    console.error(`❌ Failed to bake episode: ${e.message}`);
-    process.exit(1);
-  }
-}
-
 /**
  * 將 epId 轉為合法的 JS identifier（用於 export const）
  * ep-my-topic → epMyTopic
@@ -619,23 +508,9 @@ function buildPhaseBreakdown(steps: any[]) {
 
 function buildSignals(rows: CardUsageRow[], streaks: StreakRow[], steps: any[]): string[] {
   const signals: string[] = [];
-  const stepCount = steps.length || 1;
-  const compareRow = rows.find((row) => row.type === 'compare');
-  const terminalRow = rows.find((row) => row.type === 'terminal');
   const markdownRow = rows.find((row) => row.type === 'markdown');
-  const mockAppRow = rows.find((row) => row.type === 'mockApp');
-
-  if (compareRow && compareRow.count >= 5) {
-    signals.push(`compare cards = ${compareRow.count}/${stepCount} steps. 可以回頭檢查是不是有些其實只是立場整理，不需要左右對照。`);
-  }
-  if (terminalRow && terminalRow.count >= 4) {
-    signals.push(`terminal cards = ${terminalRow.count}/${stepCount} steps. 這是 legacy alias；新稿優先改成 mockApp + terminal。`);
-  }
   if (markdownRow && markdownRow.durationPercent >= 30) {
     signals.push(`markdown duration = ${formatPercent(markdownRow.durationPercent)}. 可以檢查是不是有些卡其實該升級成更具體的 visual card。`);
-  }
-  if (mockAppRow && mockAppRow.count >= 4) {
-    signals.push(`mockApp cards = ${mockAppRow.count}/${stepCount} steps. 可以檢查 device/type 分布是不是太單一。`);
   }
 
   for (const streak of streaks) {
@@ -695,37 +570,13 @@ function buildCoverageMap(episodes: Array<{ episode: { steps: any[] } }>) {
 function buildGapSignals(
   rows: CardUsageRow[],
   coverage: Map<string, number>,
-  episodeCount: number,
   stepCount: number,
-  steps: any[],
 ): string[] {
   const signals: string[] = [];
-  const compareRow = rows.find((row) => row.type === 'compare');
-  const terminalRow = rows.find((row) => row.type === 'terminal');
   const markdownRow = rows.find((row) => row.type === 'markdown');
   const imageRow = rows.find((row) => row.type === 'image');
-  const statsRow = rows.find((row) => row.type === 'stats');
-  const mockAppRow = rows.find((row) => row.type === 'mockApp');
-  const phoneRow = rows.find((row) => row.type === 'phone');
-  const hasDashboardStep = steps.some((step) => step.contentType === 'mockApp' && step.appType === 'dashboard');
-
-  if (compareRow && compareRow.percent >= 20) {
-    signals.push(`compare 佔 ${formatPercent(compareRow.percent)}。這通常代表有些「立場 / 判準 / 包法」被擠進左右對照，可能缺少更適合講 stance 的卡型或寫法。`);
-  }
   if (markdownRow && markdownRow.percent >= 25 && (!imageRow || imageRow.count === 0)) {
     signals.push(`markdown 佔 ${formatPercent(markdownRow.percent)}，但 image 幾乎沒用。可以回頭想想，有沒有一些 repo / artifact / UI 其實值得直接給畫面。`);
-  }
-  if (terminalRow && terminalRow.percent >= 15) {
-    signals.push(`terminal 佔 ${formatPercent(terminalRow.percent)}。這仍然是 legacy alias；如果變成系列常態，建議直接改寫成 mockApp terminal。`);
-  }
-  if ((!statsRow || statsRow.count === 0) && !hasDashboardStep) {
-    signals.push('stats / dashboard 幾乎沒進場。如果你後續會常講 analytics、benchmark、成長趨勢，可能需要多用 mockApp dashboard。');
-  }
-  if ((!phoneRow || phoneRow.count === 0) && episodeCount >= 3) {
-    signals.push('phone card 幾乎沒用到。若社群發布或 mobile UI 之後變重要，可能需要補一種更適合社群 artifact 的呈現。');
-  }
-  if (mockAppRow && mockAppRow.percent >= 20) {
-    signals.push(`mockApp 佔 ${formatPercent(mockAppRow.percent)}。這通常沒問題，但可以檢查是不是連續太多張都在同一種 desktop frame 裡。`);
   }
 
   const rarelyUsedGeneralCards = AVAILABLE_CARD_TYPES
@@ -736,8 +587,8 @@ function buildGapSignals(
     signals.push(`幾乎沒用到的通用卡：${rarelyUsedGeneralCards.join(', ')}。這不一定是問題，但值得問一下是題材不需要，還是現有卡不好用。`);
   }
 
-  if (stepCount >= 30 && compareRow && compareRow.count >= 8 && terminalRow && terminalRow.count >= 6) {
-    signals.push('長片裡 compare + terminal 都偏高，這通常不是單一卡片問題，而是缺少「中間態」卡型: 既不是純對照，也不是純 CLI 打字。');
+  if (stepCount >= 30 && markdownRow && markdownRow.count >= 10 && (!imageRow || imageRow.count <= 1)) {
+    signals.push('長片裡 markdown 偏高且 image 很少，通常代表內容還沒被充分視覺化。');
   }
 
   return signals;
@@ -755,7 +606,7 @@ async function stats(args: string[]) {
   const phaseBreakdown = buildPhaseBreakdown(steps);
   const signals = buildSignals(rows, streaks, steps);
   const coverage = buildCoverageMap(episodes);
-  const gapSignals = buildGapSignals(rows, coverage, episodes.length, steps.length, steps);
+  const gapSignals = buildGapSignals(rows, coverage, steps.length);
   const totalDuration = steps.reduce((sum, step) => sum + (step.durationInSeconds || 0), 0);
   const estimatedDuration = analyzeEpisodeDuration(steps).totalEstimated;
   const label = allMode
@@ -769,14 +620,6 @@ async function stats(args: string[]) {
     .filter((type) => GENERAL_PURPOSE_CARD_TYPES.has(type))
     .filter((type) => (coverage.get(type) || 0) <= 1 && !['cover', 'summary', 'ticker', 'text'].includes(type));
   const overusedTypes = rows.filter((row) => row.percent >= 20 || row.durationPercent >= 20).map((row) => row.type);
-  const legacyAliasRows = rows
-    .filter((row) => LEGACY_CARD_TYPES.has(row.type))
-    .map((row) => ({
-      type: row.type,
-      count: row.count,
-      replacement: CARD_REGISTRY_BY_TYPE.get(row.type)?.replacement || 'mockApp',
-    }));
-
   const payload = {
     target: label,
     title,
@@ -793,7 +636,6 @@ async function stats(args: string[]) {
     overusedTypes,
     underusedTypes,
     unusedTypes,
-    legacyAliasRows,
   };
 
   if (jsonMode) {
@@ -856,13 +698,6 @@ async function stats(args: string[]) {
     console.log(`   Unused cards: ${unusedTypes.join(', ')}`);
   }
 
-  if (legacyAliasRows.length > 0) {
-    console.log('\n   Legacy aliases in use:');
-    for (const row of legacyAliasRows) {
-      console.log(`   - ${row.type} ×${row.count} → prefer ${row.replacement}`);
-    }
-  }
-
   console.log('\n   Phase breakdown:');
   for (const phase of phaseBreakdown) {
     console.log(`   - ${phase.phase}: ${phase.types.join(', ')}`);
@@ -892,7 +727,6 @@ export async function run(args: string[]) {
     create,
     list,
     validate,
-    bake,
     stats,
   };
 

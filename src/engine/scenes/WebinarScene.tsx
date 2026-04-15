@@ -11,12 +11,6 @@ import {
   useVideoConfig,
 } from "remotion";
 import { getCard } from "../cards/registry";
-import { ContextCard } from "../components/cards/ContextCard";
-import { CompareCard } from "../components/cards/CompareCard";
-import { FlowchartCard } from "../components/cards/FlowchartCard";
-import { MockAppCard } from "../components/cards/MockAppCard";
-import { StatsCard } from "../components/cards/StatsCard";
-import { TimelineCard } from "../components/cards/TimelineCard";
 import { Step, type LayoutMode } from "../shared/types";
 import { useTheme } from "../shared/ThemeContext";
 
@@ -269,29 +263,7 @@ export const WebinarScene: React.FC<WebinarSceneProps> = ({
       ) : null}
 
       <div style={{ opacity: cardOpacity, minHeight: 0, height: "100%" }}>
-        {step.ctx ? (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 16,
-              height: "100%",
-            }}
-          >
-            <div style={{ flex: "0 0 20%", minHeight: 0, overflow: "hidden" }}>
-              <ContextCard
-                ctx={step.ctx}
-                visTitle={step.visTitle}
-                visIcon={step.visIcon}
-              />
-            </div>
-            <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
-              {renderCard(step, layoutMode, episode)}
-            </div>
-          </div>
-        ) : (
-          renderCard(step, layoutMode, episode)
-        )}
+        {renderCard(step, layoutMode, episode)}
       </div>
     </AbsoluteFill>
   );
@@ -306,65 +278,5 @@ function renderCard(
     return renderRegistryCard(step, layoutMode, episode);
   }
 
-  switch (step.contentType) {
-    case "compare":
-      return (
-        <CompareCard
-          leftTitle={step.compareLeftTitle || "Before"}
-          leftItems={step.compareLeftItems || []}
-          rightTitle={step.compareRightTitle || "After"}
-          rightItems={step.compareRightItems || []}
-          leftColor={step.compareLeftColor}
-          rightColor={step.compareRightColor}
-          cardTitle={step.cardTitle}
-        />
-      );
-    case "stats":
-      return <StatsCard stats={step.stats || []} cardTitle={step.cardTitle} />;
-    case "timeline":
-      return (
-        <TimelineCard
-          items={step.timelineItems || []}
-          cardTitle={step.cardTitle}
-        />
-      );
-    case "mockApp":
-      return (
-        <MockAppCard
-          device={step.appDevice || "desktop"}
-          type={step.appType || "chat"}
-          appName={step.appName}
-          messages={step.appMessages || []}
-          charsPerSecond={step.appCharsPerSecond}
-          inputPlaceholder={step.appInputPlaceholder}
-          terminalTitle={step.terminalTitle || step.windowTitle || step.appName}
-          terminalLines={step.terminalLines || []}
-          terminalCharsPerSecond={step.terminalCharsPerSecond}
-          browserMode={step.appBrowserMode}
-          browserLayout={step.appBrowserLayout}
-          browserUrl={step.appUrl}
-          browserImageSrc={step.appImageSrc || step.imageSrc}
-          dashboardStats={step.stats || []}
-          dashboardChartType={step.dashboardChartType || step.chartType || "bar"}
-          dashboardChartData={step.dashboardChartData || step.chartData || []}
-          dashboardValuePrefix={step.dashboardValuePrefix || step.chartValuePrefix}
-          dashboardValueSuffix={step.dashboardValueSuffix || step.chartValueSuffix}
-          dashboardSourceLabel={step.dashboardSourceLabel || step.chartSourceLabel}
-          dashboardInsight={step.dashboardInsight || step.appInsight || step.description}
-        />
-      );
-    case "flowchart":
-      return (
-        <FlowchartCard
-          nodes={step.flowchartNodes || []}
-          edges={step.flowchartEdges || []}
-          direction={step.flowchartDirection || "TB"}
-          focusOrder={step.flowchartFocusOrder}
-          title={step.cardTitle}
-          frame={resolveCardFrame(layoutMode)}
-        />
-      );
-    default:
-      return null;
-  }
+  return null;
 }

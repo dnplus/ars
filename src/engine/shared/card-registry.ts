@@ -16,28 +16,8 @@ export const CARD_REGISTRY: CardRegistryEntry[] = [
   { type: "markdown", status: "active", generalPurpose: true },
   { type: "summary", status: "active", generalPurpose: true },
   { type: "ticker", status: "active", generalPurpose: true },
-  { type: "compare", status: "active", generalPurpose: true },
-  { type: "stats", status: "active", generalPurpose: true },
-  { type: "timeline", status: "active", generalPurpose: true },
   { type: "liveScene", status: "active" },
   { type: "threeScene", status: "active" },
-  {
-    type: "terminal",
-    status: "legacy",
-    replacement: "mockApp + appDevice: 'desktop' + appType: 'terminal'",
-  },
-  {
-    type: "phone",
-    status: "legacy",
-    replacement: "mockApp + appDevice: 'mobile' + appType: 'chat'",
-  },
-  {
-    type: "macApp",
-    status: "legacy",
-    replacement: "mockApp + appDevice: 'desktop' + appType: 'chat'",
-  },
-  { type: "mockApp", status: "active", generalPurpose: true },
-  { type: "flowchart", status: "active", generalPurpose: true },
 ];
 
 export const CARD_REGISTRY_BY_TYPE = new Map(
