@@ -240,11 +240,40 @@ export const SlideApp: React.FC<StudioAppProps> = ({ episode }) => {
                 style={{ width: compositionWidth, height: compositionHeight }}
               />
 
-              <ActionBar
-                stepId={step.id}
-                series={fallbackSeries}
-                epId={fallbackEpId}
-              />
+              {/* Card ⚡ — bottom-right of canvas */}
+              <div style={{ position: 'absolute', bottom: 16, right: 16, zIndex: 120 }}>
+                <ActionBar stepId={step.id} series={fallbackSeries} epId={fallbackEpId} kind="visual" />
+              </div>
+
+              {/* Narration display + narration ⚡ — bottom center of canvas */}
+              {step.narration && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: 16,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  display: 'flex',
+                  alignItems: 'flex-end',
+                  gap: 8,
+                  maxWidth: '70%',
+                  zIndex: 120,
+                }}>
+                  <div style={{
+                    flex: 1,
+                    padding: '10px 16px',
+                    background: 'rgba(0,0,0,0.82)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    borderRadius: 10,
+                    color: '#fff',
+                    fontSize: 14,
+                    lineHeight: 1.6,
+                    whiteSpace: 'pre-wrap',
+                  }}>
+                    {step.narration}
+                  </div>
+                  <ActionBar stepId={step.id} series={fallbackSeries} epId={fallbackEpId} kind="content" />
+                </div>
+              )}
             </div>
           </div>
 
@@ -297,6 +326,8 @@ export const SlideApp: React.FC<StudioAppProps> = ({ episode }) => {
           <div className="nav-center" />
 
           <div className="nav-right">
+            {/* Global ⚡ — in nav bar */}
+            <ActionBar stepId={step.id} series={fallbackSeries} epId={fallbackEpId} kind="other" />
             <button
               className="nav-btn"
               onClick={() => setShowFixList((v) => !v)}
