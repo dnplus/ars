@@ -45,9 +45,11 @@ export const FixListSidebar: React.FC<FixListSidebarProps> = ({ onClose }) => {
 
     void fetchIntents();
     const timer = window.setInterval(() => void fetchIntents(), 5000);
+    window.addEventListener('ars:intent-submitted', fetchIntents);
     return () => {
       cancelled = true;
       window.clearInterval(timer);
+      window.removeEventListener('ars:intent-submitted', fetchIntents);
     };
   }, []);
 
@@ -78,7 +80,7 @@ export const FixListSidebar: React.FC<FixListSidebarProps> = ({ onClose }) => {
         }}
       >
         <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-primary, #7c6af5)' }}>
-          Fix Intents
+          修正清單
         </span>
         <button
           type="button"
@@ -115,7 +117,7 @@ export const FixListSidebar: React.FC<FixListSidebarProps> = ({ onClose }) => {
               textAlign: 'center',
             }}
           >
-            No fix intents yet.
+            尚無修正記錄。
           </div>
         ) : (
           intents.map((intent) => (
@@ -144,7 +146,7 @@ export const FixListSidebar: React.FC<FixListSidebarProps> = ({ onClose }) => {
                     flexShrink: 0,
                   }}
                 >
-                  {intent.feedback.kind}
+                  {({'visual': '卡片', 'content': '口播', 'other': '整集', 'timing': '時序'} as Record<string, string>)[intent.feedback.kind] ?? intent.feedback.kind}
                 </span>
                 <span
                   style={{
@@ -157,12 +159,12 @@ export const FixListSidebar: React.FC<FixListSidebarProps> = ({ onClose }) => {
                     flex: 1,
                   }}
                 >
-                  {intent.target.stepId}
+                  {intent.target.stepId === '__episode__' ? '整集' : intent.target.stepId}
                 </span>
                 {intent.processedAt ? (
-                  <span style={{ fontSize: 11, color: '#777', flexShrink: 0 }}>✓ fixed</span>
+                  <span style={{ fontSize: 11, color: '#777', flexShrink: 0 }}>✓ 已修正</span>
                 ) : (
-                  <span style={{ fontSize: 11, color: '#d4a017', flexShrink: 0 }}>pending</span>
+                  <span style={{ fontSize: 11, color: '#d4a017', flexShrink: 0 }}>待處理</span>
                 )}
               </div>
 

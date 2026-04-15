@@ -122,6 +122,8 @@ export const SlideApp: React.FC<StudioAppProps> = ({ episode }) => {
   );
 
   const viewportRef = useRef<HTMLDivElement>(null);
+  const [canvasScreenRect, setCanvasScreenRect] = useState<DOMRect | null>(null);
+  const [currentScale, setCurrentScale] = useState(1);
 
   // Scale canvas to fit the left pane (sidebar-aware via flex)
   useEffect(() => {
@@ -134,6 +136,11 @@ export const SlideApp: React.FC<StudioAppProps> = ({ episode }) => {
         pane.clientHeight / compositionHeight,
       );
       canvas.style.transform = `scale(${scale})`;
+      setCurrentScale(scale);
+      // After transform applied, measure canvas screen position
+      requestAnimationFrame(() => {
+        setCanvasScreenRect(canvas.getBoundingClientRect());
+      });
     };
     updateScale();
     window.addEventListener('resize', updateScale);
@@ -246,47 +253,58 @@ export const SlideApp: React.FC<StudioAppProps> = ({ episode }) => {
                   style={{ width: compositionWidth, height: compositionHeight }}
                 />
 
-                {/* Card ✨ — top-left of canvas */}
-                <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 120 }}>
-                  <ActionBar stepId={step.id} series={fallbackSeries} epId={fallbackEpId} kind="visual" />
-                </div>
-
-                {/* Narration + narration ⚡ — bottom center of canvas */}
-                {step.narration && (
-                  <div style={{
-                    position: 'absolute', bottom: 16, left: '50%',
-                    transform: 'translateX(-50%)',
-                    display: 'flex', alignItems: 'flex-end', gap: 8,
-                    maxWidth: '70%', zIndex: 120,
-                  }}>
-                    <div style={{
-                      flex: 1, padding: '10px 16px',
-                      background: 'rgba(0,0,0,0.82)',
-                      border: '1px solid rgba(255,255,255,0.15)',
-                      borderRadius: 10, color: '#fff',
-                      fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-wrap',
-                    }}>
-                      {step.narration}
-                    </div>
-                    <ActionBar stepId={step.id} series={fallbackSeries} epId={fallbackEpId} kind="content" />
-                  </div>
-                )}
               </div>
             </div>
+
+            {/* Card ✨ — top-left of canvas (outside scaled canvas) */}
+            {canvasScreenRect && (() => {
+              const vp = viewportRef.current?.getBoundingClientRect();
+              if (!vp) return null;
+              const topOffset = canvasScreenRect.top - vp.top;
+              const leftOffset = canvasScreenRect.left - vp.left;
+              const pad = 16 * currentScale;
+              return (
+                <div style={{ position: 'absolute', top: topOffset + pad, left: leftOffset + pad, zIndex: 120 }}>
+                  <ActionBar stepId={step.id} series={fallbackSeries} epId={fallbackEpId} kind="visual" />
+                </div>
+              );
+            })()}
           </div>
+
+          {/* Narration bar — between viewport and nav */}
+          {step.narration && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '8px 16px',
+              background: 'rgba(16,24,40,0.92)',
+              borderTop: '1px solid rgba(255,255,255,0.08)',
+              borderBottom: '1px solid rgba(255,255,255,0.12)',
+              flexShrink: 0,
+            }}>
+              <ActionBar stepId={step.id} series={fallbackSeries} epId={fallbackEpId} kind="content" />
+              <div style={{
+                flex: 1,
+                color: '#ddd',
+                fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap',
+                maxHeight: 80, overflowY: 'auto',
+              }}>
+                {step.narration}
+              </div>
+            </div>
+          )}
 
           {/* Fix-applied banner */}
           {fixAppliedBanner && (
             <div className="studio-fix-banner" role="status" aria-live="polite">
               <div className="studio-fix-banner-message">
-                Steps fixed: {fixAppliedBanner.stepIds.join(', ')} — reload to confirm
+                已修正步驟：{fixAppliedBanner.stepIds.join(', ')} — 重新載入以確認
               </div>
               <button
                 className="studio-fix-banner-btn"
                 type="button"
                 onClick={() => window.location.reload()}
               >
-                Reload
+                重新載入
               </button>
             </div>
           )}
@@ -298,7 +316,7 @@ export const SlideApp: React.FC<StudioAppProps> = ({ episode }) => {
               className="nav-btn"
               onClick={prev}
               disabled={currentIndex === 0}
-              title="Previous (←)"
+              title="上一張（←）"
             >
               ←
             </button>
@@ -309,7 +327,7 @@ export const SlideApp: React.FC<StudioAppProps> = ({ episode }) => {
               className="nav-btn"
               onClick={next}
               disabled={currentIndex === totalSlides - 1}
-              title="Next (→)"
+              title="下一張（→）"
             >
               →
             </button>
@@ -317,23 +335,23 @@ export const SlideApp: React.FC<StudioAppProps> = ({ episode }) => {
 
           <div className="nav-center">
             {/* Global ✨ — center of nav bar */}
-            <ActionBar stepId={step.id} series={fallbackSeries} epId={fallbackEpId} kind="other" />
+            <ActionBar stepId="__episode__" series={fallbackSeries} epId={fallbackEpId} kind="other" />
           </div>
 
           <div className="nav-right">
             <button
               className="nav-btn"
               onClick={() => setShowFixList((v) => !v)}
-              title="Toggle Fix List"
+              title="修正清單"
             >
               📋
             </button>
             <button
               className="nav-btn"
               onClick={handleToggleFullscreen}
-              title="Toggle Fullscreen (F)"
+              title="全螢幕（F）"
             >
-              {isFullscreen ? '⬜' : '⬛'}
+              ⛶
             </button>
           </div>
 
