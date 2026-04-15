@@ -15,7 +15,6 @@ import React from "react";
 import { useCurrentFrame, useVideoConfig, spring, interpolate, Easing } from "remotion";
 import { BaseCard } from "./BaseCard";
 import { type WindowFrameType } from "../ui/WindowFrame";
-import { useIsSlidesMode } from "../../shared/effects/useIsSlidesMode";
 import { useTheme } from '../../shared/ThemeContext';
 
 export type TimelineItem = {
@@ -39,7 +38,6 @@ export const TimelineCard: React.FC<TimelineCardProps> = ({
   frame = 'none',
 }) => {
   const theme = useTheme();
-  const isSlidesMode = useIsSlidesMode();
   const currentFrame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -54,7 +52,7 @@ export const TimelineCard: React.FC<TimelineCardProps> = ({
 
   // Horizontal line progress (~2.5s)
   const lineDuration = fps * 2.5;
-  const lineProgress = isSlidesMode ? 1 : interpolate(
+  const lineProgress = interpolate(
     currentFrame,
     [Math.floor(fps * 0.2), Math.floor(fps * 0.2) + lineDuration],
     [0, 1],
@@ -63,7 +61,6 @@ export const TimelineCard: React.FC<TimelineCardProps> = ({
 
   // Per-node staggering (~0.6s apart, slower spring)
   const getNodeProgress = (index: number) => {
-    if (isSlidesMode) return 1;
     const delay = Math.floor(fps * 0.4) + index * Math.floor(fps * 0.6);
     return spring({
       frame: Math.max(0, currentFrame - delay),

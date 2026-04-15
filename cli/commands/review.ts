@@ -109,7 +109,7 @@ async function openReview(args: string[]): Promise<void> {
   console.log(`   URL: /?${params.toString()}`);
   console.log(`   Review inbox: ${path.relative(root, getReviewIntentsDir(root))}`);
 
-  const viteProcess = spawn('npm', ['run', 'dev:slides'], {
+  const viteProcess = spawn('npm', ['run', 'dev:studio'], {
     stdio: 'inherit',
     env: {
       ...process.env,

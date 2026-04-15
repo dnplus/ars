@@ -13,7 +13,6 @@
 
 import React from "react";
 import { useCurrentFrame, useVideoConfig, interpolate, Easing } from "remotion";
-import { useIsSlidesMode } from "./useIsSlidesMode";
 
 export type StepTransitionProps = {
     /** 進場動畫持續幀數，預設 12 */
@@ -34,13 +33,8 @@ export const StepTransition: React.FC<StepTransitionProps> = ({
     skipExit = false,
     children,
 }) => {
-    const isSlidesMode = useIsSlidesMode();
     const frame = useCurrentFrame();
     const { durationInFrames } = useVideoConfig();
-
-    if (isSlidesMode) {
-        return <>{children}</>;
-    }
 
     // 進場: opacity 0→1 + translateY 30→0 + scale 0.97→1 (ease-out-cubic)
     const enterOpacity = skipEnter

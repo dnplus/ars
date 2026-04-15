@@ -14,7 +14,6 @@
  */
 
 import { useCurrentFrame, useVideoConfig, interpolate } from "remotion";
-import { useIsSlidesMode } from "../effects/useIsSlidesMode";
 
 export type UseStepAnimationOptions = {
     /** 入場動畫幀數（絕對幀數），預設 0 */
@@ -25,24 +24,9 @@ export type UseStepAnimationOptions = {
 
 export const useStepAnimation = (options: UseStepAnimationOptions = {}) => {
     const { entranceFrames = 0, exitFrames = 0 } = options;
-    
-    const isSlidesMode = useIsSlidesMode();
-    const isRemotion = !isSlidesMode;
 
-    // 總是呼叫 hooks（在 Slides 模式下，這些會返回 mock 的值）
     const frame = useCurrentFrame();
     const { durationInFrames } = useVideoConfig();
-
-    // Slides Mode: 回傳完成狀態
-    if (!isRemotion) {
-        return {
-            frame: Infinity,
-            durationInFrames: 1,
-            progress: 1,
-            enterProgress: 1,
-            exitProgress: 0,
-        };
-    }
 
     /**
      * 整體進度 (0 -> 1)

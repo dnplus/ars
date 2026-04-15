@@ -5,12 +5,12 @@
 import React, { useMemo, useRef, useState, useCallback, useEffect, CSSProperties } from 'react';
 import { Player, type PlayerRef } from '@remotion/player';
 import type { Episode } from '../shared/types';
-import { useSlideNavigation } from './hooks/useSlideNavigation';
+import { useStepNavigation } from './hooks/useStepNavigation';
 import { episodeToSlides, getEpisodeInfo } from './adapters/episodeToSlides';
 import { ThemeProvider } from '../shared/ThemeContext';
 import { ActionBar } from './components/ActionBar';
 import { FixListSidebar } from './components/FixListSidebar';
-import { SlideComposition, type SlideCompositionProps } from './SlideComposition';
+import { StudioComposition, type StudioCompositionProps } from './StudioComposition';
 import { EPISODE_SCOPE_ID } from './constants';
 
 import './styles/studio.css';
@@ -29,7 +29,7 @@ type FixAppliedResponse = {
   latest: FixAppliedEntry | null;
 };
 
-export const SlideApp: React.FC<StudioAppProps> = ({ episode }) => {
+export const StudioApp: React.FC<StudioAppProps> = ({ episode }) => {
   const shell = episode.shell!;
   const theme = shell.theme!;
   const slides = useMemo(() => episodeToSlides(episode), [episode]);
@@ -100,7 +100,7 @@ export const SlideApp: React.FC<StudioAppProps> = ({ episode }) => {
   }, []);
 
   const { currentIndex, totalSlides, isFullscreen, next, prev, goTo } =
-    useSlideNavigation({
+    useStepNavigation({
       totalSlides: slides.length,
       initialIndex: initialStepIndex >= 0 ? initialStepIndex : 0,
       onToggleFullscreen: handleToggleFullscreen,
@@ -245,14 +245,14 @@ export const SlideApp: React.FC<StudioAppProps> = ({ episode }) => {
               >
                 <Player
                   ref={playerRef}
-                  component={SlideComposition}
+                  component={StudioComposition}
                   inputProps={{
                     step: currentSlide.step,
                     prevLayoutMode: prevSlide?.step.layoutMode,
                     episode,
                     episodeInfo,
                     audioSrc: currentSlide.audioSrc,
-                  } satisfies SlideCompositionProps}
+                  } satisfies StudioCompositionProps}
                   durationInFrames={durationInFrames}
                   compositionWidth={compositionWidth}
                   compositionHeight={compositionHeight}
@@ -415,4 +415,4 @@ export const SlideApp: React.FC<StudioAppProps> = ({ episode }) => {
   );
 };
 
-export default SlideApp;
+export default StudioApp;

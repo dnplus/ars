@@ -7,7 +7,7 @@
  */
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { SlideApp } from './engine/studio/SlideApp';
+import { StudioApp } from './engine/studio/StudioApp';
 import { Episode, SeriesConfig } from './engine/shared/types';
 
 // ── 載入 series-config.ts ──
@@ -119,7 +119,7 @@ if (!episode) {
     const root = createRoot(container);
     root.render(
       <StrictMode>
-        <SlideApp episode={episode} />
+        <StudioApp episode={episode} />
       </StrictMode>
     );
   }

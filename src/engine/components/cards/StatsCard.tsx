@@ -14,7 +14,6 @@ import React from "react";
 import { useCurrentFrame, useVideoConfig, spring, interpolate, Easing } from "remotion";
 import { BaseCard } from "./BaseCard";
 import { type WindowFrameType } from "../ui/WindowFrame";
-import { useIsSlidesMode } from "../../shared/effects/useIsSlidesMode";
 import { useTheme } from '../../shared/ThemeContext';
 
 export type StatItem = {
@@ -93,7 +92,6 @@ export const StatsCard: React.FC<StatsCardProps> = ({
   frame = 'none',
 }) => {
   const theme = useTheme();
-  const isSlidesMode = useIsSlidesMode();
   const currentFrame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -152,7 +150,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
         {stats.map((stat, index) => {
           const stagger = Math.floor(index * fps * 0.4);
 
-          const progress = isSlidesMode ? 1 : spring({
+          const progress = spring({
             frame: Math.max(0, currentFrame - stagger),
             fps,
             config: { damping: 14, stiffness: 60, mass: 1.2, overshootClamping: false },
@@ -164,12 +162,12 @@ export const StatsCard: React.FC<StatsCardProps> = ({
             ? (stat.value.split('.')[1]?.replace(/,/g, '').length || 0) : 0;
 
           const displayValue = (() => {
-            if (!isNumeric || isSlidesMode) return stat.value;
+            if (!isNumeric) return stat.value;
             const animated = parsed.num * progress;
             return formatNumber(animated, decimalPlaces) + parsed.unitSuffix;
           })();
 
-          const ringProgress = isSlidesMode ? 1 : interpolate(
+          const ringProgress = interpolate(
             Math.max(0, currentFrame - stagger),
             [0, Math.floor(fps * 2.0)],
             [0, 1],
@@ -178,10 +176,10 @@ export const StatsCard: React.FC<StatsCardProps> = ({
 
           const bounceStartFrame = stagger + Math.floor(fps * 1.0);
           const timeSinceLanding = (currentFrame - bounceStartFrame) / fps;
-          const bounceY = (!isSlidesMode && timeSinceLanding > 0)
+          const bounceY = timeSinceLanding > 0
             ? -dampedBounce(timeSinceLanding, 5, 3.0 + index * 0.4, 4.5) : 0;
 
-          const glowIntensity = (!isSlidesMode && timeSinceLanding > 0)
+          const glowIntensity = timeSinceLanding > 0
             ? 10 * Math.exp(-2 * timeSinceLanding) : 0;
 
           const entryOpacity = interpolate(progress, [0, 0.3], [0, 1], {

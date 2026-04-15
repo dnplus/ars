@@ -1,6 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Easing, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { useIsSlidesMode } from "../shared/effects/useIsSlidesMode";
 import { WindowSlide } from "./WindowSlide";
 import type { ScrollSlideProps } from "./types";
 
@@ -8,7 +7,6 @@ export const ScrollSlide: React.FC<ScrollSlideProps> = ({
   autoScroll = true,
   scrollStartRatio = 0.05,
   scrollEndRatio = 0.95,
-  allowManualScroll = true,
   children,
   ...windowSlideProps
 }) => {
@@ -17,7 +15,6 @@ export const ScrollSlide: React.FC<ScrollSlideProps> = ({
   const [maxScrollTop, setMaxScrollTop] = useState(0);
   const frame = useCurrentFrame();
   const { durationInFrames } = useVideoConfig();
-  const isStatic = useIsSlidesMode();
 
   useLayoutEffect(() => {
     const raf = requestAnimationFrame(() => {
@@ -34,7 +31,7 @@ export const ScrollSlide: React.FC<ScrollSlideProps> = ({
   }, [children]);
 
   const scrollTop =
-    !isStatic && autoScroll && maxScrollTop > 0
+    autoScroll && maxScrollTop > 0
       ? interpolate(
           frame,
           [
@@ -67,7 +64,7 @@ export const ScrollSlide: React.FC<ScrollSlideProps> = ({
           minHeight: 0,
           display: "flex",
           flexDirection: "column",
-          overflowY: isStatic && allowManualScroll ? "auto" : "hidden",
+          overflowY: "hidden",
           overflowX: "hidden",
           position: "relative",
         }}

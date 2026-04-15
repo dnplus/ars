@@ -30,7 +30,7 @@ export async function run(args: string[]) {
 
   console.log(`🚀 Starting Slides for ${series}/${epId}...`);
 
-  const viteProcess = spawn('npm', ['run', 'dev:slides'], {
+  const viteProcess = spawn('npm', ['run', 'dev:studio'], {
     stdio: 'inherit',
     env: {
       ...process.env,

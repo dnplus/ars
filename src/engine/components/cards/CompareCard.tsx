@@ -20,7 +20,6 @@ import React from "react";
 import { useCurrentFrame, useVideoConfig, interpolate, spring, Easing } from "remotion";
 import { BaseCard } from "./BaseCard";
 import { type WindowFrameType } from "../ui/WindowFrame";
-import { useIsSlidesMode } from "../../shared/effects/useIsSlidesMode";
 import { useTheme } from '../../shared/ThemeContext';
 import { getAdaptiveFontSize, FONT_SIZE_PRESETS } from "../../shared/utils/adaptiveFontSize";
 
@@ -57,7 +56,6 @@ export const CompareCard: React.FC<CompareCardProps> = ({
   frame = 'none',
 }) => {
   const theme = useTheme();
-  const isSlidesMode = useIsSlidesMode();
   const currentFrame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -70,20 +68,20 @@ export const CompareCard: React.FC<CompareCardProps> = ({
   const headerFontSize = getAdaptiveFontSize([leftTitle, rightTitle], { ...FONT_SIZE_PRESETS.heading, scale: 2 });
 
   // Panel animations — overshoot entry
-  const leftProgress = isSlidesMode ? 1 : spring({
+  const leftProgress = spring({
     frame: currentFrame,
     fps,
     config: { damping: 12, stiffness: 150, mass: 0.8, overshootClamping: false },
   });
 
-  const rightProgress = isSlidesMode ? 1 : spring({
+  const rightProgress = spring({
     frame: Math.max(0, currentFrame - Math.floor(fps * 0.2)),
     fps,
     config: { damping: 12, stiffness: 150, mass: 0.8, overshootClamping: false },
   });
 
   // Animated divider — scaleY from 0 to 1
-  const dividerProgress = isSlidesMode ? 1 : interpolate(
+  const dividerProgress = interpolate(
     currentFrame,
     [Math.floor(fps * 0.3), Math.floor(fps * 0.8)],
     [0, 1],
@@ -92,7 +90,6 @@ export const CompareCard: React.FC<CompareCardProps> = ({
 
   // Per-item stagger — slower for more drama
   const getItemProgress = (index: number, isRight: boolean) => {
-    if (isSlidesMode) return 1;
     const baseDelay = isRight ? fps * 0.4 : fps * 0.25;
     const itemDelay = baseDelay + index * Math.floor(fps * 0.1);
     return spring({

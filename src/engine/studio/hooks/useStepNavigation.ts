@@ -1,6 +1,6 @@
 /**
- * @hook useSlideNavigation
- * @description 處理簡報導航：鍵盤、觸控、Hash 路由同步
+ * @hook useStepNavigation
+ * @description 處理步驟導航：鍵盤、觸控、Hash 路由同步
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -14,7 +14,7 @@ type UseSlideNavigationOptions = {
 
 type UseSlideNavigationReturn = NavigationState & NavigationActions;
 
-export function useSlideNavigation({
+export function useStepNavigation({
   totalSlides,
   initialIndex = 0,
   onToggleFullscreen,

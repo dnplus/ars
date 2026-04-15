@@ -6,7 +6,6 @@ import {
   useVideoConfig,
 } from "remotion";
 import { useTheme } from "../shared/ThemeContext";
-import { useIsSlidesMode } from "../shared/effects/useIsSlidesMode";
 import type { Theme } from "../shared/theme";
 import type { BaseSlideProps, SlidePadding } from "./types";
 
@@ -15,7 +14,6 @@ export type CardContext = {
   frame: number;
   fps: number;
   progress: number;
-  isStatic: boolean;
 };
 
 const CardContextValue = createContext<CardContext | null>(null);
@@ -80,23 +78,18 @@ export const BaseSlide: React.FC<BaseSlideProps> = ({
   const theme = useTheme();
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
-  const isStatic = useIsSlidesMode();
-  const progress = isStatic
+  const progress = Math.min(1, Math.max(0, frame / Math.max(1, durationInFrames - 1)));
+  const enterOpacity = animation?.skipEnter
     ? 1
-    : Math.min(1, Math.max(0, frame / Math.max(1, durationInFrames - 1)));
-  const enterOpacity =
-    isStatic || animation?.skipEnter
-      ? 1
-      : interpolate(frame, [0, 8], [0, 1], {
-          extrapolateLeft: "clamp",
-          extrapolateRight: "clamp",
-        });
+    : interpolate(frame, [0, 8], [0, 1], {
+        extrapolateLeft: "clamp",
+        extrapolateRight: "clamp",
+      });
   const contextValue: CardContext = {
     theme,
     frame,
     fps,
     progress,
-    isStatic,
   };
   const paddingValue = resolvePadding(padding);
   const backgroundStyle = resolveBackgroundStyle(theme, background);

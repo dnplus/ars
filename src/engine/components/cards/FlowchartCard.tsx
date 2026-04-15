@@ -20,7 +20,6 @@ import {
 import dagre from "@dagrejs/dagre";
 import { BaseCard } from "./BaseCard";
 import { type WindowFrameType } from "../ui/WindowFrame";
-import { useIsSlidesMode } from "../../shared/effects/useIsSlidesMode";
 import { useTheme } from "../../shared/ThemeContext";
 
 // ── Types ──
@@ -217,7 +216,6 @@ export const FlowchartCard: React.FC<FlowchartCardProps> = ({
   frame = "simple",
 }) => {
   const theme = useTheme();
-  const isSlidesMode = useIsSlidesMode();
   const currentFrame = useCurrentFrame();
   const { fps, durationInFrames, width } = useVideoConfig();
 
@@ -335,7 +333,7 @@ export const FlowchartCard: React.FC<FlowchartCardProps> = ({
 
   // ── Node animation ──
   function getNodeProgress(nodeId: string): number {
-    if (isSlidesMode || !hasFocus) return 1;
+    if (!hasFocus) return 1;
     const appear = nodeAppearFrame[nodeId];
     if (appear === undefined) return 1;
     return spring({
@@ -347,7 +345,7 @@ export const FlowchartCard: React.FC<FlowchartCardProps> = ({
 
   // ── Edge animation ──
   function getEdgeProgress(edgeLayoutIdx: number): number {
-    if (isSlidesMode || !hasFocus) return 1;
+    if (!hasFocus) return 1;
     const start = edgeStartFrame[edgeLayoutIdx];
     if (start === undefined) return 1; // shouldn't happen — all edges are now scheduled
     return spring({
@@ -359,7 +357,7 @@ export const FlowchartCard: React.FC<FlowchartCardProps> = ({
 
   // ── Visibility ──
   function isNodeVisible(nodeId: string): boolean {
-    if (isSlidesMode || !hasFocus) return true;
+    if (!hasFocus) return true;
     const appear = nodeAppearFrame[nodeId];
     if (appear === undefined) return true;
     return currentFrame >= appear;
@@ -396,7 +394,7 @@ export const FlowchartCard: React.FC<FlowchartCardProps> = ({
   }
 
   const camera = useMemo(() => {
-    if (isSlidesMode || !hasFocus || timeline.length === 0) return panorama;
+    if (!hasFocus || timeline.length === 0) return panorama;
 
     const edgeDrawF = Math.floor(EDGE_DRAW_SEC * fps);
     const camMoveF = Math.floor(CAM_MOVE_SEC * fps);
@@ -491,7 +489,7 @@ export const FlowchartCard: React.FC<FlowchartCardProps> = ({
     const node = nodeMap[steps[focusedIdx]];
     if (!node) return panorama;
     return cameraForNode(node, panorama, svgAspect);
-  }, [currentFrame, isSlidesMode, hasFocus, timeline, animEndFrame, zoomOutFrames, steps, nodeMap, panorama, svgAspect, remainingEdgeSchedule, fps]);
+  }, [currentFrame, hasFocus, timeline, animEndFrame, zoomOutFrames, steps, nodeMap, panorama, svgAspect, remainingEdgeSchedule, fps]);
 
   const viewBoxStr = `${camera.x} ${camera.y} ${camera.w} ${camera.h}`;
 
@@ -543,7 +541,7 @@ export const FlowchartCard: React.FC<FlowchartCardProps> = ({
         {layout.edges.map((edge, i) => {
           const progress = getEdgeProgress(i);
           const bothVisible = isNodeVisible(edge.from) && isNodeVisible(edge.to);
-          if (!bothVisible && hasFocus && !isSlidesMode) return null;
+          if (!bothVisible && hasFocus) return null;
 
           const dashOffset = edge.pathLength * (1 - progress);
 

@@ -16,7 +16,6 @@ import React, { useMemo } from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring } from "remotion";
 import { QRCodeSVG } from "qrcode.react";
 import { useTheme } from '../../shared/ThemeContext';
-import { useIsSlidesMode } from '../../shared/effects/useIsSlidesMode';
 import { getAdaptiveFontSize, FONT_SIZE_PRESETS } from '../../shared/utils/adaptiveFontSize';
 
 export type CTAButton = {
@@ -65,9 +64,6 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
     showCta = true,
 }) => {
   const theme = useTheme();
-    const isSlidesMode = useIsSlidesMode();
-    const isRemotion = !isSlidesMode;
-
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();
 
@@ -81,21 +77,21 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
     );
 
     // Title spring animation
-    const titleProgress = isRemotion ? spring({
+    const titleProgress = spring({
         frame,
         fps,
         config: { damping: 14, stiffness: 150, mass: 0.7 },
-    }) : 1;
+    });
     const titleOpacity = interpolate(titleProgress, [0, 0.3], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
     const titleSlide = interpolate(titleProgress, [0, 1], [30, 0]);
 
     // CTA 區域動畫
     const ctaStartFrame = fps * 0.5 + points.length * fps * 0.25;
-    const ctaProgress = isRemotion ? spring({
+    const ctaProgress = spring({
         frame: Math.max(0, frame - ctaStartFrame),
         fps,
         config: { damping: 12, stiffness: 140 },
-    }) : 1;
+    });
     const ctaOpacity = interpolate(ctaProgress, [0, 0.3], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
     const ctaScale = interpolate(ctaProgress, [0, 1], [0.85, 1]);
 
@@ -128,11 +124,11 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
                 <ul style={{ listStyle: "none", padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
                     {points.map((point, i) => {
                         const itemDelay = Math.floor(fps * 0.3) + i * Math.floor(fps * 0.2);
-                        const itemProgress = isRemotion ? spring({
+                        const itemProgress = spring({
                             frame: Math.max(0, frame - itemDelay),
                             fps,
                             config: { damping: 14, stiffness: 150, mass: 0.6, overshootClamping: false },
-                        }) : 1;
+                        });
                         const itemOpacity = interpolate(itemProgress, [0, 0.3], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
                         const slideX = interpolate(itemProgress, [0, 1], [-30, 0]);
                         const itemScale = interpolate(itemProgress, [0, 1], [0.95, 1]);
@@ -253,11 +249,11 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
                     >
                         {ctaButtons.map((button, i) => {
                             const btnDelay = ctaStartFrame + i * Math.floor(fps * 0.12);
-                            const btnProgress = isRemotion ? spring({
+                            const btnProgress = spring({
                                 frame: Math.max(0, frame - btnDelay),
                                 fps,
                                 config: { damping: 12, stiffness: 160, mass: 0.5, overshootClamping: false },
-                            }) : 1;
+                            });
                             const btnScale = interpolate(btnProgress, [0, 1], [0.7, 1]);
                             const btnOpacity = interpolate(btnProgress, [0, 0.3], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
 

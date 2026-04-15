@@ -1,6 +1,5 @@
 import React from "react";
 import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { useIsSlidesMode } from "../../shared/effects/useIsSlidesMode";
 import {
   WindowChrome,
   normalizeLegacyTagColorToken,
@@ -28,8 +27,7 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const isStatic = useIsSlidesMode();
-  const shouldAnimate = animate && !isStatic;
+  const shouldAnimate = animate;
   const slideIn = shouldAnimate
     ? interpolate(frame, [fps * 0.3, fps * 0.6], [20, 0], {
         extrapolateLeft: "clamp",

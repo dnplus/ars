@@ -25,7 +25,6 @@
 
 import React, { useMemo } from "react";
 import { useCurrentFrame, useVideoConfig, interpolate, spring } from "remotion";
-import { useIsSlidesMode } from "./useIsSlidesMode";
 
 // ========================================
 // Types
@@ -162,16 +161,15 @@ export const CardEffect: React.FC<CardEffectProps> = ({
     config = {},
     children,
 }) => {
-    const isSlidesMode = useIsSlidesMode();
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();
 
     const style = useMemo(() => {
-        if (isSlidesMode || effect === 'none') return {};
+        if (effect === 'none') return {};
         return computeEffectStyle(effect, config, frame, fps);
-    }, [isSlidesMode, effect, config, frame, fps]);
+    }, [effect, config, frame, fps]);
 
-    if (isSlidesMode || effect === 'none') {
+    if (effect === 'none') {
         return <>{children}</>;
     }
 
