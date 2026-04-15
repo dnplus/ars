@@ -6,7 +6,7 @@ import type { Theme } from './theme';
  * 這是 GSS "Deep Space Blue" palette 的精簡版本，
  * 正常流程中永遠會被 series-config 的 theme 覆蓋。
  */
-const FALLBACK_THEME: Theme = {
+export const FALLBACK_THEME: Theme = {
   colors: {
     primary: "#173D96",
     secondary: "#384045",
