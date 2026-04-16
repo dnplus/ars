@@ -75,14 +75,7 @@ Inside Claude Code:
 /ars:plan ep001
 ```
 
-`/ars:plan` is the official episode planning entrypoint. It should:
-
-- ensure the episode scaffold exists
-- write `.ars/episodes/ep001/topic.md`
-- write `.ars/episodes/ep001/plan.md`
-- write `.ars/episodes/ep001/todo.json`
-- inspect built-in cards and `src/episodes/<series>/cards/*/spec.ts` before planning a new custom card
-- emit `card-specs/` only if neither built-in cards nor existing series-scoped custom cards are sufficient
+`/ars:plan` is the official episode planning entrypoint. It writes topic, plan, and todo artifacts under `.ars/episodes/ep001/` and decides whether custom cards are needed.
 
 ### 5. Build the episode
 
@@ -164,6 +157,7 @@ Stable backend commands:
 - `npx ars update`
 - `npx ars doctor`
 - `npx ars init <series>`
+- `npx ars card list [--json]`
 - `npx ars episode ...`
 - `npx ars review ...`
 - `npx ars audio ...`
@@ -181,146 +175,7 @@ Notes:
 
 ## One repo = one series
 
-ARS core now assumes each content repo has exactly one active series. That state lives in `.ars/config.json`.
-
-Relevant config shape:
-
-```json
-{
-  "version": 2,
-  "project": {
-    "activeSeries": "demo-series",
-    "channelName": "My Channel",
-    "visualDirection": "clean explanatory visuals",
-    "tone": "direct and practical",
-    "mascot": "minimal host",
-    "visualDensity": "balanced",
-    "layoutBias": "mixed"
-  },
-  "tts": {
-    "provider": "none"
-  },
-  "publish": {
-    "youtube": {
-      "enabled": true
-    }
-  },
-  "review": {
-    "preferredUi": "studio"
-  }
-}
-```
-
-After setup, user-facing commands should usually take `epId` only:
-
-```bash
-npx ars episode create ep001
-npx ars audio generate ep001
-npx ars review open ep001
-npx ars prepare youtube ep001
-npx ars publish youtube ep001
-```
-
-`<series>/<epId>` still works as a compatibility path in some commands, but it is no longer the primary documented interface.
-
-## Episode schema
-
-Episodes should follow the current template shape in [`src/episodes/template/episode.template.ts`](./src/episodes/template/episode.template.ts).
-
-Example:
-
-```ts
-import { Episode } from "../../engine/shared/types";
-
-export const ep001: Episode = {
-  metadata: {
-    title: 'Episode Title',
-    subtitle: 'Episode Subtitle',
-    episodeTag: 'EP1 · Intro',
-  },
-  steps: [
-    {
-      id: 'intro',
-      contentType: 'cover',
-      animation: 'matrix',
-      narration: '開場旁白...',
-      durationInSeconds: 10,
-    },
-    {
-      id: 'content_1',
-      contentType: 'text',
-      title: '內容標題',
-      description: '內容描述',
-      cardTitle: '卡片標題',
-      cardContent: '卡片內容\\n• 第一點\\n• 第二點',
-      narration: '旁白內容...',
-      durationInSeconds: 15,
-    },
-    {
-      id: 'outro',
-      contentType: 'summary',
-      title: '總結',
-      description: '感謝觀看',
-      summaryPoints: ['重點總結'],
-      narration: '結尾旁白...',
-      durationInSeconds: 8,
-    },
-  ],
-};
-```
-
-`shell` is usually injected from `src/episodes/<series>/series-config.ts`, so episode files do not need to hand-define it unless they are intentionally overriding the series default.
-
-## Planning artifacts
-
-ARS planning artifacts live under `.ars/episodes/<epId>/`.
-
-Expected files:
-
-- `topic.md`: discussion summary, audience, thesis, constraints, and open questions
-- `plan.md`: canonical build contract for the episode
-- `todo.json`: tracked execution state across planning, optional card work, build, and completion
-- `card-specs/<card-name>.md`: optional custom card briefs when the plan requires new cards
-
-The normal authoring flow is:
-
-```text
-/ars:plan ep001
-/ars:new-card ...   # only when plan emits card-spec todos
-/ars:build ep001
-/ars:review-open ep001
-/ars:apply-review latest
-/ars:polish ep001
-```
-
-## Manual backend flows
-
-### Validate install
-
-```bash
-npx ars doctor
-```
-
-### Create a series manually
-
-```bash
-npx ars setup
-npx ars init demo-series
-```
-
-### Review intents
-
-```bash
-npx ars review intent list
-npx ars review intent show <intent-id>
-npx ars review intent clear <intent-id>
-```
-
-### Package without uploading
-
-```bash
-npx ars publish package ep001
-```
+ARS core assumes each content repo has exactly one active series, set during `/ars:setup`. All episode commands take `epId` only — the active series is resolved automatically from `.ars/config.json`.
 
 ## Current core scope
 
