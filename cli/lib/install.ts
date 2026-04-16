@@ -305,6 +305,78 @@ export function detectInstallMethod(
   return 'source';
 }
 
+/**
+ * Copy ARS plugin skills into the repo's .claude/skills/ars/ directory so that
+ * Claude Code can discover them without requiring --plugin-dir at launch time.
+ *
+ * Each skill lives at plugin/skills/<name>/SKILL.md and is copied to
+ * .claude/skills/ars/<name>/SKILL.md in the target repo.
+ *
+ * Returns the list of skill names that were installed.
+ */
+export function syncAgents(options: {
+  root: string;
+  pluginRoot: string;
+  overwrite: boolean;
+}): string[] {
+  const { root, pluginRoot, overwrite } = options;
+  const sourceAgentsDir = path.join(pluginRoot, 'agents');
+  const targetAgentsDir = path.join(root, '.claude', 'agents');
+
+  if (!fs.existsSync(sourceAgentsDir)) {
+    return [];
+  }
+
+  const installed: string[] = [];
+
+  for (const file of fs.readdirSync(sourceAgentsDir)) {
+    if (!file.endsWith('.md')) continue;
+
+    const sourcePath = path.join(sourceAgentsDir, file);
+    // Agent file stays as-is: planner.md → .claude/agents/planner.md
+    // Claude Code discovers it under the namespace from the frontmatter name field
+    const targetPath = path.join(targetAgentsDir, file);
+    if (fs.existsSync(targetPath) && !overwrite) continue;
+
+    fs.mkdirSync(targetAgentsDir, { recursive: true });
+    fs.copyFileSync(sourcePath, targetPath);
+    installed.push(file.replace(/\.md$/, ''));
+  }
+
+  return installed;
+}
+
+export function syncSkills(options: {
+  root: string;
+  pluginRoot: string;
+  overwrite: boolean;
+}): string[] {
+  const { root, pluginRoot, overwrite } = options;
+  const sourceSkillsDir = path.join(pluginRoot, 'skills');
+  const targetSkillsBaseDir = path.join(root, '.claude', 'skills');
+
+  if (!fs.existsSync(sourceSkillsDir)) {
+    return [];
+  }
+
+  const installed: string[] = [];
+
+  for (const name of fs.readdirSync(sourceSkillsDir)) {
+    const sourceSkillMd = path.join(sourceSkillsDir, name, 'SKILL.md');
+    if (!fs.existsSync(sourceSkillMd)) continue;
+
+    // Skill name becomes "ars:<name>" so it's invoked as /ars:<name>
+    const targetSkillMd = path.join(targetSkillsBaseDir, `ars:${name}`, 'SKILL.md');
+    if (fs.existsSync(targetSkillMd) && !overwrite) continue;
+
+    fs.mkdirSync(path.dirname(targetSkillMd), { recursive: true });
+    fs.copyFileSync(sourceSkillMd, targetSkillMd);
+    installed.push(name);
+  }
+
+  return installed;
+}
+
 function syncDirectoryIfNeeded(
   sourcePath: string,
   targetPath: string,

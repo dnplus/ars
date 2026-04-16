@@ -1,6 +1,6 @@
 ---
-name: publisher
-description: YouTube publish agent - wraps npx ars prepare/publish flow with human confirmation
+name: ars:publisher
+description: ARS YouTube publish agent - wraps npx ars prepare/publish flow with human confirmation
 model: claude-sonnet-4-6
 ---
 

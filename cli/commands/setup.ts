@@ -19,7 +19,9 @@ import {
   isArsDevelopmentRepo,
   locateSourcePackageRoot,
   patchClaudeMd,
+  syncAgents,
   syncEngineFiles,
+  syncSkills,
   writeVersionMetadata,
 } from '../lib/install';
 import { getRuntimePackageInfo } from '../lib/runtime-package';
@@ -75,6 +77,9 @@ export async function run(args: string[]) {
   if (result.claudeMdPath) {
     console.log(`✅ Patched ${result.claudeMdPath}`);
   }
+  if (result.installedSkills.length > 0) {
+    console.log(`✅ Installed ${result.installedSkills.length} ARS skills into .claude/skills/ars/`);
+  }
   console.log(`✅ Wrote ${result.versionPath}`);
   if (result.usedDefaults) {
     console.log('   Non-interactive defaults were applied.');
@@ -88,6 +93,7 @@ Promise<{
   configPath?: string;
   copiedFiles: string[];
   claudeMdPath?: string;
+  installedSkills: string[];
   versionPath: string;
   usedDefaults: boolean;
 }> {
@@ -147,6 +153,16 @@ Promise<{
     overwriteSupportFiles: overwriteEngine,
   });
   const claudeMdPath = overwriteClaudeMd ? patchClaudeMd(root) : undefined;
+  const installedSkills = syncSkills({
+    root,
+    pluginRoot: runtime.pluginRoot,
+    overwrite: overwriteEverything,
+  });
+  syncAgents({
+    root,
+    pluginRoot: runtime.pluginRoot,
+    overwrite: overwriteEverything,
+  });
   const versionPath = writeVersionMetadata({
     root,
     sourceRoot,
@@ -162,6 +178,7 @@ Promise<{
     configPath: writtenConfigPath ?? configPath,
     copiedFiles,
     claudeMdPath,
+    installedSkills,
     versionPath,
     usedDefaults: !interactive && overwriteConfig,
   };

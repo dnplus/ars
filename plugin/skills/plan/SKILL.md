@@ -1,14 +1,19 @@
 ---
 name: plan
 description: Official episode planning entrypoint. Create topic.md, plan.md, and todo.json under .ars/episodes/<epId>/.
-argument-hint: "<epId>"
+argument-hint: "[topic...]"
 model: claude-opus-4-6
 effort: high
 ---
 
-Use the `planner` agent for this skill.
+Delegate planning work to the `ars:planner` subagent (defined in `.claude/agents/planner.md`). Pass it the gathered context as a structured prompt: active series, epId, topic, available cards, and any existing episode state.
 
 `/ars:plan` is the official planning entrypoint for a new or existing episode.
+
+Argument parsing:
+- The argument (if any) is the episode topic in free text. There is no epId argument.
+- epId is always determined automatically: list `src/episodes/<active-series>/` to find the highest existing `ep\d+`, then use the next one (e.g. ep001 exists → use ep002). If no episodes exist, start at ep001.
+- If no topic argument is provided, ask the user to describe the episode in free text — do NOT show a fixed menu of category options. Just ask: "這集要講什麼？" A short free-form description like "正態分佈：為什麼身高、考試成績都呈鐘形曲線" is ideal.
 
 Behavior:
 - Resolve the active series from repo state. One repo maps to one series, so `/ars:plan` should operate on `<epId>` within that active series.
