@@ -286,6 +286,14 @@ export function syncEngineFiles(options: SyncEngineOptions): string[] {
     copied,
   );
 
+  syncFileIfNeeded(
+    path.join(options.sourceRoot, 'tsconfig.json'),
+    path.join(options.root, 'tsconfig.json'),
+    options.overwriteSupportFiles,
+    'tsconfig.json',
+    copied,
+  );
+
   // Static assets: fonts and shared audio required by the studio
   syncDirectoryIfNeeded(
     path.join(options.sourceRoot, 'public', 'shared'),
