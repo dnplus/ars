@@ -94,7 +94,7 @@ If the plan emitted `card-spec` todos, run `/ars:new-card` first and then come b
 Inside Claude Code:
 
 ```text
-/ars:review-open ep001
+/ars:review ep001
 ```
 
 Or directly from the terminal:
@@ -144,7 +144,7 @@ This skill uses the existing YouTube analytics helpers to produce a concise repo
 - `/ars:plan`: official planning entrypoint for a new or existing episode
 - `/ars:build`: implement `ep.ts` from the approved planning artifacts
 - `/ars:episode-create`: low-level scaffold primitive for manual use
-- `/ars:review-open`: launch the review surface
+- `/ars:review`: launch the review surface
 - `/ars:apply-review`: apply review intents back into the episode source
 - `/ars:polish`: late-stage tier B refinement
 - `/ars:prepare-youtube`: fill the prepare artifact with title, description, and tags

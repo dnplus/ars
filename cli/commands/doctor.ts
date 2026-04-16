@@ -25,7 +25,7 @@ interface CheckResult {
 const HELP = `
 Usage: npx ars doctor [options]
 
-Validates .ars/config.json, engine install status, plugin assets, Claude/tmux readiness, and provider credentials.
+Validates repo bootstrap readiness, .ars/config.json, engine install status, plugin assets, Claude/tmux readiness, and provider credentials.
 
 Options:
   --json     Output machine-readable JSON
@@ -56,6 +56,7 @@ export function runDoctor(options: { json: boolean; strict: boolean }): CheckRes
   const results: CheckResult[] = [];
 
   validateCliRuntime(results);
+  validateRepoBootstrap(root, results);
 
   if (!configExists(root)) {
     results.push({
@@ -137,6 +138,53 @@ function validateCliRuntime(results: CheckResult[]): void {
     detail: isTmuxAvailable()
       ? 'tmux available for session wrapping.'
       : 'tmux not available; bare `npx ars` will fall back to direct Claude launch.',
+  });
+}
+
+function validateRepoBootstrap(root: string, results: CheckResult[]): void {
+  const packageJsonPath = path.join(root, 'package.json');
+  const hasPackageJson = fs.existsSync(packageJsonPath);
+  results.push({
+    id: 'repo.package-json',
+    status: hasPackageJson ? 'pass' : 'warn',
+    detail: hasPackageJson
+      ? `Found ${packageJsonPath}`
+      : `Missing ${packageJsonPath}`,
+    fixHint: hasPackageJson ? undefined : 'Run npm init -y to create a project manifest.',
+  });
+
+  const gitBinary = spawnSync('git', ['--version'], {
+    encoding: 'utf-8',
+    stdio: 'pipe',
+  });
+  const hasGitBinary = gitBinary.status === 0;
+  results.push({
+    id: 'repo.git-binary',
+    status: hasGitBinary ? 'pass' : 'warn',
+    detail: hasGitBinary
+      ? gitBinary.stdout.trim() || 'git available'
+      : 'git not found in PATH.',
+    fixHint: hasGitBinary ? undefined : 'Install git before using the review/publish workflow.',
+  });
+
+  const gitDirPath = path.join(root, '.git');
+  let hasGitRepo = fs.existsSync(gitDirPath);
+  if (hasGitBinary) {
+    const gitRepo = spawnSync('git', ['rev-parse', '--is-inside-work-tree'], {
+      cwd: root,
+      encoding: 'utf-8',
+      stdio: 'pipe',
+    });
+    hasGitRepo = hasGitRepo || (gitRepo.status === 0 && gitRepo.stdout.trim() === 'true');
+  }
+
+  results.push({
+    id: 'repo.git-root',
+    status: hasGitRepo ? 'pass' : 'warn',
+    detail: hasGitRepo
+      ? `Git repo detected at ${root}`
+      : `No git repo detected at ${root}`,
+    fixHint: hasGitRepo ? undefined : 'Run git init to start versioning this content repo.',
   });
 }
 
