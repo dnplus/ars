@@ -260,7 +260,7 @@ export function syncEngineFiles(options: SyncEngineOptions): string[] {
     copied,
   );
 
-  for (const file of ['studio.html', 'studio-main.tsx', 'index.ts', 'global.d.ts']) {
+  for (const file of ['studio.html', 'studio-main.tsx', 'index.ts', 'index.css', 'global.d.ts']) {
     syncFileIfNeeded(
       path.join(options.sourceRoot, 'src', file),
       path.join(options.root, 'src', file),
@@ -275,6 +275,14 @@ export function syncEngineFiles(options: SyncEngineOptions): string[] {
     path.join(options.root, 'vite.studio.config.ts'),
     options.overwriteSupportFiles,
     'vite.studio.config.ts',
+    copied,
+  );
+
+  syncFileIfNeeded(
+    path.join(options.sourceRoot, 'remotion.config.ts'),
+    path.join(options.root, 'remotion.config.ts'),
+    options.overwriteSupportFiles,
+    'remotion.config.ts',
     copied,
   );
 

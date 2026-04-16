@@ -5,6 +5,12 @@ type GlobCardModule = {
 };
 
 const collect = (): Map<string, CardSpec<unknown>> => {
+  // import.meta.glob is a Vite-only API — not available in Remotion/webpack.
+  // Return an empty registry when running outside Vite (e.g. cover render).
+  if (typeof import.meta.glob !== 'function') {
+    return new Map();
+  }
+
   const engineSpecs = import.meta.glob("./*/spec.ts", {
     eager: true,
   }) as Record<string, GlobCardModule>;
