@@ -35,7 +35,7 @@ Each stdout line from Monitor is a notification. On every notification:
 2. Run `npx ars review intent list --pending --json` to get all pending intents.
 3. For each pending intent:
    - Read `src/episodes/<series>/<epId>.ts`
-   - If the intent has an attachment, read it first and decide whether it is evidence, reference, or the actual asset to place. Do not assume every attachment should become an image card.
+   - If the intent has an attachment, read it together with `feedback.message` to classify: if feedback implies adding a new slide/step ("插這張", "加一頁", "insert"), treat the attachment as the asset — copy it to `public/episodes/<series>/<epId>/` and use an `image` card. If feedback describes a desired style or points out a bug, treat it as reference or evidence instead.
    - Apply the fix described in `intent.feedback.message` to the step matching `intent.target.stepId`
    - Save the file (Vite HMR will reload the studio automatically)
    - Run `npx ars review intent clear <intent.id>` to mark it processed

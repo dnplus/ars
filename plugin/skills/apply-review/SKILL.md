@@ -13,12 +13,11 @@ Behavior:
 - When the argument is `all`, confirm `.ars/review-intents/_session-end.flag` exists before proceeding. Treat it as the signal that the review pass is closed and the remaining intents should be batch-applied.
 - Read exactly one review intent from `.ars/review-intents/` and inspect its `target`, `source`, `feedback`, and optional `attachments`.
 - If `attachments.screenshotPath` is present, read it before making changes.
-- Do not assume an attachment means "convert this step into an image card".
-- First decide whether the attachment is:
-  - evidence of what is wrong
-  - a visual reference for the desired result
-  - the actual asset that should be placed into the episode
-- Only treat the attachment as the actual episode asset when the feedback clearly implies that intent.
+- Classify the attachment by reading `feedback.message` together with the screenshot:
+  - **Asset to place** (use `image` card): feedback says "插這張"、"放這個畫面"、"加一頁"、"insert"、"add a slide" — the screenshot IS the content. Copy it to `public/episodes/<series>/<epId>/` and use an `image` card with `src` pointing to it.
+  - **Visual reference**: feedback describes a desired look but the screenshot is just a reference — do not place the screenshot, adjust the step's style/content instead.
+  - **Evidence of a bug**: feedback points out something wrong — the screenshot shows the problem, not the solution. Fix the step based on the feedback message.
+- When in doubt and the feedback mentions adding a new step/slide, default to treating the attachment as an asset to place.
 - Use `target.series`, `target.epId`, and `target.stepId` to locate the episode source and the single matching step.
 - Patch only that one step. Do not rewrite unrelated steps, episode metadata, shared theme files, or other series assets unless the targeted step cannot work without a minimal local fix.
 - Use `feedback.kind` and `feedback.message` as the change brief.
