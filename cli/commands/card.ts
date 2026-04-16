@@ -37,7 +37,7 @@ type CardMeta = {
   title?: string;
   description?: string;
   agentHints?: AgentHints;
-  liveExample?: unknown;
+  liveExample?: LiveExample;
   usageCount?: number;
   scope: 'engine' | 'series';
   series?: string;
@@ -121,11 +121,17 @@ function parseSpecFile(specPath: string): { type?: string; title?: string; descr
 
 // ── Live example: scan recent episodes ───────────────────
 
+type StepRecord = Record<string, unknown>;
+
+type LoadedEpisode = {
+  epId: string;
+  steps: StepRecord[];
+};
+
 /**
  * Load episode files sorted by mtime (newest first) for the active series.
- * Returns dynamic import results — only works with tsx/ts-node runtime.
  */
-async function loadRecentEpisodes(series: string): Promise<Array<{ steps: Array<{ contentType: string; data?: unknown }> }>> {
+async function loadRecentEpisodes(series: string): Promise<LoadedEpisode[]> {
   const episodesDir = path.join(ROOT, 'src/episodes', series);
   if (!fs.existsSync(episodesDir)) return [];
 
@@ -133,18 +139,19 @@ async function loadRecentEpisodes(series: string): Promise<Array<{ steps: Array<
     .filter(f => f.endsWith('.ts') && !f.includes('template') && !f.includes('series-config') && !f.includes('.d.ts'))
     .map(f => ({ file: f, mtime: fs.statSync(path.join(episodesDir, f)).mtimeMs }))
     .sort((a, b) => b.mtime - a.mtime)
-    .map(f => path.join(episodesDir, f.file));
+    .slice(0, 5); // scan at most 5 recent episodes
 
-  const episodes: Array<{ steps: Array<{ contentType: string; data?: unknown }> }> = [];
+  const episodes: LoadedEpisode[] = [];
 
-  for (const filePath of files.slice(0, 5)) { // scan at most 5 recent episodes
+  for (const { file } of files) {
+    const filePath = path.join(episodesDir, file);
     try {
       const mod = await import(filePath);
       const ep = Object.values(mod).find(
-        (v): v is { steps: Array<{ contentType: string; data?: unknown }> } =>
+        (v): v is { steps: StepRecord[] } =>
           typeof v === 'object' && v !== null && Array.isArray((v as { steps?: unknown }).steps),
       );
-      if (ep) episodes.push(ep);
+      if (ep) episodes.push({ epId: file.replace(/\.ts$/, ''), steps: ep.steps });
     } catch {
       // skip files that fail to import (e.g. missing assets)
     }
@@ -153,26 +160,32 @@ async function loadRecentEpisodes(series: string): Promise<Array<{ steps: Array<
   return episodes;
 }
 
+type LiveExample = {
+  _sourceEp: string;
+  [key: string]: unknown;
+};
+
 type EpisodeStats = {
-  liveExamples: Map<string, unknown>;
+  liveExamples: Map<string, LiveExample>;
   usageCounts: Map<string, number>;
 };
 
 /**
  * Build usage stats from all episodes in the active series.
- * liveExamples: contentType → most recent real step.data
+ * liveExamples: contentType → full step (with _sourceEp) from most recent episode
  * usageCounts: contentType → total step count across all episodes
  */
 async function buildEpisodeStats(series: string): Promise<EpisodeStats> {
-  const liveExamples = new Map<string, unknown>();
+  const liveExamples = new Map<string, LiveExample>();
   const usageCounts = new Map<string, number>();
   const episodes = await loadRecentEpisodes(series);
 
-  for (const ep of episodes) {
-    for (const step of ep.steps) {
-      usageCounts.set(step.contentType, (usageCounts.get(step.contentType) ?? 0) + 1);
-      if (!liveExamples.has(step.contentType) && step.data != null) {
-        liveExamples.set(step.contentType, step.data);
+  for (const { epId, steps } of episodes) {
+    for (const step of steps) {
+      const contentType = step.contentType as string;
+      usageCounts.set(contentType, (usageCounts.get(contentType) ?? 0) + 1);
+      if (!liveExamples.has(contentType)) {
+        liveExamples.set(contentType, { _sourceEp: epId, ...step });
       }
     }
   }
@@ -284,7 +297,14 @@ export async function run(args: string[]): Promise<void> {
     }
 
     // Enrich with live examples and usage counts from the active series
-    const activeSeries = getActiveSeries(ROOT);
+    // Fallback: if no active series configured, use the first available series directory
+    const activeSeries = getActiveSeries(ROOT) ?? (() => {
+      const episodesDir = path.join(ROOT, 'src/episodes');
+      if (!fs.existsSync(episodesDir)) return null;
+      return fs.readdirSync(episodesDir).find(
+        name => fs.statSync(path.join(episodesDir, name)).isDirectory(),
+      ) ?? null;
+    })();
     if (activeSeries) {
       const stats = await buildEpisodeStats(activeSeries);
       for (const card of all) {
