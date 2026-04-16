@@ -25,8 +25,8 @@ To set up YouTube publishing:
   4. Create OAuth 2.0 credentials:
        APIs & Services > Credentials > Create Credentials > OAuth client ID
        Application type: Web application
-       Authorized redirect URIs: http://localhost:8788/callback
-         (Add exactly this URI — ARS always uses port 8788)
+       Authorized redirect URIs: http://localhost:3847/callback
+         (Add exactly this URI — ARS always uses port 3847)
   5. Download the client_secret.json (optional, not required here)
   6. Copy the Client ID and Client Secret, then add them to your .env:
 
@@ -82,6 +82,7 @@ async function runYouTubeAuth(args: string[]): Promise<void> {
     patchEnvFile(envPath, 'YOUTUBE_REFRESH_TOKEN', refreshToken);
     console.log('\nYouTube authorization successful!');
     console.log(`YOUTUBE_REFRESH_TOKEN written to ${envPath}`);
+    process.exit(0);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`\nAuthorization failed: ${message}`);

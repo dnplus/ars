@@ -54,6 +54,7 @@ For each `card-specs/<card-name>.md` brief:
    - Use only ARS primitives: `BaseSlide`, `WindowSlide`, `ScrollSlide`
    - Use `useTheme()` for all colors — never hardcode hex values
    - Never import from legacy deleted cards
+   - If the card uses SVG `<text>` for chart labels, ticks, legends, or axis titles, snap `x` / `y` to integer pixels, especially for centered text, and prefer `textRendering="geometricPrecision"` to avoid shimmer in Remotion output
 7. **Run `./node_modules/.bin/tsc --noEmit`** after each card to catch type errors immediately. Never use `npx tsc` — it may install a fake `tsc` package instead of TypeScript.
 8. **Delete the processed brief** from `card-specs/` after successful creation.
 

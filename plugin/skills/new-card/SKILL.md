@@ -83,6 +83,7 @@ Output path: `src/episodes/<series>/cards/<card-name>/`
      );
    };
    ```
+   - If the card renders chart labels or legends with SVG `<text>`, avoid fractional text coordinates. Snap label `x` / `y` to integer pixels, especially when using `textAnchor="middle"`, and prefer `textRendering="geometricPrecision"` to reduce shimmer in Remotion renders.
 
 7. **Verify**: Run `./node_modules/.bin/tsc --noEmit` to confirm no type errors. Never use `npx tsc` — it may install a fake `tsc` package instead of TypeScript.
 
@@ -99,3 +100,4 @@ Output path: `src/episodes/<series>/cards/<card-name>/`
 - **agentHints required**: Helps the AI agent know when and how to use this card
 - **Series-scoped**: Cards go in `src/episodes/<series>/cards/`, not in the engine
 - **No manual registry**: The glob auto-registers — just create the files
+- **SVG text stability**: For charts or diagrams with SVG `<text>`, do not leave `x` / `y` on fractional pixels. Snap them to integers to avoid encoded-video shimmer, especially for centered labels and tick legends.

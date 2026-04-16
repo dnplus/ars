@@ -67,6 +67,7 @@ export const cardSpec = {
 - Core engine cards (`src/engine/cards/`) must never import from `src/episodes/`.
 - `card-catalog.ts` (`CARD_CATALOG` array) is CLI-only. Never import it in browser/Remotion code.
 - `cards/registry.ts` (`CARD_REGISTRY` Map) is Vite/browser-only. Never import it in CLI/Node code.
+- For SVG-heavy chart cards, avoid fractional text positioning. If you render SVG `<text>` labels, ticks, legends, or axis titles, especially with `textAnchor="middle"`, snap `x` / `y` to integer pixels and prefer `textRendering="geometricPrecision"` to reduce render shimmer in encoded video.
 
 ---
 

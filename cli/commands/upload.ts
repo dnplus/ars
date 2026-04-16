@@ -12,6 +12,7 @@ import { getRepoRoot } from '../lib/ars-config';
 import { loadEpisodeMetadata, writeEpisodePublishState } from '../lib/episode-file';
 import { readPreparedYoutubeCandidate } from '../lib/prepare-artifact';
 import {
+  getAccessToken,
   getAccessTokenInfo,
   getMissingYouTubeCredentialKeys,
   loadCredentials,
@@ -249,6 +250,15 @@ async function uploadToYouTube(
   }
 
   const creds = loadCredentials();
+  try {
+    await getAccessToken(creds);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    console.error(`\n❌ YouTube auth preflight failed: ${detail}`);
+    console.error(`   Re-authorize with: npx ars auth youtube --force`);
+    return null;
+  }
+
   let tokenInfo: Awaited<ReturnType<typeof getAccessTokenInfo>> | null = null;
   if (assets.srtPath && !opts.noSrt) {
     try {

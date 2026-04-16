@@ -191,11 +191,12 @@ export async function run(args: string[]) {
       const remotionBin = path.join(packageRoot, 'node_modules', '.bin', 'remotion');
       // Run with cwd=ARS package so Node.js ESM resolves config imports
       // (e.g. @remotion/tailwind-v4) from ARS node_modules.
-      // Pass the user repo entry point and output as absolute paths.
+      // Pass the user repo entry point, public dir, and output as absolute paths.
       const entryPoint = path.join(root, 'src', 'index.ts');
+      const publicDir = path.join(root, 'public');
       const absOutPath = path.resolve(outPath);
       execSync(
-        `"${remotionBin}" still "${entryPoint}" "${compositionId}" "${absOutPath}" --image-format=jpeg --jpeg-quality=90 --log=error`,
+        `"${remotionBin}" still "${entryPoint}" "${compositionId}" "${absOutPath}" --public-dir="${publicDir}" --image-format=jpeg --jpeg-quality=90 --log=error`,
         {
           cwd: packageRoot,
           stdio: 'pipe',

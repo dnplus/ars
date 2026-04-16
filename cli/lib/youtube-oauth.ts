@@ -15,7 +15,12 @@ import crypto from 'crypto';
 
 const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
-const SCOPE = 'https://www.googleapis.com/auth/youtube';
+const SCOPES = [
+  'https://www.googleapis.com/auth/youtube',
+  'https://www.googleapis.com/auth/youtube.force-ssl',
+  'https://www.googleapis.com/auth/yt-analytics.readonly',
+] as const;
+const SCOPE = SCOPES.join(' ');
 const CALLBACK_TIMEOUT_MS = 30_000;
 
 // ── Browser ──
@@ -146,8 +151,8 @@ export async function runYouTubeOAuthFlow(
   clientSecret: string,
 ): Promise<string> {
   // Fixed port — users must add exactly this URI to their Google Cloud OAuth client:
-  //   http://localhost:8788/callback
-  const port = 8788;
+  //   http://localhost:3847/callback
+  const port = 3847;
   const redirectUri = `http://localhost:${port}/callback`;
   const state = crypto.randomBytes(8).toString('hex');
 

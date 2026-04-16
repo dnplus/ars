@@ -22,6 +22,40 @@ type GlobCardModule = {
   cardSpec: CardSpec<unknown>;
 };
 
+const TEMPLATE_SERIES_ID = "template";
+
+const extractSeriesIdFromSpecSource = (source: string): string | null => {
+  const normalized = source.replace(/\\/g, "/");
+  const match =
+    normalized.match(/\/episodes\/([^/]+)\/cards\/[^/]+\/spec\.ts$/) ??
+    normalized.match(/^\.\/([^/]+)\/cards\/[^/]+\/spec\.ts$/);
+
+  return match?.[1] ?? null;
+};
+
+const loadEpisodeSpecsWithWebpackContext = (): Record<string, GlobCardModule> => {
+  try {
+    const webpackRequire = require as unknown as {
+      context: (
+        directory: string,
+        useSubdirectories: boolean,
+        regExp: RegExp,
+      ) => RequireContext;
+    };
+    const context = webpackRequire.context(
+      "../../episodes",
+      true,
+      /^\.\/[^/]+\/cards\/[^/]+\/spec\.ts$/,
+    );
+
+    return Object.fromEntries(
+      context.keys().map((source: string) => [source, context(source) as GlobCardModule]),
+    );
+  } catch {
+    return {};
+  }
+};
+
 const collect = (): Map<string, CardSpec<unknown>> => {
   // import.meta.glob is a Vite-only API.
   // - Vite: transforms glob calls into Object.assign({...}) at build time.
@@ -42,17 +76,19 @@ const collect = (): Map<string, CardSpec<unknown>> => {
       eager: true,
     }) as Record<string, GlobCardModule>;
   } catch {
-    // Remotion/webpack: fall back to statically imported engine cards.
-    // Series-scoped custom cards are not available in this path.
+    // Remotion/webpack: fall back to statically imported engine cards plus
+    // webpack require.context discovery for series-scoped custom cards.
     engineSpecs = ENGINE_STATIC_SPECS;
+    episodeSpecs = loadEpisodeSpecsWithWebpackContext();
   }
-  const hasUserSeriesSpecs = Object.keys(episodeSpecs).some(
-    (source) => !source.includes("/episodes/template/"),
-  );
+  const hasUserSeriesSpecs = Object.keys(episodeSpecs).some((source) => {
+    const seriesId = extractSeriesIdFromSpecSource(source);
+    return seriesId !== null && seriesId !== TEMPLATE_SERIES_ID;
+  });
   const filteredEpisodeSpecs = hasUserSeriesSpecs
     ? Object.fromEntries(
         Object.entries(episodeSpecs).filter(
-          ([source]) => !source.includes("/episodes/template/"),
+          ([source]) => extractSeriesIdFromSpecSource(source) !== TEMPLATE_SERIES_ID,
         ),
       )
     : episodeSpecs;

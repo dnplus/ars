@@ -9,6 +9,7 @@
  * - 不含 VTuber、字幕等影片中的元素
  */
 import React from 'react';
+import { Img } from 'remotion';
 
 export type ThumbnailCardProps = {
   /** 主標題（會盡可能放大填滿） */
@@ -323,7 +324,7 @@ export const ThumbnailCard: React.FC<ThumbnailCardProps> = ({
             pointerEvents: 'none',
           }}
         >
-          <img
+          <Img
             src={mascotUrl}
             style={{
               maxHeight: '100%',
