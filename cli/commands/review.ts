@@ -110,7 +110,14 @@ async function openReview(args: string[]): Promise<void> {
   console.log(`   URL: /?${params.toString()}`);
   console.log(`   Review inbox: ${path.relative(root, getReviewIntentsDir(root))}`);
 
-  const viteProcess = spawn('npm', ['run', 'dev:studio'], {
+  // Prefer dev:studio if defined, fall back to dev (standard Remotion script)
+  const pkgJsonPath = path.join(root, 'package.json');
+  const pkgScripts = fs.existsSync(pkgJsonPath)
+    ? (JSON.parse(fs.readFileSync(pkgJsonPath, 'utf-8')) as { scripts?: Record<string, string> }).scripts ?? {}
+    : {};
+  const devScript = 'dev:studio' in pkgScripts ? 'dev:studio' : 'dev';
+
+  const viteProcess = spawn('npm', ['run', devScript], {
     stdio: 'inherit',
     env: {
       ...process.env,
