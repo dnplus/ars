@@ -137,8 +137,6 @@ async function promptForConfig(): Promise<ArsConfig> {
       publish: {
         youtube: {
           enabled: youtubeEnabled,
-          credentialsPath: defaults.publish.youtube.credentialsPath,
-          clientSecretPath: defaults.publish.youtube.clientSecretPath,
         },
       },
       extensions: {

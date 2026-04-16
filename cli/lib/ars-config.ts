@@ -20,8 +20,6 @@ export interface ArsConfig {
   publish: {
     youtube: {
       enabled: boolean;
-      credentialsPath?: string;
-      clientSecretPath?: string;
     };
   };
   extensions: {
@@ -68,8 +66,6 @@ export function createDefaultConfig(): ArsConfig {
     publish: {
       youtube: {
         enabled: false,
-        credentialsPath: '.ars/credentials/youtube/credentials.json',
-        clientSecretPath: '.ars/credentials/youtube/client_secret.json',
       },
     },
     extensions: {
@@ -147,16 +143,6 @@ export function parseArsConfig(input: unknown): ArsConfig {
         enabled:
           expectOptionalBoolean(youtube.enabled, 'publish.youtube.enabled') ??
           defaults.publish.youtube.enabled,
-        credentialsPath:
-          expectOptionalString(
-            youtube.credentialsPath,
-            'publish.youtube.credentialsPath',
-          ) ?? defaults.publish.youtube.credentialsPath,
-        clientSecretPath:
-          expectOptionalString(
-            youtube.clientSecretPath,
-            'publish.youtube.clientSecretPath',
-          ) ?? defaults.publish.youtube.clientSecretPath,
       },
     },
     extensions: {
