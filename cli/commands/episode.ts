@@ -173,14 +173,20 @@ async function validate(args: string[]) {
       process.exit(1);
     }
 
-    // ── Load series-config to detect Shorts ──
+    // ── Load series-config to detect Shorts and fill metadata defaults ──
     const seriesConfigPath = path.join(ctx.episodesDir, 'series-config.ts');
+    let seriesDefaults: { fps?: number; width?: number; height?: number } = {};
     let isShorts = false;
     if (fs.existsSync(seriesConfigPath)) {
       const configMod = await import(seriesConfigPath);
       const seriesConfig = configMod.SERIES_CONFIG;
+      seriesDefaults = seriesConfig?.episodeDefaults ?? {};
       isShorts = !!seriesConfig?.shell && getLayoutKey(seriesConfig.shell.layout) === 'shorts';
     }
+
+    const resolvedFps = episode.metadata?.fps ?? seriesDefaults.fps;
+    const resolvedWidth = episode.metadata?.width ?? seriesDefaults.width;
+    const resolvedHeight = episode.metadata?.height ?? seriesDefaults.height;
 
     console.log(`✅ Episode "${series}/${epId}" loaded`);
     console.log(`   Title: ${episode.metadata?.title || '(none)'}`);
@@ -189,8 +195,8 @@ async function validate(args: string[]) {
     const stepsWithNarration = (episode.steps || []).filter((s: any) => s.narration);
     const deprecatedSteps = (episode.steps || []).filter((s: any) => DEPRECATED_CARD_TYPES.has(s.contentType));
     console.log(`   Narrated: ${stepsWithNarration.length}`);
-    console.log(`   FPS: ${episode.metadata?.fps}`);
-    console.log(`   Resolution: ${episode.metadata?.width}x${episode.metadata?.height}`);
+    console.log(`   FPS: ${resolvedFps ?? '(none)'}`);
+    console.log(`   Resolution: ${resolvedWidth ?? '(none)'}x${resolvedHeight ?? '(none)'}`);
 
     for (const step of deprecatedSteps) {
       validationSuggestions.push(

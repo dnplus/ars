@@ -12,7 +12,16 @@
  *   Config.overrideWebpackConfig(sharedWebpackOverride);
  */
 
-type WebpackConfig = Record<string, any>;
+type WebpackConfig = {
+  resolve?: {
+    modules?: string[];
+    alias?: Record<string, string>;
+  };
+  resolveLoader?: {
+    modules?: string[];
+  };
+  [key: string]: unknown;
+};
 
 export function sharedWebpackOverride(config: WebpackConfig): WebpackConfig {
   // When running via `npx ars export cover` from an external user repo,

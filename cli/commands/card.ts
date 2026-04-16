@@ -202,14 +202,13 @@ function discoverEngineCards(): CardMeta[] {
 
   return fs.readdirSync(cardsDir)
     .filter(name => fs.statSync(path.join(cardsDir, name)).isDirectory())
-    .map(name => {
+    .flatMap((name): CardMeta[] => {
       const specPath = path.join(cardsDir, name, 'spec.ts');
-      if (!fs.existsSync(specPath)) return null;
+      if (!fs.existsSync(specPath)) return [];
       const meta = parseSpecFile(specPath);
-      if (!meta?.type) return null;
-      return { ...meta, scope: 'engine' as const, specPath };
-    })
-    .filter((x): x is CardMeta => x !== null);
+      if (!meta?.type) return [];
+      return [{ ...meta, type: meta.type, scope: 'engine', specPath }];
+    });
 }
 
 function discoverSeriesCards(filterSeries?: string): CardMeta[] {
@@ -231,7 +230,7 @@ function discoverSeriesCards(filterSeries?: string): CardMeta[] {
       if (!fs.existsSync(specPath)) continue;
       const meta = parseSpecFile(specPath);
       if (!meta?.type) continue;
-      results.push({ ...meta, scope: 'series', series, specPath });
+      results.push({ ...meta, type: meta.type, scope: 'series', series, specPath });
     }
   }
 

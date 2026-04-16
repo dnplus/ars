@@ -30,7 +30,7 @@ declare module 'react-native-reanimated' {
  */
 interface RequireContext {
   keys(): string[];
-  (id: string): any;
+  (id: string): unknown;
   resolve(id: string): string;
   id: string;
 }

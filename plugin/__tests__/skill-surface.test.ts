@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 const repoRoot = path.resolve(__dirname, '../..');
 
 describe('plugin skill surface', () => {
-  it('includes the new short workflow skills and keeps deprecated aliases', () => {
+  it('includes the current workflow skills', () => {
     const skillsRoot = path.join(repoRoot, 'plugin', 'skills');
     const skillDirs = fs.readdirSync(skillsRoot, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
@@ -17,10 +17,10 @@ describe('plugin skill surface', () => {
       'build',
       'apply-review',
       'polish',
-      'scene-plan',
-      'scene-build',
-      'scene-fix',
-      'scene-polish',
+      'review-open',
+      'new-card',
+      'prepare-youtube',
+      'publish-youtube',
     ]));
   });
 

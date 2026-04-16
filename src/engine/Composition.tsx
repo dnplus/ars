@@ -24,12 +24,16 @@ import { StepRenderer } from "./renderers/StepRenderer";
 
 export type EpisodeRendererProps = {
   episode: Episode;
+  episodeId: string;
+  seriesId: string;
   /** 字幕時間戳 mapping (stepId -> SubtitlePhrase[]) */
   subtitles?: Record<string, SubtitlePhrase[]>;
 };
 
 export const EpisodeRenderer: React.FC<EpisodeRendererProps> = ({
   episode,
+  episodeId,
+  seriesId,
   subtitles,
 }) => {
   if (!episode.shell) {
@@ -79,10 +83,8 @@ export const EpisodeRenderer: React.FC<EpisodeRendererProps> = ({
               : step.durationInSeconds;
             const durationInFrames = actualDuration * (episode.metadata.fps || 30);
             const hasNarration = step.narration && step.narration.trim() !== '';
-            const series = episode.metadata.series;
-            const epId = episode.metadata.id;
-            const audioSrc = hasNarration && series && epId
-              ? `episodes/${series}/${epId}/audio/${step.id}.mp3`
+            const audioSrc = hasNarration
+              ? `episodes/${seriesId}/${episodeId}/audio/${step.id}.mp3`
               : undefined;
 
             // 取得前一個 step 的 layoutMode（用於過場動畫）

@@ -146,14 +146,15 @@ Flag as **warning (non-blocking)**:
 
 ## Test & Verification Baseline
 
-There is currently no automated test suite. Verification means:
+There is a lightweight automated test suite (`npm test`). Verification baseline means:
 
 1. `npm run lint` — must exit 0 (ignoring the known exemptions above)
 2. `npx ars episode validate template/ep-demo` — must pass without errors
 3. Remotion studio renders `ep-demo` without throwing (manual check or `remotion bundle`)
+4. `npm test` — should pass before shipping workflow or registry changes
 
 When adding a new card type, also verify:
-- `npx ars episode stats template` lists the new type
+- `npx ars episode stats template --all` lists the new type
 - `ep-demo.ts` includes a step using the new card, and it renders
 
 ---

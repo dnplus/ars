@@ -40,11 +40,11 @@ const collect = (): Map<BuiltInLayoutKey, LayoutSpec> => {
 
 export const BUILT_IN_LAYOUT_REGISTRY = collect();
 
-const isBuiltInLayout = (
+export const isBuiltInLayout = (
   value: LayoutReference,
 ): value is BuiltInLayoutKey => typeof value === "string";
 
-const getBuiltInLayout = (key: BuiltInLayoutKey): LayoutSpec => {
+export const getBuiltInLayout = (key: BuiltInLayoutKey): LayoutSpec => {
   const spec = BUILT_IN_LAYOUT_REGISTRY.get(key);
 
   if (!spec) {

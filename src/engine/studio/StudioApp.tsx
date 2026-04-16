@@ -18,6 +18,8 @@ import './styles/studio.css';
 
 type StudioAppProps = {
   episode: Episode;
+  episodeId: string;
+  seriesId: string;
 };
 
 type FixAppliedEntry = {
@@ -30,19 +32,22 @@ type FixAppliedResponse = {
   latest: FixAppliedEntry | null;
 };
 
-export const StudioApp: React.FC<StudioAppProps> = ({ episode }) => {
+export const StudioApp: React.FC<StudioAppProps> = ({ episode, episodeId, seriesId }) => {
   const [draftEpisode, setDraftEpisode] = useState(episode);
   const shell = draftEpisode.shell!;
   const theme = shell.theme!;
-  const studioSteps = useMemo(() => episodeToStudioSteps(draftEpisode), [draftEpisode]);
+  const studioSteps = useMemo(
+    () => episodeToStudioSteps(draftEpisode, seriesId, episodeId),
+    [draftEpisode, episodeId, seriesId],
+  );
 
   // URL params
   const queryParams = useMemo(() => new URLSearchParams(window.location.search), []);
   const querySeries = queryParams.get('series')?.trim() || undefined;
   const queryEpId = queryParams.get('ep')?.trim() || undefined;
   const queryStepId = queryParams.get('step')?.trim() || undefined;
-  const fallbackSeries = querySeries ?? draftEpisode.metadata.series ?? 'unknown-series';
-  const fallbackEpId = queryEpId ?? draftEpisode.metadata.id ?? 'unknown-episode';
+  const fallbackSeries = querySeries ?? seriesId;
+  const fallbackEpId = queryEpId ?? episodeId;
 
   const initialStepIndex = useMemo(
     () => (queryStepId ? studioSteps.findIndex((s) => s.step.id === queryStepId) : -1),
@@ -53,7 +58,6 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode }) => {
     const info = getStudioEpisodeInfo(draftEpisode);
     return {
       ...info,
-      id: info.id ?? fallbackEpId,
       title: info.title || fallbackEpId,
       subtitle: info.subtitle ?? `${fallbackSeries}/${fallbackEpId}`,
       channelName: info.channelName ?? fallbackSeries,

@@ -53,9 +53,9 @@ allSeriesConfigModules.keys().forEach((filePath: string) => {
   const match = filePath.match(/^\.\/([^/]+)\/series-config\.ts$/);
   if (!match) return;
   const series = match[1];
-  const mod = allSeriesConfigModules(filePath);
+  const mod = allSeriesConfigModules(filePath) as Record<string, unknown>;
   if (mod.SERIES_CONFIG) {
-    seriesConfigs[series] = mod.SERIES_CONFIG;
+    seriesConfigs[series] = mod.SERIES_CONFIG as SeriesConfig;
   }
 });
 
@@ -65,9 +65,9 @@ allLegacyConfigModules.keys().forEach((filePath: string) => {
   if (!match) return;
   const series = match[1];
   if (seriesConfigs[series]) return; // 新版優先
-  const mod = allLegacyConfigModules(filePath);
+  const mod = allLegacyConfigModules(filePath) as Record<string, unknown>;
   const defaultsKey = Object.keys(mod).find(k => k.endsWith('_EPISODE_DEFAULTS'));
-  if (defaultsKey) legacyDefaults[series] = mod[defaultsKey];
+  if (defaultsKey) legacyDefaults[series] = mod[defaultsKey] as Partial<Episode['metadata']>;
 });
 
 // 全局 fallback（當 series config 也沒有時）
@@ -85,10 +85,10 @@ allEpisodeModules.keys().forEach((filePath: string) => {
   // 排除 template 和 subtitles
   if (epId === 'episode' || filePath.includes('.template.') || filePath.includes('.subtitles.')) return;
 
-  const mod = allEpisodeModules(filePath);
+  const mod = allEpisodeModules(filePath) as Record<string, unknown>;
   const episode = Object.values(mod).find(
     (exp): exp is Episode =>
-      typeof exp === 'object' && exp !== null && 'steps' in (exp as any)
+      typeof exp === 'object' && exp !== null && 'steps' in (exp as Record<string, unknown>)
   ) as Episode | undefined;
 
   if (episode) {
@@ -117,8 +117,6 @@ export const RemotionRoot: React.FC = () => (
               ...GLOBAL_FALLBACK,
               ...defaults,
               ...episode.metadata,
-              id: episode.metadata.id ?? epId,
-              series: episode.metadata.series ?? series,
             },
           };
 
@@ -145,7 +143,12 @@ export const RemotionRoot: React.FC = () => (
               fps={fps}
               width={width}
               height={height}
-              defaultProps={{ episode: enrichedEpisode, subtitles: episode.subtitles }}
+              defaultProps={{
+                episode: enrichedEpisode,
+                episodeId: epId,
+                seriesId: series,
+                subtitles: episode.subtitles,
+              }}
             />
           );
         })}

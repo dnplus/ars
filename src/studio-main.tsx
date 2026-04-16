@@ -77,8 +77,6 @@ for (const filePath in rawModules) {
         ...GLOBAL_FALLBACK,
         ...defaults,
         ...episode.metadata,
-        id: episode.metadata.id ?? epId,
-        series: episode.metadata.series ?? series,
       },
     };
   }
@@ -117,9 +115,9 @@ if (!episode) {
   const container = document.getElementById('root');
   if (container) {
     const root = createRoot(container);
-    root.render(
+      root.render(
       <StrictMode>
-        <StudioApp episode={episode} />
+        <StudioApp episode={episode} episodeId={episodeId} seriesId={targetSeries} />
       </StrictMode>
     );
   }

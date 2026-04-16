@@ -16,8 +16,12 @@ function getAudioSrc(episodeId: string, stepId: string): string {
 /**
  * 將 Episode 轉換為 Studio step 陣列
  */
-export function episodeToStudioSteps(episode: Episode): StudioStepEntry[] {
-  const resolvedId = episode.metadata.id ?? '';
+export function episodeToStudioSteps(
+  episode: Episode,
+  activeSeries: string,
+  episodeId: string,
+): StudioStepEntry[] {
+  const audioBase = `${activeSeries}/${episodeId}`;
   return episode.steps.map((step, index) => {
     const processedStep: Step = { ...step };
 
@@ -38,7 +42,7 @@ export function episodeToStudioSteps(episode: Episode): StudioStepEntry[] {
       id: step.id,
       index,
       step: processedStep,
-      audioSrc: getAudioSrc(resolvedId, step.id),
+      audioSrc: getAudioSrc(audioBase, step.id),
     };
   });
 }
@@ -48,7 +52,6 @@ export function episodeToStudioSteps(episode: Episode): StudioStepEntry[] {
  */
 export function getStudioEpisodeInfo(episode: Episode) {
   return {
-    id: episode.metadata.id,
     title: episode.metadata.title,
     subtitle: episode.metadata.subtitle,
     channelName: episode.metadata.channelName,
