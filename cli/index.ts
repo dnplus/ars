@@ -8,6 +8,7 @@ type CommandModule = { run: (args: string[]) => Promise<void> };
 
 const KNOWN_COMMANDS = new Set([
   'audio',
+  'auth',
   'card',
   'doctor',
   'episode',
@@ -37,6 +38,7 @@ Launch behavior:
 
 Commands:
   launch [claude-args...]          Launch Claude with the ARS plugin attached
+  auth <subcommand> [...]          Authorize external service credentials (e.g. YouTube OAuth)
   setup [options]                  Initialize config, sync engine files, and patch CLAUDE.md
   update [options]                 Backup and refresh the installed ARS engine
   doctor [options]                 Validate config, engine install, plugin assets, and providers
@@ -60,6 +62,8 @@ async function loadCommandModule(command: string): Promise<CommandModule> {
   switch (command) {
     case 'audio':
       return import('./commands/audio');
+    case 'auth':
+      return import('./commands/auth');
     case 'card':
       return import('./commands/card');
     case 'doctor':

@@ -357,29 +357,37 @@ function validateProviders(
     return;
   }
 
-  const credentialsPath = path.resolve(
-    root,
-    config.publish.youtube.credentialsPath ?? '.ars/credentials/youtube/credentials.json',
-  );
-  const clientSecretPath = path.resolve(
-    root,
-    config.publish.youtube.clientSecretPath ?? '.ars/credentials/youtube/client_secret.json',
-  );
-  const missing = [credentialsPath, clientSecretPath].filter(
-    (filePath) => !fs.existsSync(filePath),
-  );
+  const missingClient = [
+    !process.env.YOUTUBE_CLIENT_ID && 'YOUTUBE_CLIENT_ID',
+    !process.env.YOUTUBE_CLIENT_SECRET && 'YOUTUBE_CLIENT_SECRET',
+  ].filter(Boolean).join(', ');
+
+  const missingToken = !process.env.YOUTUBE_REFRESH_TOKEN ? 'YOUTUBE_REFRESH_TOKEN' : '';
+
+  if (missingClient) {
+    results.push({
+      id: 'provider.youtube-credentials',
+      status: 'fail',
+      detail: `YouTube publishing enabled but missing env vars: ${missingClient}.`,
+      fixHint: 'Run npx ars auth youtube for setup instructions',
+    });
+    return;
+  }
+
+  if (missingToken) {
+    results.push({
+      id: 'provider.youtube-credentials',
+      status: 'fail',
+      detail: `YouTube publishing enabled but missing env var: ${missingToken}.`,
+      fixHint: 'Run npx ars auth youtube to complete OAuth authorization',
+    });
+    return;
+  }
 
   results.push({
     id: 'provider.youtube-credentials',
-    status: missing.length === 0 ? 'pass' : 'fail',
-    detail:
-      missing.length === 0
-        ? `Found YouTube credential files: ${credentialsPath}, ${clientSecretPath}`
-        : `Missing YouTube credential files: ${missing.join(', ')}`,
-    fixHint:
-      missing.length === 0
-        ? undefined
-        : 'Create the OAuth credential files or disable publish.youtube.enabled.',
+    status: 'pass',
+    detail: 'YouTube credentials configured.',
   });
 }
 

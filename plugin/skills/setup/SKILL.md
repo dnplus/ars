@@ -17,7 +17,7 @@ Interview checklist:
 - `mascot or VTuber preference`
 - `default visual density / layout bias`
 - `TTS provider`: ask if they want MiniMax TTS for audio generation. If yes, remind them to add `MINIMAX_API_KEY` and `MINIMAX_GROUP_ID` to `.env`, and set `tts.provider: "minimax"` in `.ars/config.json`.
-- `YouTube publishing`: ask if they plan to publish to YouTube. If yes, remind them to place OAuth credentials at `.ars/credentials/youtube/` and set `publish.youtube.enabled: true` in `.ars/config.json`.
+- `YouTube publishing`: ask if they plan to publish to YouTube. If yes, remind them to add `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, and `YOUTUBE_REFRESH_TOKEN` to `.env`, and set `publish.youtube.enabled: true` in `.ars/config.json`.
 
 Behavior:
 1. If `.ars/config.json` is missing, run `npx ars setup`.
