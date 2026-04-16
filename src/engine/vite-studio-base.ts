@@ -19,7 +19,9 @@ export interface StudioConfigOptions {
 }
 
 export function createStudioConfig(options: StudioConfigOptions): UserConfig {
-  const rootDir = process.cwd();
+  // When launched via `npx ars review open`, ARS_REPO_ROOT points to the user's
+  // content repo. Fall back to process.cwd() for local ARS development.
+  const rootDir = process.env.ARS_REPO_ROOT ?? process.cwd();
   const fixAppliedEntries = new Map<string, FixAppliedEntry>();
   let latestFixApplied: FixAppliedEntry | null = null;
 
@@ -33,8 +35,14 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
   if (targetStep) openParams.set('step', targetStep);
   const openPath = targetEp ? `/?${openParams.toString()}` : true;
 
+  // When launched via `npx ars review open`, ARS_PACKAGE_ROOT points to the ARS package.
+  // Fall back to resolving from import.meta.url for local ARS development.
+  const arsPackageRoot = process.env.ARS_PACKAGE_ROOT
+    ?? path.resolve(new URL(import.meta.url).pathname, '..', '..', '..');
+  const arsModulesDir = path.join(arsPackageRoot, 'node_modules');
+
   return defineConfig({
-    root: 'src',
+    root: path.resolve(rootDir, 'src'),
     base: '/',
     publicDir: path.resolve(rootDir, 'public'),
     define: {},
@@ -204,16 +212,31 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
       },
     ],
     resolve: {
-      alias: {
+      alias: [
+        // When running in external user repo, redirect all node_modules lookups
+        // to ARS package's node_modules so vite can find react, remotion, etc.
+        ...(process.env.ARS_PACKAGE_ROOT ? [
+          { find: /^react\/(.*)/, replacement: path.join(arsModulesDir, 'react', '$1') },
+          { find: 'react', replacement: path.join(arsModulesDir, 'react') },
+          { find: 'react-dom/client', replacement: path.join(arsModulesDir, 'react-dom', 'client') },
+          { find: 'react-dom', replacement: path.join(arsModulesDir, 'react-dom') },
+          { find: 'remotion', replacement: path.join(arsModulesDir, 'remotion') },
+          { find: '@remotion/player', replacement: path.join(arsModulesDir, '@remotion', 'player') },
+          { find: 'mermaid', replacement: path.join(arsModulesDir, 'mermaid') },
+          { find: 'prism-react-renderer', replacement: path.join(arsModulesDir, 'prism-react-renderer') },
+          { find: 'react-markdown', replacement: path.join(arsModulesDir, 'react-markdown') },
+          { find: 'remark-gfm', replacement: path.join(arsModulesDir, 'remark-gfm') },
+          { find: 'remark-breaks', replacement: path.join(arsModulesDir, 'remark-breaks') },
+          { find: 'qrcode.react', replacement: path.join(arsModulesDir, 'qrcode.react') },
+        ] : []),
         // Mock only packages that have no web-compatible real implementation
-        '@remotion/google-fonts/NotoSansTC': path.resolve(rootDir, 'src/engine/studio/mocks/remotion-google-fonts.ts'),
-        '@remotion/media': path.resolve(rootDir, 'src/engine/studio/mocks/remotion-media.ts'),
-        '@remotion/media-utils': path.resolve(rootDir, 'src/engine/studio/mocks/remotion-media-utils.ts'),
-        '@remotion/three': path.resolve(rootDir, 'src/engine/studio/mocks/remotion-three.tsx'),
-        // Mock Skia for web
-        '@shopify/react-native-skia': path.resolve(rootDir, 'src/engine/studio/mocks/react-native-skia.tsx'),
-        '@shopify/react-native-skia/src/web': path.resolve(rootDir, 'src/engine/studio/mocks/react-native-skia.tsx'),
-      },
+        { find: '@remotion/google-fonts/NotoSansTC', replacement: path.resolve(rootDir, 'src/engine/studio/mocks/remotion-google-fonts.ts') },
+        { find: '@remotion/media', replacement: path.resolve(rootDir, 'src/engine/studio/mocks/remotion-media.ts') },
+        { find: '@remotion/media-utils', replacement: path.resolve(rootDir, 'src/engine/studio/mocks/remotion-media-utils.ts') },
+        { find: '@remotion/three', replacement: path.resolve(rootDir, 'src/engine/studio/mocks/remotion-three.tsx') },
+        { find: '@shopify/react-native-skia', replacement: path.resolve(rootDir, 'src/engine/studio/mocks/react-native-skia.tsx') },
+        { find: '@shopify/react-native-skia/src/web', replacement: path.resolve(rootDir, 'src/engine/studio/mocks/react-native-skia.tsx') },
+      ],
     },
     build: {
       outDir: '../dist/studio',
@@ -226,6 +249,10 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
     server: {
       port: options.port,
       open: openPath,
+      fs: {
+        // Allow serving files from ARS package when running in external user repo
+        allow: [rootDir, arsModulesDir],
+      },
     },
     optimizeDeps: {
       include: ['react', 'react-dom', 'mermaid', 'prism-react-renderer', 'react-markdown', 'remark-gfm', '@remotion/player'],

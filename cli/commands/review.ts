@@ -7,6 +7,7 @@ import path from 'path';
 import { spawn } from 'child_process';
 import { resolveEpisodeTarget, resolveSeriesContext } from '../lib/context';
 import { getRepoRoot } from '../lib/ars-config';
+import { getRuntimePackageInfo } from '../lib/runtime-package';
 import {
   createReviewIntent,
   getReviewIntentsDir,
@@ -110,17 +111,29 @@ async function openReview(args: string[]): Promise<void> {
   console.log(`   URL: /?${params.toString()}`);
   console.log(`   Review inbox: ${path.relative(root, getReviewIntentsDir(root))}`);
 
-  // Launch ARS review studio via vite — vite.studio.config.ts is synced into the
-  // user repo by npx ars setup, so it's always available at the repo root.
+  // Launch ARS review studio using the ARS package's own vite config and binary.
+  // The config lives in the ARS package so vite resolves all imports from ARS node_modules.
+  // We pass ARS_REPO_ROOT so the config can resolve publicDir and episode paths from the user repo.
+  const { packageRoot: arsPackageRoot } = getRuntimePackageInfo(import.meta.url);
+  const viteBin = path.join(arsPackageRoot, 'node_modules', '.bin', 'vite');
+  const viteConfigPath = path.join(arsPackageRoot, 'vite.studio.config.ts');
+
   const viteProcess = spawn(
-    'npx',
-    ['vite', '--config', 'vite.studio.config.ts'],
+    viteBin,
+    ['--config', viteConfigPath],
     {
       stdio: 'inherit',
       env: {
         ...process.env,
         SERIES: series,
         EP: epId,
+        ARS_REPO_ROOT: root,
+        ARS_PACKAGE_ROOT: arsPackageRoot,
+        // Allow vite and its plugins to resolve modules from ARS node_modules
+        NODE_PATH: [
+          path.join(arsPackageRoot, 'node_modules'),
+          process.env.NODE_PATH,
+        ].filter(Boolean).join(path.delimiter),
       },
       cwd: root,
     },

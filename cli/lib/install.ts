@@ -243,27 +243,47 @@ export function syncEngineFiles(options: SyncEngineOptions): string[] {
     copied,
   );
 
-  syncFileIfNeeded(
-    path.join(options.sourceRoot, 'src', 'studio.html'),
-    path.join(options.root, 'src', 'studio.html'),
+  // Review surface support files
+  syncDirectoryIfNeeded(
+    path.join(options.sourceRoot, 'src', 'review'),
+    path.join(options.root, 'src', 'review'),
     options.overwriteSupportFiles,
-    'studio.html',
+    'review/',
     copied,
   );
 
-  syncFileIfNeeded(
-    path.join(options.sourceRoot, 'src', 'studio-main.tsx'),
-    path.join(options.root, 'src', 'studio-main.tsx'),
+  syncDirectoryIfNeeded(
+    path.join(options.sourceRoot, 'src', 'types'),
+    path.join(options.root, 'src', 'types'),
     options.overwriteSupportFiles,
-    'studio-main.tsx',
+    'types/',
     copied,
   );
+
+  for (const file of ['studio.html', 'studio-main.tsx', 'index.ts', 'global.d.ts']) {
+    syncFileIfNeeded(
+      path.join(options.sourceRoot, 'src', file),
+      path.join(options.root, 'src', file),
+      options.overwriteSupportFiles,
+      file,
+      copied,
+    );
+  }
 
   syncFileIfNeeded(
     path.join(options.sourceRoot, 'vite.studio.config.ts'),
     path.join(options.root, 'vite.studio.config.ts'),
     options.overwriteSupportFiles,
     'vite.studio.config.ts',
+    copied,
+  );
+
+  // Static assets: fonts and shared audio required by the studio
+  syncDirectoryIfNeeded(
+    path.join(options.sourceRoot, 'public', 'shared'),
+    path.join(options.root, 'public', 'shared'),
+    options.overwriteSupportFiles,
+    'public/shared/',
     copied,
   );
 
