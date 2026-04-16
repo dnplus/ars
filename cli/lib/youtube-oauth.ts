@@ -145,8 +145,9 @@ export async function runYouTubeOAuthFlow(
   clientId: string,
   clientSecret: string,
 ): Promise<string> {
-  // Pick a random ephemeral port in the unprivileged range
-  const port = 8080 + Math.floor(Math.random() * 1000);
+  // Fixed port — users must add exactly this URI to their Google Cloud OAuth client:
+  //   http://localhost:8788/callback
+  const port = 8788;
   const redirectUri = `http://localhost:${port}/callback`;
   const state = crypto.randomBytes(8).toString('hex');
 

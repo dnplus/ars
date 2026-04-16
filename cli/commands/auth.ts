@@ -25,8 +25,8 @@ To set up YouTube publishing:
   4. Create OAuth 2.0 credentials:
        APIs & Services > Credentials > Create Credentials > OAuth client ID
        Application type: Web application
-       Authorized redirect URIs: http://localhost:8080-9079/callback
-         (Add a few ports like 8080, 8081, 8082 ... or use a broad range)
+       Authorized redirect URIs: http://localhost:8788/callback
+         (Add exactly this URI — ARS always uses port 8788)
   5. Download the client_secret.json (optional, not required here)
   6. Copy the Client ID and Client Secret, then add them to your .env:
 
