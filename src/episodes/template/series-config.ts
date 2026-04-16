@@ -81,5 +81,6 @@ export const SERIES_CONFIG: SeriesConfig = {
     fps: 30,
     channelName: 'Your Channel Name', // TODO: customize with your channel name
     brandTag: 'Template Demo',
+    voiceId: 'female-shaonv', // MiniMax built-in voice; replace with your clone voice ID if needed
   },
 };
