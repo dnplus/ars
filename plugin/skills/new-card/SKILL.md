@@ -29,7 +29,7 @@ Output path: `src/episodes/<series>/cards/<card-name>/`
 3. **Understand the card purpose**: If no description, first look for a matching brief under `.ars/episodes/*/card-specs/<card-name>.md`. Only ask one focused question if no brief exists.
 
 4. **Check for reuse before scaffolding**:
-   - Inspect existing cards under `src/episodes/<series>/cards/*/spec.ts`.
+   - Run `npx ars card list` to see all built-in and series-scoped cards with agentHints and live examples.
    - If an existing series-scoped card already solves the need, tell the user to reuse it instead of generating a redundant sibling card.
    - If an existing card is close, prefer extending it or recommending a small follow-up patch over creating a near-duplicate.
 
