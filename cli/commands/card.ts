@@ -9,6 +9,7 @@
 import fs from 'fs';
 import path from 'path';
 import ts from 'typescript';
+import { getActiveSeries } from '../lib/context';
 
 const ROOT = path.resolve(__dirname, '../..');
 
@@ -17,7 +18,7 @@ Usage: npx ars card <subcommand> [options]
 
 Subcommands:
   list                      List all card types (engine + series-scoped)
-  list --series <name>      List cards for a specific series only
+  list --series <name>      Use <name> as the live-example source series
   list --json               Output as JSON (for agent consumption)
 
 Examples:
@@ -26,12 +27,11 @@ Examples:
   npx ars card list --json
 `;
 
-// ── AST extraction ───────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────
 
 type AgentHints = {
   whenToUse?: string;
   notForUseCases?: string;
-  exampleData?: unknown;
 };
 
 type CardMeta = {
@@ -39,10 +39,13 @@ type CardMeta = {
   title?: string;
   description?: string;
   agentHints?: AgentHints;
+  liveExample?: unknown;
   scope: 'engine' | 'series';
   series?: string;
   specPath: string;
 };
+
+// ── AST: spec.ts extraction ───────────────────────────────
 
 function getStringValue(node: ts.Expression): string | undefined {
   if (ts.isStringLiteral(node)) return node.text;
@@ -57,10 +60,7 @@ function getPropertyNameText(name: ts.PropertyName): string | null {
 
 function extractStringProp(obj: ts.ObjectLiteralExpression, key: string): string | undefined {
   for (const prop of obj.properties) {
-    if (
-      ts.isPropertyAssignment(prop) &&
-      getPropertyNameText(prop.name) === key
-    ) {
+    if (ts.isPropertyAssignment(prop) && getPropertyNameText(prop.name) === key) {
       return getStringValue(prop.initializer);
     }
   }
@@ -96,7 +96,6 @@ function parseSpecFile(specPath: string): { type?: string; title?: string; descr
   let cardSpecObject: ts.ObjectLiteralExpression | null = null;
 
   const visit = (node: ts.Node): void => {
-    // export const cardSpec = { ... } satisfies CardSpec<...>
     if (
       ts.isVariableDeclaration(node) &&
       ts.isIdentifier(node.name) &&
@@ -104,13 +103,8 @@ function parseSpecFile(specPath: string): { type?: string; title?: string; descr
       node.initializer
     ) {
       let init = node.initializer;
-      // unwrap `satisfies` expression if present
-      if (ts.isSatisfiesExpression(init)) {
-        init = init.expression;
-      }
-      if (ts.isObjectLiteralExpression(init)) {
-        cardSpecObject = init;
-      }
+      if (ts.isSatisfiesExpression(init)) init = init.expression;
+      if (ts.isObjectLiteralExpression(init)) cardSpecObject = init;
     }
     ts.forEachChild(node, visit);
   };
@@ -124,6 +118,58 @@ function parseSpecFile(specPath: string): { type?: string; title?: string; descr
     description: extractStringProp(cardSpecObject, 'description'),
     agentHints: extractAgentHints(cardSpecObject),
   };
+}
+
+// ── Live example: scan recent episodes ───────────────────
+
+/**
+ * Load episode files sorted by mtime (newest first) for the active series.
+ * Returns dynamic import results — only works with tsx/ts-node runtime.
+ */
+async function loadRecentEpisodes(series: string): Promise<Array<{ steps: Array<{ contentType: string; data?: unknown }> }>> {
+  const episodesDir = path.join(ROOT, 'src/episodes', series);
+  if (!fs.existsSync(episodesDir)) return [];
+
+  const files = fs.readdirSync(episodesDir)
+    .filter(f => f.endsWith('.ts') && !f.includes('template') && !f.includes('series-config') && !f.includes('.d.ts'))
+    .map(f => ({ file: f, mtime: fs.statSync(path.join(episodesDir, f)).mtimeMs }))
+    .sort((a, b) => b.mtime - a.mtime)
+    .map(f => path.join(episodesDir, f.file));
+
+  const episodes: Array<{ steps: Array<{ contentType: string; data?: unknown }> }> = [];
+
+  for (const filePath of files.slice(0, 5)) { // scan at most 5 recent episodes
+    try {
+      const mod = await import(filePath);
+      const ep = Object.values(mod).find(
+        (v): v is { steps: Array<{ contentType: string; data?: unknown }> } =>
+          typeof v === 'object' && v !== null && Array.isArray((v as { steps?: unknown }).steps),
+      );
+      if (ep) episodes.push(ep);
+    } catch {
+      // skip files that fail to import (e.g. missing assets)
+    }
+  }
+
+  return episodes;
+}
+
+/**
+ * Build a map of contentType → first real step.data found in recent episodes.
+ */
+async function buildLiveExampleMap(series: string): Promise<Map<string, unknown>> {
+  const map = new Map<string, unknown>();
+  const episodes = await loadRecentEpisodes(series);
+
+  for (const ep of episodes) {
+    for (const step of ep.steps) {
+      if (!map.has(step.contentType) && step.data != null) {
+        map.set(step.contentType, step.data);
+      }
+    }
+  }
+
+  return map;
 }
 
 // ── Discovery ────────────────────────────────────────────
@@ -158,10 +204,7 @@ function discoverSeriesCards(filterSeries?: string): CardMeta[] {
     const cardsDir = path.join(episodesDir, series, 'cards');
     if (!fs.existsSync(cardsDir)) continue;
 
-    const cardDirs = fs.readdirSync(cardsDir)
-      .filter(name => fs.statSync(path.join(cardsDir, name)).isDirectory());
-
-    for (const cardName of cardDirs) {
+    for (const cardName of fs.readdirSync(cardsDir).filter(name => fs.statSync(path.join(cardsDir, name)).isDirectory())) {
       const specPath = path.join(cardsDir, cardName, 'spec.ts');
       if (!fs.existsSync(specPath)) continue;
       const meta = parseSpecFile(specPath);
@@ -187,6 +230,7 @@ function printCards(cards: CardMeta[]): void {
       if (c.description) console.log(`    description : ${c.description}`);
       if (c.agentHints?.whenToUse) console.log(`    whenToUse   : ${c.agentHints.whenToUse}`);
       if (c.agentHints?.notForUseCases) console.log(`    notFor      : ${c.agentHints.notForUseCases}`);
+      if (c.liveExample != null) console.log(`    liveExample : ${JSON.stringify(c.liveExample)}`);
     }
   }
 
@@ -202,6 +246,7 @@ function printCards(cards: CardMeta[]): void {
       if (c.description) console.log(`      description : ${c.description}`);
       if (c.agentHints?.whenToUse) console.log(`      whenToUse   : ${c.agentHints.whenToUse}`);
       if (c.agentHints?.notForUseCases) console.log(`      notFor      : ${c.agentHints.notForUseCases}`);
+      if (c.liveExample != null) console.log(`      liveExample : ${JSON.stringify(c.liveExample)}`);
     }
   }
 
@@ -223,13 +268,23 @@ export async function run(args: string[]): Promise<void> {
     const filterSeries = seriesFlag >= 0 ? rest[seriesFlag + 1] : undefined;
     const asJson = rest.includes('--json');
 
-    const engineCards = filterSeries ? [] : discoverEngineCards();
+    const engineCards = discoverEngineCards();
     const seriesCards = discoverSeriesCards(filterSeries);
     const all = [...engineCards, ...seriesCards];
 
     if (all.length === 0) {
       console.log('No card specs found.');
       return;
+    }
+
+    // Enrich with live examples from the most recent episodes
+    const activeSeries = filterSeries ?? getActiveSeries(ROOT);
+    if (activeSeries) {
+      const liveMap = await buildLiveExampleMap(activeSeries);
+      for (const card of all) {
+        const live = liveMap.get(card.type);
+        if (live != null) card.liveExample = live;
+      }
     }
 
     if (asJson) {
