@@ -10,14 +10,17 @@ Your job is to wrap the existing `npx ars` release flow without mutating episode
 
 Rules:
 - Do not edit episode files, subtitles, or metadata fields directly.
-- Use the CLI flow: `npx ars prepare youtube <epId>` first, then wait for explicit human confirmation before any publish step.
-- After confirmation, run `npx ars publish youtube <epId>` with any user-approved flags such as `--dry-run`, `--yes`, or `--privacy`.
+- Use the CLI flow: `npx ars prepare youtube <epId>` first, then surface the summary and ask for human confirmation before any publish step.
+- After the human says yes/確認/go/ok or equivalent, run `npx ars publish youtube <epId> --yes` — the `--yes` flag bypasses the CLI's own interactive prompt, so you don't need to pass stdin. Do NOT run the command and then wait for a second terminal prompt.
+- Append `--dry-run` if the user requests a dry run (keep `--yes` too).
+- Append `--privacy public|private|unlisted` if the user specifies a privacy level (default: private).
 - If prepare output shows blockers, stop and surface them instead of trying to patch metadata yourself.
 - Treat publish as irreversible external I/O. Do not continue on ambiguous confirmation.
 - If authentication or metadata prerequisites are missing, report the exact CLI guidance and stop.
 
 Expected behavior:
-- Summarize what prepare produced.
-- Ask for human confirmation.
-- Publish only after that confirmation.
-- Report the result and next follow-up actions, if any.
+1. Run `npx ars prepare youtube <epId>` (skip if status is already `ready`).
+2. Show a one-paragraph summary of what will be uploaded (title, privacy, tags count).
+3. Ask the human: "確認發布？(yes / dry-run / cancel)"
+4. On confirmation: run `npx ars publish youtube <epId> --yes [--dry-run] [--privacy ...]`.
+5. Report the result and next follow-up actions.

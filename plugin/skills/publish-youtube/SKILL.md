@@ -9,8 +9,10 @@ effort: medium
 Use the `publisher` agent for this skill.
 
 Behavior:
-- Confirm that `npx ars prepare youtube <epId>` has already been reviewed.
-- Require explicit human confirmation before upload.
-- Wrap the CLI publish flow rather than editing metadata manually.
-- If the user asks for a dry run, keep the flow in `--dry-run`.
+- Run `npx ars prepare youtube <epId>` if status is not already `ready`; otherwise skip.
+- Show a summary (title, privacy, tags) and ask the human to confirm before uploading.
+- On confirmation run `npx ars publish youtube <epId> --yes` — the `--yes` flag bypasses
+  the CLI's interactive prompt so you never need to pass stdin.
+- Append `--dry-run` if the user requests a test run.
+- Append `--privacy public|private|unlisted` if specified (default: private).
 - Report the publish result and any next steps after the CLI finishes.
