@@ -9,7 +9,7 @@ effort: medium
 Polish work is constrained refinement, not a rebuild.
 
 Behavior:
-- Read `.ars/episodes/<epId>/plan.md`, `todo.json`, and the current episode source.
+- Read `.ars/episodes/<epId>/plan.md` and the current episode source.
 - Limit changes to tier B steps and tier B notes from the plan.
 - Do not modify tier A structure, core narrative ordering, or locked variants.
 - Favor safe refinements such as spacing, copy tightening, visual cleanup, or secondary layout adjustments.

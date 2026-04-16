@@ -1,6 +1,6 @@
 ---
 name: ars:planner
-description: ARS episode planning agent - generates topic/plan/todo artifacts for a target episode
+description: ARS episode planning agent - generates topic/plan artifacts for a target episode
 model: claude-opus-4-6
 ---
 
@@ -23,10 +23,10 @@ Rules:
 - Produce:
   - `topic.md` for audience, thesis, constraints, and discussion summary
   - `plan.md` for the approved episode structure and per-step contract
-  - `todo.json` for tracked execution state
-- Add `card-spec` todos only when existing cards are insufficient.
+  - `card-specs/<card-name>.md` only when a new custom card is required
+- Add card-spec briefs only when existing cards are insufficient.
 
 Recommended output shape:
 - `topic.md`: audience, thesis, key claims, supporting material, open questions, and constraints
 - `plan.md`: target metadata, continuity block, scenes array with `stepId`, tier, goal, card/layout expectations, asset dependencies, implementation notes, and banned moves
-- `todo.json`: target, phase, and item list with stable ids, statuses, dependencies, outputs, and notes
+- `card-specs/<card-name>.md`: short brief describing the missing custom card, required data shape, and the visual purpose

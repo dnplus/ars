@@ -1,16 +1,38 @@
 import fs from 'fs';
 import path from 'path';
 import process from 'process';
+import {
+  buildSessionStartContext,
+  getRepoRoot,
+  parseHookPayload,
+  readStdin,
+} from './lib/ars-workstate.mjs';
 
 const CONFIG_SCHEMA_VERSION = 2;
 const VALID_TTS_PROVIDERS = new Set(['none', 'minimax']);
 const VALID_VISUAL_DENSITY = new Set(['minimal', 'balanced', 'dense']);
 const VALID_LAYOUT_BIAS = new Set(['mixed', 'title-card', 'card-only', 'fullscreen']);
 
-function main() {
-  const configPath = path.join(process.cwd(), '.ars', 'config.json');
+async function main() {
+  const payload = parseHookPayload(await readStdin());
+  const cwd = typeof payload.cwd === 'string' && payload.cwd ? payload.cwd : process.cwd();
+  const sessionId =
+    typeof payload.session_id === 'string'
+      ? payload.session_id
+      : typeof payload.sessionId === 'string'
+        ? payload.sessionId
+        : undefined;
+  const root = getRepoRoot(cwd);
+  const configPath = path.join(root, '.ars', 'config.json');
+
   if (!fs.existsSync(configPath)) {
-    console.log('ARS: .ars/config.json not found. Run /ars:setup to initialize this repo.');
+    console.log(JSON.stringify({
+      continue: true,
+      hookSpecificOutput: {
+        hookEventName: 'SessionStart',
+        additionalContext: 'ARS: .ars/config.json not found. Run /ars:setup to initialize this repo.',
+      },
+    }));
     return;
   }
 
@@ -19,7 +41,13 @@ function main() {
     config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.log(`ARS: Invalid .ars/config.json: ${message}`);
+    console.log(JSON.stringify({
+      continue: true,
+      hookSpecificOutput: {
+        hookEventName: 'SessionStart',
+        additionalContext: `ARS: Invalid .ars/config.json: ${message}`,
+      },
+    }));
     return;
   }
 
@@ -34,12 +62,8 @@ function main() {
   const visualDensity = config?.project?.visualDensity;
   const layoutBias = config?.project?.layoutBias;
 
-  if (typeof configVersion !== 'number') {
-    warnings.push(`version missing; expected schema ${CONFIG_SCHEMA_VERSION}`);
-  } else if (configVersion !== CONFIG_SCHEMA_VERSION) {
-    warnings.push(
-      `version=${configVersion}; latest supported schema is ${CONFIG_SCHEMA_VERSION}`,
-    );
+  if (typeof configVersion === 'number' && configVersion !== CONFIG_SCHEMA_VERSION) {
+    warnings.push(`version=${configVersion}; latest supported schema is ${CONFIG_SCHEMA_VERSION}`);
   }
 
   if (!VALID_TTS_PROVIDERS.has(ttsProvider)) {
@@ -53,9 +77,9 @@ function main() {
   if (!activeSeries) {
     warnings.push('project.activeSeries is missing; run /ars:setup or npx ars init <series>');
   } else {
-    const seriesConfigPath = path.join(process.cwd(), 'src', 'episodes', activeSeries, 'series-config.ts');
+    const seriesConfigPath = path.join(root, 'src', 'episodes', activeSeries, 'series-config.ts');
     if (!fs.existsSync(seriesConfigPath)) {
-      issues.push(`project.activeSeries=${activeSeries} but ${path.relative(process.cwd(), seriesConfigPath)} is missing`);
+      issues.push(`project.activeSeries=${activeSeries} but ${path.relative(root, seriesConfigPath)} is missing`);
     }
   }
 
@@ -67,18 +91,30 @@ function main() {
     issues.push('project.layoutBias must be one of mixed, title-card, card-only, fullscreen');
   }
 
+  const messages = [];
   if (issues.length > 0) {
-    console.log(`ARS: Invalid .ars/config.json: ${issues.join('; ')}`);
+    messages.push(`ARS: Invalid .ars/config.json: ${issues.join('; ')}`);
+  } else {
+    if (warnings.length > 0) {
+      messages.push(`ARS: Config warnings: ${warnings.join('; ')}`);
+    }
+    messages.push(...buildSessionStartContext(root, sessionId));
+  }
+
+  if (messages.length === 0) {
+    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
     return;
   }
 
-  if (warnings.length > 0) {
-    console.log(`ARS: Config warnings: ${warnings.join('; ')}`);
-  }
-
-  console.log(
-    `ARS: OK — version=${typeof configVersion === 'number' ? configVersion : 'missing'}, activeSeries=${activeSeries || '(unset)'}, tts.provider=${ttsProvider}, publish.youtube.enabled=${String(youtubeEnabled)}`,
-  );
+  console.log(JSON.stringify({
+    continue: true,
+    hookSpecificOutput: {
+      hookEventName: 'SessionStart',
+      additionalContext: messages.join('\n'),
+    },
+  }));
 }
 
-main();
+main().catch(() => {
+  console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+});

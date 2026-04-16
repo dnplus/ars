@@ -75,7 +75,7 @@ Inside Claude Code:
 /ars:plan ep001
 ```
 
-`/ars:plan` is the official episode planning entrypoint. It writes topic, plan, and todo artifacts under `.ars/episodes/ep001/` and decides whether custom cards are needed.
+`/ars:plan` is the official episode planning entrypoint. It writes topic and plan artifacts under `.ars/episodes/ep001/` and decides whether custom cards are needed.
 
 ### 5. Build the episode
 

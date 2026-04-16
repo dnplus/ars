@@ -20,7 +20,7 @@ const ARS_COMMANDS_BLOCK = `${ARS_MARKER_BEGIN}
 - \`/ars:setup\`：ARS 的正式首次入口；先訪談頻道風格，再安裝/同步 engine、初始化 series、套用主題
 - \`/ars:doctor\`：檢查 ARS 設定、engine 安裝狀態與 provider 憑證
 - \`/ars:plan\`：討論主題、建立 episode 計畫，並寫入 \`.ars/episodes/<epId>/\` artifacts
-- \`/ars:build\`：依 \`plan.md\` / \`todo.json\` 實作 episode source
+- \`/ars:build\`：依 \`plan.md\` 實作 episode source
 - \`/ars:episode-create\`：低階 episode scaffold primitive，通常由 \`/ars:plan\` 自動觸發
 - \`/ars:review-open\`：開啟 review surface，針對目前 repo 的 episode 審稿
 - \`/ars:apply-review\`：根據 review intents 將修正套回 episode source
