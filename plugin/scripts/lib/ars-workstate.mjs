@@ -599,43 +599,61 @@ export function updateWorkStateFromCommand(root = process.cwd(), sessionId, comm
   });
 }
 
-export function renderStatusLine(root = process.cwd(), sessionId) {
+// ANSI helpers
+const RESET = '\x1b[0m';
+const DIM = '\x1b[2m';
+const BOLD = '\x1b[1m';
+const GREEN = '\x1b[32m';
+const CYAN = '\x1b[36m';
+
+/**
+ * Map a raw stage string to a pipeline step index (0-based).
+ * Pipeline: plan(0) › review(1) › audio(2) › prepare(3) › publish(4)
+ */
+function stageToStep(stage) {
+  if (!stage) return -1;
+  if (stage === 'draft') return 0;
+  if (stage === 'review') return 1;
+  if (stage === 'audio') return 2;
+  if (stage === 'prepare-youtube' || stage === 'package') return 3;
+  if (stage === 'publish-youtube') return 4;
+  return -1;
+}
+
+/**
+ * Render the 5-step pipeline with ANSI colors:
+ *   done  → green
+ *   current → cyan bold with ▶ prefix
+ *   todo  → dim
+ */
+function renderPipeline(currentStep) {
+  const steps = ['plan', 'review', 'audio', 'prepare', 'publish'];
+  return steps.map((label, i) => {
+    if (i < currentStep) return `${GREEN}${label}${RESET}`;
+    if (i === currentStep) return `${CYAN}${BOLD}▶${label}${RESET}`;
+    return `${DIM}${label}${RESET}`;
+  }).join(` ${DIM}›${RESET} `);
+}
+
+export function renderStatusLine(root = process.cwd(), sessionId, version = '') {
   const config = getArsConfig(root);
   if (!config) {
-    return 'ARS | init needed';
+    return `${DIM}ARS${RESET} init needed`;
   }
 
   const { activeSeries, progress, workState } = getCurrentEpisodeSummary(root, sessionId);
-  const parts = ['ARS'];
-  parts.push(activeSeries ?? 'series:(unset)');
 
-  if (!progress) {
-    return parts.join(' | ');
+  const versionTag = version ? `${DIM}ARS#${version}${RESET}` : `${DIM}ARS${RESET}`;
+
+  if (!progress || !activeSeries) {
+    const series = activeSeries ?? 'series:(unset)';
+    return `${versionTag} ${series}`;
   }
 
-  parts.push(progress.episodeId);
-  parts.push(workState?.stage ?? progress.stage);
+  const rawStage = workState?.stage ?? progress.stage ?? '';
+  const currentStep = stageToStep(rawStage);
+  const pipeline = renderPipeline(currentStep >= 0 ? currentStep : 0);
+  const epLabel = `${BOLD}${activeSeries}/${progress.episodeId}${RESET}`;
 
-  if (progress.pendingReview > 0) {
-    parts.push(`intents:${progress.pendingReview}`);
-  } else if (progress.pendingCardSpec > 0) {
-    parts.push(`card:${progress.pendingCardSpec}`);
-  } else if (progress.audioCount > 0) {
-    parts.push(`audio:${progress.audioCount}`);
-  } else if (progress.hasPlan) {
-    parts.push('plan');
-  }
-
-  const markers = [];
-  if (progress.hasPlan) markers.push('P');
-  if (progress.hasSource) markers.push('S');
-  if (progress.audioCount > 0) markers.push('A');
-  if (progress.hasSubtitles) markers.push('U');
-  if (progress.hasPrepareYoutube) markers.push('Y');
-  if (progress.hasRender) markers.push('R');
-  if (markers.length > 0) {
-    parts.push(markers.join(''));
-  }
-
-  return parts.join(' | ');
+  return `${versionTag} ${epLabel}  ${pipeline}`;
 }

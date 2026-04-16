@@ -29,6 +29,7 @@ try {
 const configPath = join(homedir(), '.claude', 'ars-statusline-config.json');
 let delegateCommand = null;
 let pluginScriptsDir = null;
+let arsVersion = '';
 if (existsSync(configPath)) {
   try {
     const config = JSON.parse(readFileSync(configPath, 'utf8'));
@@ -37,6 +38,9 @@ if (existsSync(configPath)) {
     }
     if (typeof config.pluginScriptsDir === 'string' && config.pluginScriptsDir.trim()) {
       pluginScriptsDir = config.pluginScriptsDir.trim();
+    }
+    if (typeof config.arsVersion === 'string' && config.arsVersion.trim()) {
+      arsVersion = config.arsVersion.trim();
     }
   } catch {
     // ignore malformed config
@@ -70,7 +74,7 @@ try {
   })();
   const cwd = typeof payload.cwd === 'string' && payload.cwd ? payload.cwd : process.cwd();
   const sessionId = payload.session_id ?? payload.sessionId;
-  arsSegment = renderStatusLine(cwd, sessionId);
+  arsSegment = renderStatusLine(cwd, sessionId, arsVersion);
 } catch {
   // Not an ARS repo or renderStatusLine unavailable — output nothing
 }

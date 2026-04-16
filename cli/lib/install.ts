@@ -518,57 +518,52 @@ export function installStatusLine(pluginRoot: string): 'installed' | 'already-in
     return 'skipped';
   }
 
-  // Determine the command Claude Code will use to invoke the wrapper
+  const pluginScriptsDir = path.join(pluginRoot, 'scripts');
+  const arsVersion = readPluginVersionFromRoot(pluginRoot);
   const wrapperCommand = `node "${wrapperDest}"`;
 
-  // Check if already installed
+  const patchConfig = (extra: Record<string, unknown> = {}): void => {
+    let cfg: Record<string, unknown> = {};
+    if (fs.existsSync(configDest)) {
+      try { cfg = JSON.parse(fs.readFileSync(configDest, 'utf-8')) as Record<string, unknown>; } catch { /* ignore */ }
+    }
+    Object.assign(cfg, { pluginScriptsDir, arsVersion: arsVersion ?? '' }, extra);
+    fs.writeFileSync(configDest, `${JSON.stringify(cfg, null, 2)}\n`, 'utf-8');
+  };
+
   if (fs.existsSync(settingsPath)) {
     const raw = JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) as Record<string, unknown>;
     const existing = raw.statusLine as Record<string, unknown> | undefined;
+
     if (existing?.command === wrapperCommand) {
-      // Copy wrapper unconditionally so it stays up-to-date
       fs.copyFileSync(wrapperSrc, wrapperDest);
-      // Update pluginScriptsDir in config so it tracks the current install location
-      if (fs.existsSync(configDest)) {
-        try {
-          const cfg = JSON.parse(fs.readFileSync(configDest, 'utf-8')) as Record<string, unknown>;
-          cfg.pluginScriptsDir = path.join(pluginRoot, 'scripts');
-          fs.writeFileSync(configDest, `${JSON.stringify(cfg, null, 2)}\n`, 'utf-8');
-        } catch { /* ignore */ }
-      }
+      patchConfig();
       return 'already-installed';
     }
 
-    // Save existing delegate if it has a command and is not our wrapper
     const existingCommand = typeof existing?.command === 'string' ? existing.command.trim() : '';
-    const pluginScriptsDir = path.join(pluginRoot, 'scripts');
-    if (existingCommand && existingCommand !== wrapperCommand) {
-      const delegateConfig = { delegate: existingCommand, pluginScriptsDir };
-      fs.writeFileSync(configDest, `${JSON.stringify(delegateConfig, null, 2)}\n`, 'utf-8');
-    } else if (!existingCommand && !fs.existsSync(configDest)) {
-      // No existing statusLine — write config with only pluginScriptsDir
-      fs.writeFileSync(configDest, `${JSON.stringify({ delegate: '', pluginScriptsDir }, null, 2)}\n`, 'utf-8');
-    } else if (fs.existsSync(configDest)) {
-      // Update pluginScriptsDir in existing config to keep it current
-      try {
-        const existing2 = JSON.parse(fs.readFileSync(configDest, 'utf-8')) as Record<string, unknown>;
-        existing2.pluginScriptsDir = pluginScriptsDir;
-        fs.writeFileSync(configDest, `${JSON.stringify(existing2, null, 2)}\n`, 'utf-8');
-      } catch { /* ignore */ }
-    }
+    patchConfig(existingCommand && existingCommand !== wrapperCommand ? { delegate: existingCommand } : {});
 
-    // Patch settings.json
     raw.statusLine = { type: 'command', command: wrapperCommand };
     fs.writeFileSync(settingsPath, `${JSON.stringify(raw, null, 2)}\n`, 'utf-8');
   } else {
-    // No settings.json yet — create minimal one
-    const settings = { statusLine: { type: 'command', command: wrapperCommand } };
     fs.mkdirSync(claudeDir, { recursive: true });
+    const settings = { statusLine: { type: 'command', command: wrapperCommand } };
     fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}\n`, 'utf-8');
-    fs.writeFileSync(configDest, `${JSON.stringify({ delegate: '' }, null, 2)}\n`, 'utf-8');
+    patchConfig({ delegate: '' });
   }
 
-  // Install wrapper script
   fs.copyFileSync(wrapperSrc, wrapperDest);
   return 'installed';
+}
+
+function readPluginVersionFromRoot(pluginRoot: string): string | null {
+  // pluginRoot is the plugin/ subdirectory; package.json lives one level up (the package root)
+  for (const dir of [pluginRoot, path.dirname(pluginRoot)]) {
+    try {
+      const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf-8')) as { version?: unknown };
+      if (typeof pkg.version === 'string' && pkg.version) return pkg.version;
+    } catch { /* try next */ }
+  }
+  return null;
 }
