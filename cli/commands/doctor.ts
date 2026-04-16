@@ -91,6 +91,7 @@ export function runDoctor(options: { json: boolean; strict: boolean }): CheckRes
   validateEngine(root, results);
   validatePlugin(runtime.pluginRoot, results);
   validateClaudeMd(root, results);
+  validateStyling(root, results);
   validateProviders(config, root, results);
 
   return results;
@@ -338,6 +339,20 @@ function validatePlugin(pluginRoot: string, results: CheckResult[]): void {
   });
 }
 
+function validateStyling(root: string, results: CheckResult[]): void {
+  const stylingPath = path.join(root, 'STYLING.md');
+  results.push({
+    id: 'content.styling',
+    status: fs.existsSync(stylingPath) ? 'pass' : 'warn',
+    detail: fs.existsSync(stylingPath)
+      ? `Found ${stylingPath}`
+      : `Missing ${stylingPath} — series tone/style guide not set up.`,
+    fixHint: fs.existsSync(stylingPath)
+      ? undefined
+      : 'Run /ars:onboard to generate STYLING.md for your series.',
+  });
+}
+
 function validateClaudeMd(root: string, results: CheckResult[]): void {
   const claudePath = path.join(root, 'CLAUDE.md');
   if (!fs.existsSync(claudePath)) {
@@ -393,6 +408,33 @@ function validateProviders(
       fixHint: minimaxOk
         ? undefined
         : `Add ${missing} to .env before running audio generation.`,
+    });
+
+    // Check that a voice ID is resolvable for audio generation
+    const hasEnvVoiceId = !!process.env.MINIMAX_VOICE_ID || !!process.env.MINIMAX_CLONE_ID;
+    let hasSeriesVoiceId = false;
+    if (config.project.activeSeries) {
+      const seriesConfigPath = path.join(
+        root, 'src', 'episodes', config.project.activeSeries, 'series-config.ts',
+      );
+      if (fs.existsSync(seriesConfigPath)) {
+        try {
+          const content = fs.readFileSync(seriesConfigPath, 'utf-8');
+          hasSeriesVoiceId = content.includes('voiceId');
+        } catch { /* ignore */ }
+      }
+    }
+    results.push({
+      id: 'provider.minimax-voice',
+      status: hasEnvVoiceId || hasSeriesVoiceId ? 'pass' : 'warn',
+      detail: hasEnvVoiceId
+        ? `Voice ID configured via env (MINIMAX_VOICE_ID / MINIMAX_CLONE_ID).`
+        : hasSeriesVoiceId
+          ? `Voice ID configured in series-config.ts episodeDefaults.voiceId.`
+          : `No voice ID found — audio generation will fail.`,
+      fixHint: hasEnvVoiceId || hasSeriesVoiceId
+        ? undefined
+        : 'Set voiceId in series-config.ts episodeDefaults, or set MINIMAX_VOICE_ID in .env.',
     });
   }
 
