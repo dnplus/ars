@@ -544,6 +544,7 @@ export function buildPromptContext(root = process.cwd(), promptPayload, sessionI
 export function parseArsCommand(command, activeSeries) {
   const patterns = [
     { regex: /(?:^|\s)(?:npx\s+)?ars\s+episode\s+create\s+([^\s]+)/i, stage: 'draft', action: 'episode-create' },
+    { regex: /(?:^|\s)(?:npx\s+)?ars\s+episode\s+(?:validate|stats)\s+([^\s]+)/i, stage: null, action: 'episode-validate' },
     { regex: /(?:^|\s)(?:npx\s+)?ars\s+review\s+open\s+([^\s]+)/i, stage: 'review', action: 'review-open' },
     { regex: /(?:^|\s)(?:npx\s+)?ars\s+audio\s+generate\s+([^\s]+)/i, stage: 'audio', action: 'audio-generate' },
     { regex: /(?:^|\s)(?:npx\s+)?ars\s+prepare\s+youtube\s+([^\s]+)/i, stage: 'prepare-youtube', action: 'prepare-youtube' },
@@ -587,7 +588,7 @@ export function updateWorkStateFromCommand(root = process.cwd(), sessionId, comm
   return writeWorkState(root, sessionId, {
     seriesId: parsed.seriesId,
     episodeId: parsed.episodeId,
-    stage: parsed.stage,
+    stage: parsed.stage ?? progress.stage,
     derivedStage: progress.stage,
     lastAction: parsed.lastAction,
     pendingReview: progress.pendingReview,
