@@ -64,16 +64,6 @@ export type Episode = {
 };
 
 export type EpisodeMetadata = {
-  /**
-   * Episode ID（已棄用 - 現由檔名自動推導）
-   * @deprecated 不再需要手動指定，系統會從檔名自動推導
-   */
-  id?: string;
-  /**
-   * Series 名稱（已棄用 - 現由目錄名自動推導）
-   * @deprecated Root.tsx 會自動從目錄名注入
-   */
-  series?: string;
   title: string;
   subtitle?: string;
   /** 省略則由 series-config.ts 的 episodeDefaults 自動注入 */
