@@ -7,3 +7,5 @@ output/
 dist/
 .cache/
 .omc/
+.playwright-mcp/
+build/
