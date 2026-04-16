@@ -8,6 +8,7 @@ type CommandModule = { run: (args: string[]) => Promise<void> };
 
 const KNOWN_COMMANDS = new Set([
   'audio',
+  'card',
   'doctor',
   'episode',
   'export',
@@ -39,6 +40,7 @@ Commands:
   setup [options]                  Initialize config, sync engine files, and patch CLAUDE.md
   update [options]                 Backup and refresh the installed ARS engine
   doctor [options]                 Validate config, engine install, plugin assets, and providers
+  card <subcommand> [...]           Card catalog and metadata
   episode <subcommand> [...]       Episode management
   prepare <subcommand> [...]       Prepare release assets and metadata context
   publish <subcommand> [...]       Package and publish outputs
@@ -58,6 +60,8 @@ async function loadCommandModule(command: string): Promise<CommandModule> {
   switch (command) {
     case 'audio':
       return import('./commands/audio');
+    case 'card':
+      return import('./commands/card');
     case 'doctor':
       return import('./commands/doctor');
     case 'episode':
