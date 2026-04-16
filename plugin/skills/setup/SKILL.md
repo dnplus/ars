@@ -16,6 +16,8 @@ Interview checklist:
 - `tone / narration vibe`
 - `mascot or VTuber preference`
 - `default visual density / layout bias`
+- `TTS provider`: ask if they want MiniMax TTS for audio generation. If yes, remind them to add `MINIMAX_API_KEY` and `MINIMAX_GROUP_ID` to `.env`, and set `tts.provider: "minimax"` in `.ars/config.json`.
+- `YouTube publishing`: ask if they plan to publish to YouTube. If yes, remind them to place OAuth credentials at `.ars/credentials/youtube/` and set `publish.youtube.enabled: true` in `.ars/config.json`.
 
 Behavior:
 1. If `.ars/config.json` is missing, run `npx ars setup`.
@@ -36,3 +38,10 @@ Output requirements:
   - `/ars:build <epId>`
 - Mention the Remotion official Claude Code Skills as an optional but recommended install for better Remotion API accuracy: https://www.remotion.dev/docs/ai/claude-code
 - If setup finds an existing active series, do not silently reinitialize a second series. Surface the current repo state and continue cautiously.
+
+## Environment check
+
+After completing setup, always run `npx ars doctor` and surface any `fail` results to the user with their `fixHint`. Common blockers:
+- `MINIMAX_API_KEY` + `MINIMAX_GROUP_ID` missing → audio generation will fail
+- YouTube credential files missing → publish will fail
+- Tell the user exactly what to add to `.env` or where to place credential files before they hit these steps.

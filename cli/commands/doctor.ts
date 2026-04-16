@@ -329,15 +329,22 @@ function validateProviders(
       detail: 'MiniMax TTS disabled.',
     });
   } else {
+    const hasApiKey = !!process.env.MINIMAX_API_KEY;
+    const hasGroupId = !!process.env.MINIMAX_GROUP_ID;
+    const minimaxOk = hasApiKey && hasGroupId;
+    const missing = [
+      !hasApiKey && 'MINIMAX_API_KEY',
+      !hasGroupId && 'MINIMAX_GROUP_ID',
+    ].filter(Boolean).join(', ');
     results.push({
       id: 'provider.minimax',
-      status: process.env.MINIMAX_API_KEY ? 'pass' : 'fail',
-      detail: process.env.MINIMAX_API_KEY
-        ? 'MiniMax API key is configured.'
-        : 'MiniMax enabled but MINIMAX_API_KEY is missing.',
-      fixHint: process.env.MINIMAX_API_KEY
+      status: minimaxOk ? 'pass' : 'fail',
+      detail: minimaxOk
+        ? 'MiniMax credentials configured.'
+        : `MiniMax enabled but missing: ${missing}.`,
+      fixHint: minimaxOk
         ? undefined
-        : 'Export MINIMAX_API_KEY before running audio generation.',
+        : `Add ${missing} to .env before running audio generation.`,
     });
   }
 
