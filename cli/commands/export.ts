@@ -12,6 +12,7 @@ import path from 'path';
 import fs from 'fs';
 import { resolveEpisodeTarget, resolveSeriesContext } from '../lib/context';
 import { getRepoRoot } from '../lib/ars-config';
+import { getRuntimePackageInfo } from '../lib/runtime-package';
 import type { Episode } from '../../src/engine/shared/types';
 import type { SubtitlePhrase } from '../../src/engine/shared/subtitle';
 
@@ -186,9 +187,20 @@ export async function run(args: string[]) {
     process.stdout.write(`  🖼  ${s}/${epId} ... `);
 
     try {
+      const { packageRoot } = getRuntimePackageInfo(import.meta.url);
+      const remotionBin = path.join(packageRoot, 'node_modules', '.bin', 'remotion');
+      const arsModulesDir = path.join(packageRoot, 'node_modules');
       execSync(
-        `npx remotion still src/index.ts "${compositionId}" "${outPath}" --image-format=jpeg --jpeg-quality=90 --log=error`,
-        { cwd: root, stdio: 'pipe', timeout: 60000 }
+        `"${remotionBin}" still src/index.ts "${compositionId}" "${outPath}" --image-format=jpeg --jpeg-quality=90 --log=error`,
+        {
+          cwd: root,
+          stdio: 'pipe',
+          timeout: 60000,
+          env: {
+            ...process.env,
+            NODE_PATH: [arsModulesDir, process.env.NODE_PATH].filter(Boolean).join(path.delimiter),
+          },
+        }
       );
       const size = (fs.statSync(outPath).size / 1024 / 1024).toFixed(1);
       console.log(`✅ ${path.relative(root, outPath)} (${size}MB)`);
