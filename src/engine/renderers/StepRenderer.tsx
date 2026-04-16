@@ -22,7 +22,6 @@ export type StepRendererProps = {
   subtitles?: SubtitlePhrase[];
   disableSubtitles?: boolean;
   silentAudioFallback?: string;
-  renderAudio?: boolean;
 };
 
 export const StepRenderer: React.FC<StepRendererProps> = ({
@@ -34,7 +33,6 @@ export const StepRenderer: React.FC<StepRendererProps> = ({
   subtitles,
   disableSubtitles = false,
   silentAudioFallback,
-  renderAudio = true,
 }) => {
   const shell = episode.shell!;
   const Layout = resolveLayout(shell.layout);
@@ -66,7 +64,7 @@ export const StepRenderer: React.FC<StepRendererProps> = ({
           episodeTag={episodeInfo.episodeTag}
         />
       </Layout>
-      {renderAudio && audioSrc && !episode.metadata.skipAudio ? (
+      {audioSrc && !episode.metadata.skipAudio ? (
         <Audio src={staticFile(audioSrc)} />
       ) : null}
     </>

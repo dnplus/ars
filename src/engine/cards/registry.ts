@@ -4,12 +4,6 @@ type GlobCardModule = {
   cardSpec: CardSpec<unknown>;
 };
 
-type StepLike = {
-  type?: string;
-  contentType?: string;
-  data?: unknown;
-};
-
 const collect = (): Map<string, CardSpec<unknown>> => {
   const engineSpecs = import.meta.glob("./*/spec.ts", {
     eager: true,
@@ -50,33 +44,3 @@ export const getCard = (type: string): CardSpec<unknown> => {
   return spec;
 };
 
-export const validateStep = (step: StepLike) => {
-  const type = step.type ?? step.contentType;
-
-  if (!type) {
-    throw new Error("[card-registry] Step is missing type/contentType.");
-  }
-
-  const card = getCard(type);
-  const rawData = step.data ?? {};
-
-  if (!card.schema) {
-    return {
-      card,
-      data: rawData,
-    };
-  }
-
-  const result = card.schema.safeParse(rawData);
-
-  if (!result.success) {
-    throw new Error(
-      `[card-registry] Invalid data for "${type}": ${result.error.message}`,
-    );
-  }
-
-  return {
-    card,
-    data: result.data,
-  };
-};

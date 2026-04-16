@@ -4,20 +4,13 @@
  */
 
 import type { ComponentType } from "react";
-import type { StreamingLayoutConfig, StreamingLayoutProps } from "./StreamingLayout";
+import type { StreamingLayoutProps } from "./StreamingLayout";
 import { layoutSpec as streamingLayoutSpec } from "./StreamingLayout";
 import { layoutSpec as shortsLayoutSpec } from "./ShortsLayout";
 
 export type LayoutComponent = ComponentType<StreamingLayoutProps>;
 export type BuiltInLayoutKey = "streaming" | "shorts";
 export type LayoutReference = BuiltInLayoutKey | LayoutComponent;
-export type LayoutType = BuiltInLayoutKey;
-
-export type LayoutConfig = {
-  type: BuiltInLayoutKey;
-  config: StreamingLayoutConfig;
-};
-
 export type LayoutSpec = {
   type: BuiltInLayoutKey;
   component: LayoutComponent;
@@ -47,15 +40,6 @@ const collect = (): Map<BuiltInLayoutKey, LayoutSpec> => {
 
 export const BUILT_IN_LAYOUT_REGISTRY = collect();
 
-export const LayoutRegistry = Object.freeze(
-  Object.fromEntries(
-    [...BUILT_IN_LAYOUT_REGISTRY.entries()].map(([key, spec]) => [
-      key,
-      spec.component,
-    ]),
-  ) as Record<BuiltInLayoutKey, LayoutComponent>,
-);
-
 export const isBuiltInLayout = (
   value: LayoutReference,
 ): value is BuiltInLayoutKey => typeof value === "string";
@@ -81,8 +65,5 @@ export const resolveLayout = (layout: LayoutReference): LayoutComponent => {
 export const getLayoutKey = (
   layout: LayoutReference,
 ): BuiltInLayoutKey | null => (isBuiltInLayout(layout) ? layout : null);
-
-export const getLayout = (layout: LayoutReference): LayoutComponent =>
-  resolveLayout(layout);
 
 export * from "./StreamingLayout";
