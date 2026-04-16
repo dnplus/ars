@@ -10,6 +10,8 @@ import { createRoot } from 'react-dom/client';
 import { StudioApp } from './engine/studio/StudioApp';
 import { Episode, SeriesConfig } from './engine/shared/types';
 
+const TEMPLATE_SERIES_ID = 'template';
+
 // ── 載入 series-config.ts ──
 const rawSeriesConfigs = import.meta.glob(
   './episodes/*/series-config.ts',
@@ -82,10 +84,18 @@ for (const filePath in rawModules) {
   }
 }
 
-// URL: ?series=template&ep=ep-demo
+const hasUserSeries = Object.keys(seriesMap).some((series) => series !== TEMPLATE_SERIES_ID);
+const visibleSeriesKeys = Object.keys(seriesMap)
+  .filter((series) => !(hasUserSeries && series === TEMPLATE_SERIES_ID))
+  .sort();
+
+// URL: ?series=my-series&ep=ep-demo
 const urlParams = new URLSearchParams(window.location.search);
-const availableSeriesKeys = Object.keys(seriesMap).sort();
-const targetSeries = urlParams.get('series') || availableSeriesKeys[0] || 'template';
+const requestedSeries = urlParams.get('series') || undefined;
+const targetSeries =
+  (requestedSeries && visibleSeriesKeys.includes(requestedSeries) ? requestedSeries : undefined) ||
+  visibleSeriesKeys[0] ||
+  TEMPLATE_SERIES_ID;
 const seriesEpisodes = seriesMap[targetSeries] || {};
 const availableEpisodeIds = Object.keys(seriesEpisodes).sort();
 const episodeId = urlParams.get('ep') || availableEpisodeIds[0] || 'ep-demo';

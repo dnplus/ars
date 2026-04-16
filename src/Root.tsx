@@ -72,6 +72,7 @@ allLegacyConfigModules.keys().forEach((filePath: string) => {
 
 // 全局 fallback（當 series config 也沒有時）
 const GLOBAL_FALLBACK = { width: 1920, height: 1080, fps: 30 } as const;
+const TEMPLATE_SERIES_ID = 'template';
 
 // 建立 seriesMap: Record<series, Record<epId, Episode>>
 const seriesMap: Record<string, Record<string, Episode>> = {};
@@ -82,7 +83,6 @@ allEpisodeModules.keys().forEach((filePath: string) => {
   if (!match) return;
   const [, series, epId] = match;
 
-  // 排除 template 和 subtitles
   if (epId === 'episode' || filePath.includes('.template.') || filePath.includes('.subtitles.')) return;
 
   const mod = allEpisodeModules(filePath) as Record<string, unknown>;
@@ -97,9 +97,17 @@ allEpisodeModules.keys().forEach((filePath: string) => {
   }
 });
 
+const hasUserSeries = Object.keys(seriesMap).some((series) => series !== TEMPLATE_SERIES_ID);
+const visibleSeriesEntries = Object.entries(seriesMap)
+  .filter(([series]) => !(hasUserSeries && series === TEMPLATE_SERIES_ID))
+  .sort(([left], [right]) => left.localeCompare(right));
+const visibleSeriesConfigEntries = Object.entries(seriesConfigs)
+  .filter(([series]) => !(hasUserSeries && series === TEMPLATE_SERIES_ID))
+  .sort(([left], [right]) => left.localeCompare(right));
+
 export const RemotionRoot: React.FC = () => (
   <>
-    {Object.entries(seriesMap).sort().map(([series, episodes]) => (
+    {visibleSeriesEntries.map(([series, episodes]) => (
       <Folder key={series} name={series}>
         {Object.entries(episodes).sort().map(([epId, episode]) => {
           const sc = seriesConfigs[series];
@@ -157,7 +165,7 @@ export const RemotionRoot: React.FC = () => (
 
     {/* ── Cover Stills ── */}
     <Folder name="covers">
-      {Object.entries(seriesMap).sort().map(([series, episodes]) => (
+      {visibleSeriesEntries.map(([series, episodes]) => (
         <Folder key={`cover-${series}`} name={series}>
           {Object.entries(episodes).sort().map(([epId, episode]) => {
             const sc = seriesConfigs[series];
@@ -199,7 +207,7 @@ export const RemotionRoot: React.FC = () => (
     </Folder>
 
     <Folder name="theme-preview">
-      {Object.entries(seriesConfigs).sort(([left], [right]) => left.localeCompare(right)).map(([seriesId, config]) => (
+      {visibleSeriesConfigEntries.map(([seriesId, config]) => (
         <Still
           key={seriesId}
           id={`theme-${seriesId}`}

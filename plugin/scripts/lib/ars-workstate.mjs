@@ -316,7 +316,7 @@ export function detectEpisodeProgress(root = process.cwd(), seriesId, episodeId)
           : hasSource && hasPlan
           ? 'review'
           : hasPlan || hasTopic
-              ? 'plan'
+              ? 'build'
                 : hasSource
                   ? 'draft'
                   : 'idle';
@@ -337,7 +337,7 @@ export function detectEpisodeProgress(root = process.cwd(), seriesId, episodeId)
               ? `/ars:build ${episodeId}`
                 : hasSource
                   ? `/ars:plan ${episodeId}`
-                : `/ars:episode-create ${episodeId}`;
+                  : `/ars:episode-create ${episodeId}`;
 
   const lastModifiedAtMs = Math.max(
     fileMtime(sourceFile),
@@ -545,6 +545,7 @@ export function parseArsCommand(command, activeSeries) {
   const patterns = [
     { regex: /(?:^|\s)(?:npx\s+)?ars\s+episode\s+create\s+([^\s]+)/i, stage: 'draft', action: 'episode-create' },
     { regex: /(?:^|\s)(?:npx\s+)?ars\s+episode\s+(?:validate|stats)\s+([^\s]+)/i, stage: null, action: 'episode-validate' },
+    { regex: /(?:^|\s)(?:npx\s+)?ars\s+build\s+([^\s]+)/i, stage: 'build', action: 'build' },
     { regex: /(?:^|\s)(?:npx\s+)?ars\s+review\s+open\s+([^\s]+)/i, stage: 'review', action: 'review' },
     { regex: /(?:^|\s)(?:npx\s+)?ars\s+review\s+close\s+([^\s]+)/i, stage: 'audio', action: 'review-close' },
     { regex: /(?:^|\s)(?:npx\s+)?ars\s+audio\s+generate\s+([^\s]+)/i, stage: 'audio', action: 'audio-generate' },
@@ -610,26 +611,27 @@ const CYAN = '\x1b[36m';
 
 /**
  * Map a raw stage string to a pipeline step index (0-based).
- * Pipeline: plan(0) › review(1) › audio(2) › prepare(3) › publish(4)
+ * Pipeline: plan(0) › build(1) › review(2) › audio(3) › prepare(4) › publish(5)
  */
 function stageToStep(stage) {
   if (!stage) return -1;
   if (stage === 'idle' || stage === 'draft' || stage === 'plan') return 0;
-  if (stage === 'card-spec' || stage === 'review') return 1;
-  if (stage === 'audio') return 2;
-  if (stage === 'prepare-youtube' || stage === 'package') return 3;
-  if (stage === 'publish-youtube') return 4;
+  if (stage === 'build') return 1;
+  if (stage === 'card-spec' || stage === 'review') return 2;
+  if (stage === 'audio') return 3;
+  if (stage === 'prepare-youtube' || stage === 'package') return 4;
+  if (stage === 'publish-youtube') return 5;
   return -1;
 }
 
 /**
- * Render the 5-step pipeline with ANSI colors:
+ * Render the 6-step pipeline with ANSI colors:
  *   done  → green
  *   current → cyan bold with ▶ prefix
  *   todo  → dim
  */
 function renderPipeline(currentStep) {
-  const steps = ['plan', 'review', 'audio', 'prepare', 'publish'];
+  const steps = ['plan', 'build', 'review', 'audio', 'prepare', 'publish'];
   return steps.map((label, i) => {
     if (i < currentStep) return `${GREEN}${label}${RESET}`;
     if (i === currentStep) return `${CYAN}${BOLD}▶${label}${RESET}`;

@@ -19,7 +19,7 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
-import { getCard } from "../cards/registry";
+import { getCard, hasCard } from "../cards/registry";
 import { Step, type LayoutMode } from "../shared/types";
 import { useTheme } from "../shared/ThemeContext";
 import type { EpisodeInfo } from "../renderers/StepRenderer";
@@ -40,9 +40,6 @@ type RegistryRenderableType =
   | "mermaid"
   | "summary"
   | "ticker";
-
-const isCustomCardType = (contentType: Step["contentType"]) =>
-  contentType.includes("/");
 
 const resolveCardFrame = (layoutMode: LayoutMode) =>
   layoutMode === "fullscreen"
@@ -65,21 +62,8 @@ const getStepDataRecord = (step: Step): Record<string, unknown> => {
 const isRegistryRenderable = (
   contentType: Step["contentType"],
 ): contentType is RegistryRenderableType | "text" => {
-  if (isCustomCardType(contentType)) {
-    return true;
-  }
-
   const resolvedType = resolveRegistryType(contentType);
-
-  return (
-    resolvedType === "cover" ||
-    resolvedType === "code" ||
-    resolvedType === "image" ||
-    resolvedType === "markdown" ||
-    resolvedType === "mermaid" ||
-    resolvedType === "summary" ||
-    resolvedType === "ticker"
-  );
+  return hasCard(resolvedType);
 };
 
 const buildRegistryCardData = (

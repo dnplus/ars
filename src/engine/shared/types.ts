@@ -7,7 +7,7 @@
  * - `Episode`: Root structure map to a video.
  * - `Step`: The polymorphic unit of content. Check `contentType` to discriminate.
  *   - Primary: `cover|ticker|summary|markdown|code|image|mermaid`
- *   - Custom: `<series>/<card-name>`
+ *   - Custom: globally unique card type string (e.g. `normal-distribution`)
  *   - Legacy alias: `text`
  *
  * @architectural-role Dictionary
@@ -163,12 +163,12 @@ export type ShellConfig = {
  * @agent-note
  * 使用 `contentType` 決定渲染的卡片類型。
  * - Primary: `cover|ticker|summary|markdown|code|image|mermaid`
- * - Custom: `<series>/<card-name>`
+ * - Custom: globally unique card type string (e.g. `normal-distribution`)
  * - Legacy alias: `text`
  */
 export type Step = {
   id: string;
-  /** Primary: cover/ticker/summary/markdown/code/image/mermaid; custom: <series>/<card-name>; legacy alias: text */
+  /** Primary: cover/ticker/summary/markdown/code/image/mermaid; custom: globally unique card type string; legacy alias: text */
   contentType:
     | "cover"
     | "text" // @legacy -> 改用 markdown
@@ -178,7 +178,7 @@ export type Step = {
     | "markdown"
     | "summary"
     | "ticker"
-    | `${string}/${string}`;
+    | (string & {});
   /** Card payload resolved by the CardSpec for this contentType. */
   data?: unknown;
   /** 佈局模式：title-card（預設）| card-only | fullscreen */

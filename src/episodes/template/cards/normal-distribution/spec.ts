@@ -5,7 +5,7 @@ import {
 } from "./component";
 
 export const cardSpec = {
-  type: "template/normal-distribution",
+  type: "normal-distribution",
   title: "Normal Distribution",
   description: "Animated bell-curve chart for showing a mean-centered distribution.",
   defaults: {

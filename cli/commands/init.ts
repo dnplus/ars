@@ -93,8 +93,6 @@ export async function run(args: string[]) {
 
   // 複製 src/episodes/template/ → src/episodes/{seriesName}/
   copyDir(templateSrcDir, srcDir);
-  // Rewrite card type strings from "template/<name>" → "<seriesName>/<name>"
-  rewriteCardTypes(srcDir, 'template', seriesName);
   // Rewrite path references in series-config.ts from "episodes/template/" → "episodes/<seriesName>/"
   rewriteSeriesConfig(srcDir, 'template', seriesName);
   if (!options.quiet) {
@@ -186,26 +184,6 @@ function rewriteSeriesConfig(seriesDir: string, fromSeries: string, toSeries: st
   const updated = content.replaceAll(`episodes/${fromSeries}/`, `episodes/${toSeries}/`);
   if (updated !== content) {
     fs.writeFileSync(configPath, updated, 'utf-8');
-  }
-}
-
-/**
- * Rewrite card `type` strings in spec.ts files after copying from template.
- * Template cards use "template/<name>" — consumer series must use "<series>/<name>".
- */
-function rewriteCardTypes(seriesDir: string, fromSeries: string, toSeries: string): void {
-  const cardsDir = path.join(seriesDir, 'cards');
-  if (!fs.existsSync(cardsDir)) return;
-
-  for (const cardName of fs.readdirSync(cardsDir)) {
-    const specPath = path.join(cardsDir, cardName, 'spec.ts');
-    if (!fs.existsSync(specPath)) continue;
-
-    let content = fs.readFileSync(specPath, 'utf-8');
-    const updated = content.replaceAll(`"${fromSeries}/${cardName}"`, `"${toSeries}/${cardName}"`);
-    if (updated !== content) {
-      fs.writeFileSync(specPath, updated, 'utf-8');
-    }
   }
 }
 

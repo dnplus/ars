@@ -63,7 +63,7 @@ export const cardSpec = {
 
 ### Invariants
 - `cardSpec.type` must be globally unique across engine + all series cards.
-- Series-scoped types use `<series>/<name>` format (e.g. `template/normal-distribution`).
+- Series-scoped cards still live under `src/episodes/<series>/cards/`, but `cardSpec.type` should be a globally unique bare name (e.g. `normal-distribution`).
 - Core engine cards (`src/engine/cards/`) must never import from `src/episodes/`.
 - `card-catalog.ts` (`CARD_CATALOG` array) is CLI-only. Never import it in browser/Remotion code.
 - `cards/registry.ts` (`CARD_REGISTRY` Map) is Vite/browser-only. Never import it in CLI/Node code.

@@ -26,9 +26,19 @@ const collect = (): Map<string, CardSpec<unknown>> => {
   } catch {
     return new Map();
   }
+  const hasUserSeriesSpecs = Object.keys(episodeSpecs).some(
+    (source) => !source.includes("/episodes/template/"),
+  );
+  const filteredEpisodeSpecs = hasUserSeriesSpecs
+    ? Object.fromEntries(
+        Object.entries(episodeSpecs).filter(
+          ([source]) => !source.includes("/episodes/template/"),
+        ),
+      )
+    : episodeSpecs;
   const registry = new Map<string, CardSpec<unknown>>();
 
-  for (const [source, mod] of Object.entries({ ...engineSpecs, ...episodeSpecs })) {
+  for (const [source, mod] of Object.entries({ ...engineSpecs, ...filteredEpisodeSpecs })) {
     const spec = mod.cardSpec;
 
     if (!spec) {
@@ -49,6 +59,8 @@ const collect = (): Map<string, CardSpec<unknown>> => {
 
 export const CARD_REGISTRY = collect();
 
+export const hasCard = (type: string): boolean => CARD_REGISTRY.has(type);
+
 export const getCard = (type: string): CardSpec<unknown> => {
   const spec = CARD_REGISTRY.get(type);
 
@@ -58,4 +70,3 @@ export const getCard = (type: string): CardSpec<unknown> => {
 
   return spec;
 };
-

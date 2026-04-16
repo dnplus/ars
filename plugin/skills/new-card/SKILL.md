@@ -51,7 +51,7 @@ Output path: `src/episodes/<series>/cards/<card-name>/`
    };
 
    export const cardSpec = {
-     type: "<series>/<card-name>",
+     type: "<card-name>",
      title: "<Human Label>",
      description: "<one-line description of what this card renders>",
      schema: z.object({ /* matching fields */ }),
@@ -88,7 +88,7 @@ Output path: `src/episodes/<series>/cards/<card-name>/`
 
 8. **Report**: Tell the user:
    - Files created
-   - The `type` string to reference in episode scripts (e.g., `"<series>/<card-name>"`)
+   - The `type` string to reference in episode scripts (e.g., `"<card-name>"`)
    - Example usage snippet for a scene step
 
 ## Rules

@@ -217,9 +217,11 @@ function discoverSeriesCards(filterSeries?: string): CardMeta[] {
 
   const results: CardMeta[] = [];
 
-  const seriesList = fs.readdirSync(episodesDir)
+  const allSeries = fs.readdirSync(episodesDir)
     .filter(name => fs.statSync(path.join(episodesDir, name)).isDirectory())
     .filter(name => !filterSeries || name === filterSeries);
+  const hasUserSeries = allSeries.some((series) => series !== 'template');
+  const seriesList = allSeries.filter((series) => !(hasUserSeries && series === 'template'));
 
   for (const series of seriesList) {
     const cardsDir = path.join(episodesDir, series, 'cards');
@@ -301,9 +303,11 @@ export async function run(args: string[]): Promise<void> {
     const activeSeries = getActiveSeries(ROOT) ?? (() => {
       const episodesDir = path.join(ROOT, 'src/episodes');
       if (!fs.existsSync(episodesDir)) return null;
-      return fs.readdirSync(episodesDir).find(
+      const allSeries = fs.readdirSync(episodesDir).filter(
         name => fs.statSync(path.join(episodesDir, name)).isDirectory(),
-      ) ?? null;
+      );
+      const preferredUserSeries = allSeries.find((name) => name !== 'template');
+      return preferredUserSeries ?? allSeries[0] ?? null;
     })();
     if (activeSeries) {
       const stats = await buildEpisodeStats(activeSeries);

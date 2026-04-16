@@ -1,10 +1,9 @@
 {
   "name": "agentic-remotion-studio",
   "version": "1.0.0",
-  "description": "Agentic Remotion Studio — adapter-first Remotion episode production",
+  "description": "Turn ideas into published video episodes — fully agentic, Claude Code native, Remotion-powered",
   "repository": {},
-  "license": "UNLICENSED",
-  "private": true,
+  "license": "Apache-2.0",
   "engines": {
     "node": ">=22.12.0"
   },

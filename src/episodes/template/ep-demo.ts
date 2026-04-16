@@ -123,9 +123,9 @@ export const cardSpec = {
     },
     {
       id: 'demo_custom_chart',
-      contentType: 'template/normal-distribution',
+      contentType: 'normal-distribution',
       layoutMode: 'fullscreen',
-      narration: '這張是 series-scoped custom card。它不進 core engine，但一樣符合 BaseSlide 與 CardSpec contract。',
+      narration: '這張是 series-scoped custom card。它不進 core engine，但 type 不再綁 series 名稱，一樣符合 BaseSlide 與 CardSpec contract。',
       durationInSeconds: 8,
       data: {
         title: '考試分數常態分配',
@@ -183,7 +183,7 @@ Mermaid`,
         points: [
           'template 只保留正式支援的卡種',
           'summary / ticker / mermaid 已遷到 CardSpec',
-          'ep-demo 現在多了一張 template scoped custom chart card',
+          'ep-demo 現在多了一張 series-scoped custom chart card',
           'renderer 現在只走 registry-based card path',
           'demo 不再展示 compare / stats / timeline / flowchart',
         ],

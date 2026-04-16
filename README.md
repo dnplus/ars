@@ -1,5 +1,7 @@
 # ARS
 
+Stop spending weekends on slides and timelines. ARS turns your notes into publishable Remotion episodes — fully agentic.
+
 ARS is a Claude Code plugin-first workflow for building Remotion-based video episodes. The plugin owns the user-facing workflow. The CLI is the deterministic backend for install, scaffolding, review launch, asset preparation, export, and YouTube upload.
 
 ## Product boundary
@@ -30,12 +32,14 @@ ARS is a Claude Code plugin-first workflow for building Remotion-based video epi
 ### 1. Install the CLI
 
 ```bash
-npm install -g agentic-remotion-studio
+npm install -g github:<owner>/<repo>
 ```
 
-For local development:
+For local development of ARS itself:
 
 ```bash
+git clone https://github.com/<owner>/<repo>
+cd <repo>
 npm install
 npm link
 ```

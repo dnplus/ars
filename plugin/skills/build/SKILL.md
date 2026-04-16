@@ -36,7 +36,7 @@ For each `card-specs/<card-name>.md` brief:
    import { <CardName>Component } from "./component";
 
    export const cardSpec = {
-     type: "<series>/<card-name>",
+     type: "<card-name>",
      title: "<Human Label>",
      description: "<one-line description>",
      schema: z.object({ /* fields */ }),
