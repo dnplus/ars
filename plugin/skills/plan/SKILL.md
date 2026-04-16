@@ -19,6 +19,7 @@ Argument parsing:
 - If no argument is provided, ask the user: "這集要講什麼？可以貼 URL、筆記、文章片段，或直接描述題材都行。"
 
 Behavior:
+- Read `STYLING.md` at the repo root before doing anything else. Use it to inform tone, narration style, audience, and visual direction throughout the plan.
 - Resolve the active series from repo state. One repo maps to one series, so `/ars:plan` should operate on `<epId>` within that active series.
 - If `src/episodes/<active-series>/<epId>.ts` does not exist, run `npx ars episode create <epId>` first to scaffold the container.
 - Produce or revise `.ars/episodes/<epId>/plan.md` as the canonical episode contract. Include a `## Topic` section at the top that summarizes audience, thesis, key claims, and source material.

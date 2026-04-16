@@ -40,7 +40,28 @@ Behavior:
    - `episodeDefaults.channelName`
    - `episodeDefaults.decorationText`
    - **Do NOT modify `vtuber.closedImg` or `vtuber.openImg` paths.**
-4. Do not stop after file writes. The repo should be immediately usable for `/ars:plan`.
+4. Write `STYLING.md` at the repo root with the confirmed series identity. This file is the single source of truth for tone, narration style, visual direction, and audience — all downstream skills read it. Use this structure:
+
+```markdown
+# Series Styling Guide
+
+## Identity
+- Channel name: <channelName>
+- Brand tag: <decorationText>
+- Target audience: <audience>
+
+## Tone & Narration
+- 風格: <tone and narration vibe>
+- 避免: <things to avoid>
+- 旁白節奏: <pacing notes>
+
+## Visual Direction
+- Theme: <theme name and color description>
+- Layout bias: <layout preferences>
+- Density: <content density preference>
+```
+
+5. Do not stop after file writes. The repo should be immediately usable for `/ars:plan`.
 
 Output requirements:
 - Report the active series.

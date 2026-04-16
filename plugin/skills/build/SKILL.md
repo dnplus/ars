@@ -9,6 +9,7 @@ effort: high
 Use `.ars/episodes/<epId>/plan.md` as the implementation contract.
 
 Behavior:
+- Read `STYLING.md` at the repo root before doing anything else. Use it to inform narration copy, tone, and visual choices throughout the episode.
 - Resolve the active series from repo state. One repo maps to one series, so `/ars:build` should operate on `<epId>` within that active series.
 - Require `.ars/episodes/<epId>/plan.md` before editing.
 - Apply the approved episode plan strictly. Do not invent new narrative beats, layouts, cards, or motion systems beyond what the plan allows.
