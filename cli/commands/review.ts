@@ -23,7 +23,7 @@ Usage: npx ars review <subcommand> [options]
 
 Subcommands:
   open <epId>                             Launch the review surface for the active series
-  intent list                             List review intents grouped by status
+  intent list [--pending] [--json]        List review intents grouped by status
   intent show <id>                        Print a review intent JSON payload
   intent clear <id|all>                   Mark review intents as processed
   intent create [options]                 Create a review intent
@@ -149,7 +149,7 @@ async function handleIntent(args: string[]): Promise<void> {
 
   switch (subcommand) {
     case 'list':
-      return listIntents();
+      return listIntents(rest);
     case 'show':
       return showIntent(rest);
     case 'clear':
@@ -163,16 +163,34 @@ async function handleIntent(args: string[]): Promise<void> {
   }
 }
 
-async function listIntents(): Promise<void> {
+async function listIntents(args: string[]): Promise<void> {
   const root = getRepoRoot();
   const reviewDir = getReviewIntentsDir(root);
   const records = listReviewIntentRecords(root);
+  const pendingOnly = args.includes('--pending');
+  const jsonMode = args.includes('--json');
+
   const pending = records.filter(({ intent }) => !intent.processedAt);
   const processed = records.filter(({ intent }) => !!intent.processedAt);
 
+  if (jsonMode) {
+    const output = pendingOnly
+      ? pending.map(({ intent }) => intent)
+      : {
+          pending: pending.map(({ intent }) => intent),
+          processed: processed.map(({ intent }) => intent),
+        };
+    console.log(JSON.stringify(output, null, 2));
+    return;
+  }
+
   console.log(`Review inbox: ${path.relative(root, reviewDir)}`);
-  printIntentGroup('Pending', pending);
-  printIntentGroup('Processed', processed);
+  if (pendingOnly) {
+    printIntentGroup('Pending', pending);
+  } else {
+    printIntentGroup('Pending', pending);
+    printIntentGroup('Processed', processed);
+  }
 }
 
 function printIntentGroup(
