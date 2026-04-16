@@ -13,49 +13,21 @@ function makeTempRoot(prefix: string): string {
   return root;
 }
 
-function makeRepoCopy(): string {
+function makeConsumerRepo(): string {
   const tempRoot = makeTempRoot('ars-series-');
-  const copyRoot = path.join(tempRoot, 'repo');
-
-  fs.cpSync(repoRoot, copyRoot, {
-    recursive: true,
-    filter: (source) => {
-      const relative = path.relative(repoRoot, source);
-      if (!relative) return true;
-      const top = relative.split(path.sep)[0];
-      return top !== '.git' && top !== 'node_modules' && top !== 'dist' && top !== 'output';
-    },
-  });
-
-  fs.symlinkSync(path.join(repoRoot, 'node_modules'), path.join(copyRoot, 'node_modules'), 'junction');
-  return copyRoot;
-}
-
-function writeConfig(repoDir: string): void {
-  fs.mkdirSync(path.join(repoDir, '.ars'), { recursive: true });
+  const repoDir = path.join(tempRoot, 'repo');
+  fs.mkdirSync(repoDir, { recursive: true });
   fs.writeFileSync(
-    path.join(repoDir, '.ars', 'config.json'),
-    `${JSON.stringify({
-      version: 2,
-      tts: { provider: 'none' },
-      publish: { youtube: { enabled: false } },
-      extensions: {
-        analytics: { enabled: false },
-      },
-      review: {
-        preferredUi: 'studio',
-      },
-      project: {
-        visualDensity: 'balanced',
-        layoutBias: 'mixed',
-      },
-    }, null, 2)}\n`,
+    path.join(repoDir, 'package.json'),
+    `${JSON.stringify({ name: 'ars-consumer-test', private: true }, null, 2)}\n`,
     'utf-8',
   );
+  fs.symlinkSync(path.join(repoRoot, 'node_modules'), path.join(repoDir, 'node_modules'), 'junction');
+  return repoDir;
 }
 
 function runCli(repoDir: string, args: string[]): string {
-  return execFileSync('node', ['--import', 'tsx', path.join(repoDir, 'cli', 'index.ts'), ...args], {
+  return execFileSync('node', ['--import', 'tsx', path.join(repoRoot, 'cli', 'index.ts'), ...args], {
     cwd: repoDir,
     encoding: 'utf-8',
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -72,27 +44,26 @@ afterEach(() => {
 });
 
 describe('single-series workflow', () => {
-  it('infers the active series for repo-scoped episode creation', () => {
-    const repoDir = makeRepoCopy();
-    writeConfig(repoDir);
+  it('bootstraps a repo and infers the active series for repo-scoped episode creation', () => {
+    const repoDir = makeConsumerRepo();
 
-    runCli(repoDir, ['init', 'demo-series']);
+    runCli(repoDir, ['init', 'demo-series', '--yes']);
     runCli(repoDir, ['episode', 'create', 'ep001']);
 
     const config = JSON.parse(fs.readFileSync(path.join(repoDir, '.ars', 'config.json'), 'utf-8'));
     expect(config.project.activeSeries).toBe('demo-series');
+    expect(fs.existsSync(path.join(repoDir, 'src', 'engine', 'Composition.tsx'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'src', 'episodes', 'demo-series', 'ep001.ts'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'public', 'episodes', 'demo-series', 'ep001', 'audio'))).toBe(true);
   });
 
   it('rejects initializing a second series in the same repo', () => {
-    const repoDir = makeRepoCopy();
-    writeConfig(repoDir);
+    const repoDir = makeConsumerRepo();
 
-    runCli(repoDir, ['init', 'demo-series']);
+    runCli(repoDir, ['init', 'demo-series', '--yes']);
     const result = spawnSync(
       'node',
-      ['--import', 'tsx', path.join(repoDir, 'cli', 'index.ts'), 'init', 'other-series'],
+      ['--import', 'tsx', path.join(repoRoot, 'cli', 'index.ts'), 'init', 'other-series'],
       {
         cwd: repoDir,
         encoding: 'utf-8',

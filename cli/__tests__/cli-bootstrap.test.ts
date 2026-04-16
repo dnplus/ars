@@ -51,9 +51,9 @@ describe('cli bootstrap', () => {
     expect(output).toBe('1.0.0');
   });
 
-  it('delegates help to setup subcommand', () => {
-    const output = runCli(['setup', '--help']);
-    expect(output).toContain('Usage: npx ars setup [options]');
+  it('delegates help to init subcommand', () => {
+    const output = runCli(['init', '--help']);
+    expect(output).toContain('Usage: npx ars init <series-name> [options]');
     expect(output).toContain('--force-engine');
   });
 

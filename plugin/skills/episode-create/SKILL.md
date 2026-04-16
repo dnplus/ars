@@ -9,7 +9,7 @@ effort: medium
 Run `npx ars episode create <epId>` from the repo root.
 
 Behavior:
-- Assume the repo already has one active series configured by `/ars:setup`.
+- Assume the repo already has one active series configured by `/ars:onboard` or `npx ars init <series>`.
 - Validate that the argument is present and is an `epId`, not a free-form topic sentence.
 - Let the CLI create the episode file, subtitles stub, and public episode directories.
 - Report the created files and the next recommended commands after generation.

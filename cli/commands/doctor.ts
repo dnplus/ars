@@ -61,8 +61,8 @@ export function runDoctor(options: { json: boolean; strict: boolean }): CheckRes
     results.push({
       id: 'config.exists',
       status: 'fail',
-      detail: `Missing ${configPath}. Run "npx ars setup" first.`,
-      fixHint: 'npx ars setup --yes',
+      detail: `Missing ${configPath}. Run "npx ars init <series>" first.`,
+      fixHint: 'npx ars init <series> --yes',
     });
     return results;
   }
@@ -80,7 +80,7 @@ export function runDoctor(options: { json: boolean; strict: boolean }): CheckRes
       id: 'config.schema',
       status: 'fail',
       detail: error instanceof Error ? error.message : String(error),
-      fixHint: 'Re-run npx ars setup --force-config',
+      fixHint: 'Re-run npx ars init <series> --force-config',
     });
     return results;
   }
@@ -162,7 +162,7 @@ function validateConfigSchema(
           ? `config version missing; normalized to ${config.version}`
           : `config version=${version}; latest=${CONFIG_SCHEMA_VERSION}`,
     fixHint:
-      version === CONFIG_SCHEMA_VERSION ? undefined : 'Re-run npx ars setup --force-config',
+      version === CONFIG_SCHEMA_VERSION ? undefined : 'Re-run npx ars init <series> --force-config',
   });
 
   const activeSeries = config.project.activeSeries?.trim();
@@ -171,7 +171,7 @@ function validateConfigSchema(
       id: 'config.active-series',
       status: 'warn',
       detail: 'project.activeSeries is not set.',
-      fixHint: 'Use /ars:setup for guided onboarding or run npx ars init <series>.',
+      fixHint: 'Use /ars:onboard for guided onboarding or run npx ars init <series>.',
     });
     return;
   }
@@ -200,7 +200,7 @@ function validateVersion(
       id: 'version.file',
       status: 'warn',
       detail: 'Missing .ars/.ars-version.json (and no legacy engine-version.json fallback found).',
-      fixHint: 'Run npx ars setup or npx ars update.',
+      fixHint: 'Run npx ars init <series> or npx ars update.',
     });
     return;
   }
@@ -249,7 +249,7 @@ function validateEngine(root: string, results: CheckResult[]): void {
       id: check.id,
       status: exists ? 'pass' : 'fail',
       detail: exists ? `Found ${check.path}` : `Missing ${check.path}`,
-      fixHint: exists ? undefined : 'Run npx ars setup --force-engine',
+      fixHint: exists ? undefined : 'Run npx ars init <series> --force-engine',
     });
   }
 
@@ -297,7 +297,7 @@ function validateClaudeMd(root: string, results: CheckResult[]): void {
       id: 'claude-md.marker',
       status: 'warn',
       detail: `Missing ${claudePath}`,
-      fixHint: 'Run npx ars setup --force-claude-md',
+      fixHint: 'Run npx ars init <series> --force-claude-md',
     });
     return;
   }
@@ -313,7 +313,7 @@ function validateClaudeMd(root: string, results: CheckResult[]): void {
     detail: hasMarker
       ? `Found ARS marker block in ${claudePath}`
       : `ARS marker block missing from ${claudePath}`,
-    fixHint: hasMarker ? undefined : 'Run npx ars setup --force-claude-md',
+    fixHint: hasMarker ? undefined : 'Run npx ars init <series> --force-claude-md',
   });
 }
 

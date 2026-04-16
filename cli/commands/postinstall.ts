@@ -1,4 +1,3 @@
-import { setupCommand } from './setup';
 import { getRuntimePackageInfo } from '../lib/runtime-package';
 import { resolveSetupTargetRoot, syncAgents, syncSkills } from '../lib/install';
 
@@ -15,30 +14,16 @@ export async function postinstallCommand(): Promise<PostinstallResult> {
   if (!root) {
     return {
       skipped: true,
-      reason: 'No consumer repo root resolved for postinstall setup.',
+      reason: 'No consumer repo root resolved for postinstall sync.',
     };
   }
 
-  // Always sync skills and agents regardless of whether full setup runs — paths
-  // may change across ARS versions and must stay current on every install/upgrade.
+  // Always sync skills and agents regardless of whether the repo has been
+  // initialized yet. This keeps the plugin surface current without implicitly
+  // bootstrapping a project during package install.
   try {
     syncSkills({ root, pluginRoot: runtime.pluginRoot, overwrite: true });
     syncAgents({ root, pluginRoot: runtime.pluginRoot, overwrite: true });
-  } catch {
-    // Non-fatal: sync failure should not block postinstall
-  }
-
-  try {
-    await setupCommand({
-      root,
-      force: false,
-      forceEngine: false,
-      forceConfig: false,
-      forceClaudeMd: false,
-      yes: true,
-      quiet: true,
-    });
-
     return {
       skipped: false,
       root,
@@ -48,8 +33,7 @@ export async function postinstallCommand(): Promise<PostinstallResult> {
     if (process.env.ARS_POSTINSTALL_STRICT === '1') {
       throw error;
     }
-
-    console.warn(`[ars] postinstall setup skipped: ${message}`);
+    console.warn(`[ars] postinstall sync skipped: ${message}`);
     return {
       skipped: true,
       reason: message,

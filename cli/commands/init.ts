@@ -1,36 +1,36 @@
 /**
  * @command init
- * @description Initialize a new series from the template
+ * @description Bootstrap a new ARS repo and initialize its only active series
  *
  * Usage:
- *   npx ars init <series-name>
+ *   npx ars init <series-name> [options]
  */
 import fs from 'fs';
 import path from 'path';
-import { configExists, getRepoRoot } from '../lib/ars-config';
+import { getRepoRoot } from '../lib/ars-config';
+import { ensureRepoInitialized } from '../lib/repo-init';
 import { getActiveSeries, listAvailableSeries, setActiveSeries, validateSeriesName } from '../lib/context';
 
+const HELP = `
+Usage: npx ars init <series-name> [options]
+
+Initializes .ars/config.json, syncs the ARS engine/plugin assets into this repo,
+copies the template series into src/episodes/<series-name>, and sets project.activeSeries.
+
+Options:
+  --force              Overwrite config, engine, CLAUDE.md, and version metadata
+  --force-engine       Overwrite engine files and version metadata only
+  --force-config       Overwrite config.json only
+  --force-claude-md    Rebuild the ARS block in CLAUDE.md
+  -y, --yes            Skip interactive confirmation and use defaults
+  -q, --quiet          Suppress non-error output
+`;
+
 export async function run(args: string[]) {
-  const seriesName = args[0];
+  const { options, seriesName } = parseArgs(args);
   const root = getRepoRoot();
 
-  if (!seriesName) {
-    console.error('❌ Please provide a series name');
-    console.log('Usage: npx ars init <series-name>');
-    process.exit(1);
-  }
-
   validateSeriesName(seriesName);
-
-  if (!configExists(root)) {
-    console.error('❌ Missing .ars/config.json. Run `npx ars setup` first.');
-    process.exit(1);
-  }
-
-  const srcDir = path.join(root, 'src/episodes', seriesName);
-  const publicDir = path.join(root, 'public/episodes', seriesName);
-  const templateSrcDir = path.join(root, 'src/episodes/template');
-  const templatePublicDir = path.join(root, 'public/episodes/template/shared');
   const activeSeries = getActiveSeries(root);
   const existingUserSeries = listAvailableSeries(root).filter((series) => series !== 'template');
 
@@ -47,6 +47,12 @@ export async function run(args: string[]) {
     process.exit(1);
   }
 
+  const result = await ensureRepoInitialized({ ...options, root });
+  const srcDir = path.join(root, 'src/episodes', seriesName);
+  const publicDir = path.join(root, 'public/episodes', seriesName);
+  const templateSrcDir = path.join(root, 'src/episodes/template');
+  const templatePublicDir = path.join(root, 'public/episodes/template/shared');
+
   if (fs.existsSync(srcDir)) {
     console.error(`❌ Series "${seriesName}" already exists at ${srcDir}`);
     process.exit(1);
@@ -57,23 +63,56 @@ export async function run(args: string[]) {
     process.exit(1);
   }
 
-  console.log(`🚀 Initializing series "${seriesName}" from template...`);
+  if (!options.quiet) {
+    console.log(`✅ Wrote ${result.configPath}`);
+    console.log(`   tts.provider = ${result.config.tts.provider}`);
+    console.log(
+      `   publish.youtube.enabled = ${String(result.config.publish.youtube.enabled)}`,
+    );
+    if (result.copiedFiles.length > 0) {
+      console.log(`✅ Synced engine into ${path.join(result.root, 'src', 'engine')}`);
+      for (const copiedFile of result.copiedFiles) {
+        console.log(`   ${copiedFile}`);
+      }
+    }
+    if (result.claudeMdPath) {
+      console.log(`✅ Patched ${result.claudeMdPath}`);
+    }
+    if (result.installedSkills.length > 0) {
+      console.log(`✅ Installed ${result.installedSkills.length} ARS skills into .claude/skills/ars/`);
+    }
+    console.log(`✅ Wrote ${result.versionPath}`);
+    if (result.usedDefaults) {
+      console.log('   Non-interactive defaults were applied.');
+    }
+    console.log(`🚀 Initializing series "${seriesName}" from template...`);
+  }
 
   // 複製 src/episodes/template/ → src/episodes/{seriesName}/
   copyDir(templateSrcDir, srcDir);
-  console.log(`✅ Created: src/episodes/${seriesName}/`);
+  if (!options.quiet) {
+    console.log(`✅ Created: src/episodes/${seriesName}/`);
+  }
 
   // 建立 public dirs
   fs.mkdirSync(path.join(publicDir, 'shared'), { recursive: true });
-  console.log(`✅ Created: public/episodes/${seriesName}/`);
+  if (!options.quiet) {
+    console.log(`✅ Created: public/episodes/${seriesName}/`);
+  }
 
   // 複製 shared 資源（vtuber 等）
   if (fs.existsSync(templatePublicDir)) {
     copyDir(templatePublicDir, path.join(publicDir, 'shared'));
-    console.log(`✅ Created: public/episodes/${seriesName}/shared/`);
+    if (!options.quiet) {
+      console.log(`✅ Created: public/episodes/${seriesName}/shared/`);
+    }
   }
 
   const configPath = setActiveSeries(seriesName, root);
+  if (options.quiet) {
+    return;
+  }
+
   console.log(`✅ Updated active series in ${path.relative(root, configPath)}`);
 
   // Root.tsx 現在自動掃描 src/episodes/，不需要手動註冊
@@ -88,6 +127,44 @@ Next steps:
   3. /ars:plan ep001
   4. /ars:build ep001
 `);
+}
+
+function parseArgs(args: string[]): {
+  seriesName: string;
+  options: {
+    force: boolean;
+    forceEngine: boolean;
+    forceConfig: boolean;
+    forceClaudeMd: boolean;
+    yes: boolean;
+    quiet: boolean;
+  };
+} {
+  if (args.includes('--help') || args.includes('-h')) {
+    console.log(HELP);
+    process.exit(0);
+  }
+
+  const positional = args.filter((arg) => !arg.startsWith('-'));
+  const seriesName = positional[0];
+
+  if (!seriesName) {
+    console.error('❌ Please provide a series name');
+    console.log(HELP.trim());
+    process.exit(1);
+  }
+
+  return {
+    seriesName,
+    options: {
+      force: args.includes('--force'),
+      forceEngine: args.includes('--force-engine'),
+      forceConfig: args.includes('--force-config'),
+      forceClaudeMd: args.includes('--force-claude-md'),
+      yes: args.includes('--yes') || args.includes('-y'),
+      quiet: args.includes('--quiet') || args.includes('-q'),
+    },
+  };
 }
 
 const COPY_IGNORE = ['.bak', '.DS_Store'];

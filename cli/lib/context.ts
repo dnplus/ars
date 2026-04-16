@@ -94,7 +94,7 @@ export function requireActiveSeries(root = getRepoRoot()): string {
   const activeSeries = getActiveSeries(root);
   if (!activeSeries) {
     console.error('❌ This repo has no active series configured.');
-    console.error('   Run /ars:setup for guided onboarding or `npx ars init <series>` after setup.');
+    console.error('   Run /ars:onboard for guided onboarding or `npx ars init <series>` first.');
     process.exit(1);
   }
 
@@ -105,7 +105,7 @@ export function setActiveSeries(series: string, root = getRepoRoot()): string {
   validateSeriesName(series);
 
   if (!configExists(root)) {
-    console.error('❌ Missing .ars/config.json. Run `npx ars setup` first.');
+    console.error('❌ Missing .ars/config.json. Run `npx ars init <series>` first.');
     process.exit(1);
   }
 

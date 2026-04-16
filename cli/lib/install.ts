@@ -17,7 +17,7 @@ const ARS_MARKER_BEGIN = '<!-- ars:begin -->';
 const ARS_MARKER_END = '<!-- ars:end -->';
 const ARS_COMMANDS_BLOCK = `${ARS_MARKER_BEGIN}
 ## ARS Commands
-- \`/ars:setup\`：ARS 的正式首次入口；先訪談頻道風格，再安裝/同步 engine、初始化 series、套用主題
+- \`/ars:onboard\`：ARS 的正式首次入口；先訪談頻道風格，再確認 repo 已完成 \`npx ars init <series>\`、初始化主題與品牌預設
 - \`/ars:doctor\`：檢查 ARS 設定、engine 安裝狀態與 provider 憑證
 - \`/ars:plan\`：討論主題、建立 episode 計畫，並寫入 \`.ars/episodes/<epId>/\` artifacts
 - \`/ars:build\`：依 \`plan.md\` 實作 episode source
@@ -309,7 +309,7 @@ export function syncEngineFiles(options: SyncEngineOptions): string[] {
 export function backupEngine(root = getTargetRepoRoot()): string {
   const targetEngineDir = path.join(root, 'src', 'engine');
   if (!fs.existsSync(targetEngineDir)) {
-    throw new Error(`Missing ${targetEngineDir}. Run "npx ars setup" first.`);
+    throw new Error(`Missing ${targetEngineDir}. Run "npx ars init <series>" first.`);
   }
 
   const backupTimestamp = new Date().toISOString().replace(/:/g, '-');

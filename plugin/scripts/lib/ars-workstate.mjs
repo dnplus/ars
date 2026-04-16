@@ -481,7 +481,7 @@ export function buildSessionStartContext(root = process.cwd(), sessionId) {
   const messages = [];
 
   if (!config) {
-    messages.push('ARS: .ars/config.json not found. Run /ars:setup to initialize this repo.');
+    messages.push('ARS: .ars/config.json not found. Run /ars:onboard or npx ars init <series> to initialize this repo.');
     return messages;
   }
 
@@ -602,7 +602,7 @@ export function updateWorkStateFromCommand(root = process.cwd(), sessionId, comm
 export function renderStatusLine(root = process.cwd(), sessionId) {
   const config = getArsConfig(root);
   if (!config) {
-    return 'ARS | setup needed';
+    return 'ARS | init needed';
   }
 
   const { activeSeries, progress, workState } = getCurrentEpisodeSummary(root, sessionId);

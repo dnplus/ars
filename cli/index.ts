@@ -19,7 +19,6 @@ const KNOWN_COMMANDS = new Set([
   'prepare',
   'publish',
   'review',
-  'setup',
   'theme',
   'update',
   'upload',
@@ -39,7 +38,7 @@ Launch behavior:
 Commands:
   launch [claude-args...]          Launch Claude with the ARS plugin attached
   auth <subcommand> [...]          Authorize external service credentials (e.g. YouTube OAuth)
-  setup [options]                  Initialize config, sync engine files, and patch CLAUDE.md
+  init <series-name> [options]     Bootstrap a new ARS repo and set its only active series
   update [options]                 Backup and refresh the installed ARS engine
   doctor [options]                 Validate config, engine install, plugin assets, and providers
   card <subcommand> [...]           Card catalog and metadata
@@ -48,7 +47,6 @@ Commands:
   publish <subcommand> [...]       Package and publish outputs
   audio <subcommand> [...]         Audio/TTS workflows
   review <subcommand> [...]        Review surface + review intent workflows
-  init <series-name>               Initialize a new series from template
   theme <subcommand> [...]         Theme generation and preview tools
   export <subcommand> [...]        Export cover or subtitle artifacts
   upload <subcommand> [...]        Upload to YouTube
@@ -80,8 +78,6 @@ async function loadCommandModule(command: string): Promise<CommandModule> {
       return import('./commands/publish');
     case 'review':
       return import('./commands/review');
-    case 'setup':
-      return import('./commands/setup');
     case 'theme':
       return import('./commands/theme');
     case 'update':

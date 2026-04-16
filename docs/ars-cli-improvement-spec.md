@@ -2,6 +2,8 @@
 
 Date: 2026-04-15
 
+> Update (2026-04-16): this spec predates the current naming. The public CLI first-run entrypoint is now `npx ars init <series>`, the guided skill entrypoint is `/ars:onboard`, and package `postinstall` only syncs plugin assets instead of bootstrapping a repo.
+
 ## 1. 目標
 
 把 `ars` 從目前的「手寫 dispatcher + 局部 setup/update/doctor」升級成可直接啟動 Claude、可在 `npm install` 後自動完成靜默初始化、具備版本追蹤與防降級、並有可重跑的 e2e 驗證的完整 CLI。

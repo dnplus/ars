@@ -1,13 +1,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-const setupCommand = vi.fn();
-
-vi.mock('../commands/setup', () => ({
-  setupCommand,
-}));
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const tempRoots: string[] = [];
 
@@ -16,11 +10,6 @@ function makeTempRoot(prefix: string): string {
   tempRoots.push(root);
   return root;
 }
-
-beforeEach(() => {
-  setupCommand.mockReset();
-  setupCommand.mockResolvedValue({});
-});
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -39,10 +28,9 @@ describe('postinstallCommand', () => {
     const result = await postinstallCommand();
 
     expect(result.skipped).toBe(true);
-    expect(setupCommand).not.toHaveBeenCalled();
   });
 
-  it('runs setup against INIT_CWD', async () => {
+  it('syncs plugin assets against INIT_CWD without bootstrapping the repo', async () => {
     const targetRoot = makeTempRoot('ars-postinstall-target-');
     vi.stubEnv('INIT_CWD', targetRoot);
 
@@ -53,14 +41,6 @@ describe('postinstallCommand', () => {
       skipped: false,
       root: targetRoot,
     });
-    expect(setupCommand).toHaveBeenCalledWith({
-      root: targetRoot,
-      force: false,
-      forceEngine: false,
-      forceConfig: false,
-      forceClaudeMd: false,
-      yes: true,
-      quiet: true,
-    });
+    expect(fs.existsSync(path.join(targetRoot, '.ars', 'config.json'))).toBe(false);
   });
 });

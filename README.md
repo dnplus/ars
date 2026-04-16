@@ -55,13 +55,15 @@ Bare `ars` launches Claude Code with the bundled ARS plugin attached.
 Inside Claude Code:
 
 ```text
-/ars:setup
+/ars:onboard
 ```
 
-`/ars:setup` is the official first-run entrypoint. It should:
+`/ars:onboard` is the official first-run entrypoint. It should:
 
+- start by explaining the onboarding flow: repo init first, then branding/theme questions
+- use a mix of short menu questions and open-ended creative questions
+- let you paste extra branding/reference material and digest it into config/theme defaults
 - interview you for series id, brand, visual direction, tone, mascot / VTuber preference, and layout bias
-- run `npx ars setup`
 - run `npx ars init <series>`
 - generate a theme seed
 - write repo-level branding defaults into `.ars/config.json`
@@ -138,7 +140,7 @@ This skill uses the existing YouTube analytics helpers to produce a concise repo
 
 ## Core skills
 
-- `/ars:setup`: interview + orchestration for first-run onboarding
+- `/ars:onboard`: interview + orchestration for first-run onboarding
 - `/ars:plan`: official planning entrypoint for a new or existing episode
 - `/ars:build`: implement `ep.ts` from the approved planning artifacts
 - `/ars:episode-create`: low-level scaffold primitive for manual use
@@ -153,7 +155,6 @@ This skill uses the existing YouTube analytics helpers to produce a concise repo
 
 Stable backend commands:
 
-- `npx ars setup`
 - `npx ars update`
 - `npx ars doctor`
 - `npx ars init <series>`
@@ -170,12 +171,12 @@ Stable backend commands:
 
 Notes:
 
-- `npx ars setup` is a low-level install/sync primitive. It is not the preferred first-run user experience.
-- `npx ars init <series>` is an advanced/internal scaffold primitive. It should only happen once per repo.
+- `npx ars init <series>` is the only first-run CLI entrypoint. It bootstraps the repo and creates the repo's only active series.
+- `/ars:onboard` is the preferred first-run UX when you want guided branding/theme setup after init.
 
 ## One repo = one series
 
-ARS core assumes each content repo has exactly one active series, set during `/ars:setup`. All episode commands take `epId` only — the active series is resolved automatically from `.ars/config.json`.
+ARS core assumes each content repo has exactly one active series, set during `npx ars init <series>` or `/ars:onboard`. All episode commands take `epId` only — the active series is resolved automatically from `.ars/config.json`.
 
 ## Current core scope
 

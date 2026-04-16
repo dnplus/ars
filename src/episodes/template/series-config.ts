@@ -2,7 +2,7 @@
  * Template series configuration — single source of truth.
  * Merges old config.ts + theme.ts into one SeriesConfig export.
  *
- * `npx ars init <name>` 會複製此檔案作為新 series 的起點。
+ * `npx ars init <name>` 會 bootstrap repo，並複製此檔案作為新 series 的起點。
  */
 
 import { DEFAULT_VTUBER_CONFIG, DEFAULT_SUBTITLE_CONFIG } from '../../engine/shared/defaults';
