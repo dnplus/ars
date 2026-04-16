@@ -110,22 +110,21 @@ async function openReview(args: string[]): Promise<void> {
   console.log(`   URL: /?${params.toString()}`);
   console.log(`   Review inbox: ${path.relative(root, getReviewIntentsDir(root))}`);
 
-  // Prefer dev:studio if defined, fall back to dev (standard Remotion script)
-  const pkgJsonPath = path.join(root, 'package.json');
-  const pkgScripts = fs.existsSync(pkgJsonPath)
-    ? (JSON.parse(fs.readFileSync(pkgJsonPath, 'utf-8')) as { scripts?: Record<string, string> }).scripts ?? {}
-    : {};
-  const devScript = 'dev:studio' in pkgScripts ? 'dev:studio' : 'dev';
-
-  const viteProcess = spawn('npm', ['run', devScript], {
-    stdio: 'inherit',
-    env: {
-      ...process.env,
-      SERIES: series,
-      EP: epId,
+  // Launch ARS review studio via vite — vite.studio.config.ts is synced into the
+  // user repo by npx ars setup, so it's always available at the repo root.
+  const viteProcess = spawn(
+    'npx',
+    ['vite', '--config', 'vite.studio.config.ts'],
+    {
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        SERIES: series,
+        EP: epId,
+      },
+      cwd: root,
     },
-    cwd: root,
-  });
+  );
 
   viteProcess.on('close', (code) => {
     process.exit(code || 0);

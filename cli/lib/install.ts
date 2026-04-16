@@ -243,6 +243,30 @@ export function syncEngineFiles(options: SyncEngineOptions): string[] {
     copied,
   );
 
+  syncFileIfNeeded(
+    path.join(options.sourceRoot, 'src', 'studio.html'),
+    path.join(options.root, 'src', 'studio.html'),
+    options.overwriteSupportFiles,
+    'studio.html',
+    copied,
+  );
+
+  syncFileIfNeeded(
+    path.join(options.sourceRoot, 'src', 'studio-main.tsx'),
+    path.join(options.root, 'src', 'studio-main.tsx'),
+    options.overwriteSupportFiles,
+    'studio-main.tsx',
+    copied,
+  );
+
+  syncFileIfNeeded(
+    path.join(options.sourceRoot, 'vite.studio.config.ts'),
+    path.join(options.root, 'vite.studio.config.ts'),
+    options.overwriteSupportFiles,
+    'vite.studio.config.ts',
+    copied,
+  );
+
   return copied;
 }
 
