@@ -302,6 +302,15 @@ export function detectEpisodeProgress(root = process.cwd(), seriesId, episodeId)
   const hasRender = fs.existsSync(renderFile);
   const hasCover = fs.existsSync(coverFile);
 
+  // Read persisted stage from workstate (written by review close, audio generate, etc.)
+  // Only use it when there are no overriding real-time signals (pending intents/card-specs).
+  const persistedWorkState = pendingReview === 0 && pendingCardSpec === 0
+    ? readWorkState(root)
+    : null;
+  const persistedStage = persistedWorkState?.seriesId === seriesId && persistedWorkState?.episodeId === episodeId
+    ? persistedWorkState.stage
+    : null;
+
   const stage = pendingReview > 0
     ? 'review'
     : pendingCardSpec > 0
@@ -312,6 +321,8 @@ export function detectEpisodeProgress(root = process.cwd(), seriesId, episodeId)
         ? 'package'
         : hasSubtitles || hasAudio
           ? 'audio'
+          : persistedStage === 'audio'
+            ? 'audio'
           : hasSource && hasPlan
           ? 'review'
           : hasPlan
@@ -330,6 +341,8 @@ export function detectEpisodeProgress(root = process.cwd(), seriesId, episodeId)
         ? `npx ars prepare youtube ${episodeId}`
         : hasSubtitles || hasAudio
           ? `npx ars prepare youtube ${episodeId}`
+          : persistedStage === 'audio'
+            ? `npx ars audio generate ${episodeId}`
           : hasSource && hasPlan
           ? `/ars:review ${episodeId}`
           : hasPlan

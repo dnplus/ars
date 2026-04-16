@@ -10,6 +10,7 @@ import path from 'path';
 import { getRepoRoot } from '../lib/ars-config';
 import { ensureRepoInitialized } from '../lib/repo-init';
 import { getActiveSeries, listAvailableSeries, setActiveSeries, validateSeriesName } from '../lib/context';
+import { getRuntimePackageInfo } from '../lib/runtime-package';
 
 const HELP = `
 Usage: npx ars init <series-name> [options]
@@ -97,6 +98,18 @@ export async function run(args: string[]) {
   rewriteSeriesConfig(srcDir, 'template', seriesName);
   if (!options.quiet) {
     console.log(`✅ Created: src/episodes/${seriesName}/`);
+  }
+
+  // 複製 pronunciation_dict.yaml 範本（TTS 破音字字典）
+  const runtime = getRuntimePackageInfo(import.meta.url);
+  const pronunciationSrc = path.join(runtime.packageRoot, 'cli', 'pronunciation_dict.yaml');
+  const pronunciationDest = path.join(root, 'cli', 'pronunciation_dict.yaml');
+  if (fs.existsSync(pronunciationSrc) && !fs.existsSync(pronunciationDest)) {
+    fs.mkdirSync(path.join(root, 'cli'), { recursive: true });
+    fs.copyFileSync(pronunciationSrc, pronunciationDest);
+    if (!options.quiet) {
+      console.log(`✅ Created: cli/pronunciation_dict.yaml`);
+    }
   }
 
   // 建立 public dirs
