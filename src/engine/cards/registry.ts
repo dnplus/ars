@@ -5,18 +5,27 @@ type GlobCardModule = {
 };
 
 const collect = (): Map<string, CardSpec<unknown>> => {
-  // import.meta.glob is a Vite-only API — not available in Remotion/webpack.
-  // Return an empty registry when running outside Vite (e.g. cover render).
-  if (typeof import.meta.glob !== 'function') {
+  // import.meta.glob is a Vite-only API.
+  // - Vite: transforms glob calls into Object.assign({...}) at build time.
+  //   The try block succeeds; catch is dead code.
+  // - Remotion/webpack: import.meta.glob is undefined at runtime; calling it
+  //   throws TypeError. The catch returns an empty registry.
+  // DO NOT use `typeof import.meta.glob !== 'function'` guard — Vite transforms
+  // the glob call before the guard fires, so in the browser import.meta.glob is
+  // already undefined (transformed away), making the guard always true and
+  // returning an empty Map even when the glob data is available.
+  let engineSpecs: Record<string, GlobCardModule> = {};
+  let episodeSpecs: Record<string, GlobCardModule> = {};
+  try {
+    engineSpecs = import.meta.glob("./*/spec.ts", {
+      eager: true,
+    }) as Record<string, GlobCardModule>;
+    episodeSpecs = import.meta.glob("../../episodes/*/cards/*/spec.ts", {
+      eager: true,
+    }) as Record<string, GlobCardModule>;
+  } catch {
     return new Map();
   }
-
-  const engineSpecs = import.meta.glob("./*/spec.ts", {
-    eager: true,
-  }) as Record<string, GlobCardModule>;
-  const episodeSpecs = import.meta.glob("../../episodes/*/cards/*/spec.ts", {
-    eager: true,
-  }) as Record<string, GlobCardModule>;
   const registry = new Map<string, CardSpec<unknown>>();
 
   for (const [source, mod] of Object.entries({ ...engineSpecs, ...episodeSpecs })) {

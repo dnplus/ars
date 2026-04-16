@@ -83,13 +83,13 @@ export function useAutoFitFontSize(
     const safeFontSize = Math.max(min, Math.floor(best * safetyMargin));
     setFontSize(safeFontSize);
     text.style.fontSize = `${safeFontSize}px`;
-  }, [content, min, max, padding, safetyMargin]);
+  }, [min, max, padding, safetyMargin]);
 
   // Run on mount + content change
   useLayoutEffect(() => {
     const raf = requestAnimationFrame(recalc);
     return () => cancelAnimationFrame(raf);
-  }, [recalc]);
+  }, [recalc, content]);
 
   // Re-run on container resize
   useLayoutEffect(() => {

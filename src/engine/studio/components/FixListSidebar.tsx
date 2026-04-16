@@ -25,6 +25,9 @@ const KIND_BADGE_COLORS: Record<string, string> = {
 const truncate = (str: string, max: number): string =>
   str.length > max ? `${str.slice(0, max)}…` : str;
 
+const hasAttachment = (intent: ReviewIntent): boolean =>
+  !!intent.attachments?.screenshotPath || !!intent.attachments?.screenshotDataUrl;
+
 export const FixListSidebar: React.FC<FixListSidebarProps> = ({ onClose }) => {
   const [intents, setIntents] = useState<ReviewIntent[]>([]);
 
@@ -149,6 +152,24 @@ export const FixListSidebar: React.FC<FixListSidebarProps> = ({ onClose }) => {
                 >
                   {KIND_LABELS[intent.feedback.kind] ?? intent.feedback.kind}
                 </span>
+                {hasAttachment(intent) ? (
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      background: 'rgba(91, 126, 158, 0.9)',
+                      color: '#fff',
+                      borderRadius: 3,
+                      padding: '1px 5px',
+                      letterSpacing: '0.05em',
+                      flexShrink: 0,
+                    }}
+                    title="這條 review intent 附有圖片，處理前請先閱讀附件內容。"
+                  >
+                    附圖
+                  </span>
+                ) : null}
                 <span
                   style={{
                     fontSize: 11,
@@ -179,6 +200,17 @@ export const FixListSidebar: React.FC<FixListSidebarProps> = ({ onClose }) => {
               >
                 {truncate(intent.feedback.message, 80)}
               </div>
+              {hasAttachment(intent) ? (
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: '#8ea6c1',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  先讀附件，再判斷它是修正依據、參考圖，還是實際要放進影片的素材。
+                </div>
+              ) : null}
             </div>
           ))
         )}

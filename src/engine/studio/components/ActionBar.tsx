@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Img } from 'remotion';
 import type { ReviewIntentFeedback } from '../../../types/review-intent';
 import { INTENT_SUBMITTED_EVENT } from '../constants';
 
@@ -21,11 +22,18 @@ type ReviewIntentResponse = {
 };
 
 type PopupPos = { top: number; left: number };
+type AttachmentState = {
+  dataUrl: string;
+  name: string;
+};
+
+const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
 
 export const ActionBar: React.FC<ActionBarProps> = ({ stepId, series, epId, kind }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [attachment, setAttachment] = useState<AttachmentState | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [popupPos, setPopupPos] = useState<PopupPos>({ top: 0, left: 0 });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -59,6 +67,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({ stepId, series, epId, kind
   useEffect(() => {
     if (isOpen) {
       setMessage('');
+      setAttachment(null);
       calcPopupPos();
       setTimeout(() => textareaRef.current?.focus(), 50);
     }
@@ -68,6 +77,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({ stepId, series, epId, kind
   useEffect(() => {
     setIsOpen(false);
     setMessage('');
+    setAttachment(null);
   }, [stepId]);
 
   useEffect(() => {
@@ -83,19 +93,68 @@ export const ActionBar: React.FC<ActionBarProps> = ({ stepId, series, epId, kind
       const res = await fetch('/__ars/review-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from: 'studio', series, epId, stepId, kind, severity: 'medium', message: message.trim() }),
+        body: JSON.stringify({
+          from: 'studio',
+          series,
+          epId,
+          stepId,
+          kind,
+          severity: 'medium',
+          message: message.trim(),
+          attachments: attachment ? { screenshotDataUrl: attachment.dataUrl } : undefined,
+        }),
       });
       const payload = (await res.json()) as ReviewIntentResponse;
       if (!res.ok || !payload.intent) throw new Error(payload.error ?? `${res.status}`);
       setToast({ tone: 'success', message: `已記錄 ${payload.intent.id}` });
       setIsOpen(false);
+      setAttachment(null);
       window.dispatchEvent(new CustomEvent(INTENT_SUBMITTED_EVENT));
     } catch (err) {
       setToast({ tone: 'error', message: err instanceof Error ? err.message : String(err) });
     } finally {
       setIsSubmitting(false);
     }
-  }, [message, series, epId, stepId, kind]);
+  }, [message, attachment, series, epId, stepId, kind]);
+
+  const handlePaste = useCallback((event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = Array.from(event.clipboardData.items);
+    const imageItem = items.find((item) => item.type.startsWith('image/'));
+    if (!imageItem) {
+      return;
+    }
+
+    const file = imageItem.getAsFile();
+    if (!file) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (file.size > MAX_ATTACHMENT_BYTES) {
+      setToast({ tone: 'error', message: '貼上的圖片太大，請控制在 8MB 內。' });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = typeof reader.result === 'string' ? reader.result : '';
+      if (!dataUrl) {
+        setToast({ tone: 'error', message: '無法讀取貼上的圖片。' });
+        return;
+      }
+
+      setAttachment({
+        dataUrl,
+        name: file.name || `pasted-${Date.now()}.png`,
+      });
+      setToast({ tone: 'success', message: '已附加貼上的圖片。' });
+    };
+    reader.onerror = () => {
+      setToast({ tone: 'error', message: '無法讀取貼上的圖片。' });
+    };
+    reader.readAsDataURL(file);
+  }, []);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void handleSubmit(); }
@@ -146,8 +205,9 @@ export const ActionBar: React.FC<ActionBarProps> = ({ stepId, series, epId, kind
             ref={textareaRef}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
+            onPaste={handlePaste}
             onKeyDown={handleKeyDown}
-            placeholder="描述要修正的內容…（⌘↵ 送出）"
+            placeholder="描述要修正的內容… 可直接貼上圖片。（⌘↵ 送出）"
             rows={3}
             style={{
               width: '100%',
@@ -163,6 +223,82 @@ export const ActionBar: React.FC<ActionBarProps> = ({ stepId, series, epId, kind
               boxSizing: 'border-box',
             }}
           />
+          {attachment ? (
+            <div
+              style={{
+                borderRadius: 10,
+                border: '1px solid rgba(255,255,255,0.14)',
+                background: 'rgba(255,255,255,0.04)',
+                padding: 10,
+                display: 'flex',
+                gap: 10,
+                alignItems: 'center',
+              }}
+            >
+              <Img
+                src={attachment.dataUrl}
+                alt={attachment.name}
+                style={{
+                  width: 54,
+                  height: 54,
+                  objectFit: 'cover',
+                  borderRadius: 8,
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  flexShrink: 0,
+                }}
+              />
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: '#fff',
+                    fontWeight: 600,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  已附圖
+                </div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: '#9aa4b2',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {attachment.name}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAttachment(null)}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: 8,
+                  border: '1px solid rgba(255,255,255,0.14)',
+                  background: 'transparent',
+                  color: '#aaa',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                }}
+              >
+                移除
+              </button>
+            </div>
+          ) : (
+            <div
+              style={{
+                fontSize: 11,
+                color: '#8b93a7',
+                lineHeight: 1.5,
+              }}
+            >
+              需要補圖時可直接在輸入框貼上一張圖片，review intent 會自動保存附件。
+            </div>
+          )}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
             <button
               onClick={() => setIsOpen(false)}

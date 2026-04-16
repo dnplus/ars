@@ -147,7 +147,6 @@ export function useStepNavigation({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [next, prev, goToFirst, goToLast, toggleFullscreen, toggleNotes, isFullscreen]);
 
   // Hash 變更監聽

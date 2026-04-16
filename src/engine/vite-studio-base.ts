@@ -67,12 +67,13 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
 
             try {
               const body = await readJsonBody(req);
+              const target = {
+                series: asRequiredString(body.series, 'series'),
+                epId: asRequiredString(body.epId, 'epId'),
+                stepId: asRequiredString(body.stepId, 'stepId'),
+              };
               const record = createReviewIntent({
-                target: {
-                  series: asRequiredString(body.series, 'series'),
-                  epId: asRequiredString(body.epId, 'epId'),
-                  stepId: asRequiredString(body.stepId, 'stepId'),
-                },
+                target,
                 source: {
                   ui: asReviewUi(body.from ?? body.ui ?? 'studio'),
                   hash: asOptionalString(body.hash),
@@ -82,7 +83,7 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
                   message: asRequiredString(body.message, 'message'),
                   severity: asReviewSeverity(body.severity ?? 'medium'),
                 },
-                attachments: asReviewAttachments(body),
+                attachments: persistReviewAttachments(body, rootDir, target),
                 rootDir,
               });
 
@@ -300,7 +301,11 @@ function asOptionalString(value: unknown): string | undefined {
   return value.trim();
 }
 
-function asReviewAttachments(body: Record<string, unknown>) {
+function persistReviewAttachments(
+  body: Record<string, unknown>,
+  rootDir: string,
+  target: { series: string; epId: string; stepId: string },
+) {
   const attachmentsValue = body.attachments;
   const screenshotPath =
     asOptionalString(body.screenshotPath) ||
@@ -316,10 +321,63 @@ function asReviewAttachments(body: Record<string, unknown>) {
     return undefined;
   }
 
+  if (screenshotDataUrl) {
+    return {
+      screenshotPath: writeReviewAttachmentFile(rootDir, target, screenshotDataUrl),
+    };
+  }
+
   return {
     screenshotPath,
-    screenshotDataUrl,
   };
+}
+
+function writeReviewAttachmentFile(
+  rootDir: string,
+  target: { series: string; epId: string; stepId: string },
+  screenshotDataUrl: string,
+): string {
+  const match = screenshotDataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+  if (!match) {
+    throw new Error('Invalid review attachment image data.');
+  }
+
+  const [, mimeType, base64Payload] = match;
+  const extension = imageMimeToExtension(mimeType);
+  const attachmentDir = path.join(
+    rootDir,
+    '.ars',
+    'review-assets',
+    sanitizePathToken(target.series),
+    sanitizePathToken(target.epId),
+  );
+  fs.mkdirSync(attachmentDir, { recursive: true });
+
+  const timestamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+  const fileName = `${timestamp}-${sanitizePathToken(target.stepId)}.${extension}`;
+  const filePath = path.join(attachmentDir, fileName);
+  fs.writeFileSync(filePath, Buffer.from(base64Payload, 'base64'));
+  return path.relative(rootDir, filePath).split(path.sep).join('/');
+}
+
+function imageMimeToExtension(mimeType: string): string {
+  switch (mimeType.toLowerCase()) {
+    case 'image/jpeg':
+      return 'jpg';
+    case 'image/png':
+      return 'png';
+    case 'image/webp':
+      return 'webp';
+    case 'image/gif':
+      return 'gif';
+    default:
+      throw new Error(`Unsupported review attachment mime type: ${mimeType}`);
+  }
+}
+
+function sanitizePathToken(value: string): string {
+  const normalized = value.trim().replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/-+/g, '-');
+  return normalized.replace(/^-|-$/g, '') || 'attachment';
 }
 
 function asReviewUi(value: unknown): 'studio' {
