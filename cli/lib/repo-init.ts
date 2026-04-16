@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { spawnSync } from 'child_process';
 import { stdin as input, stdout as output } from 'process';
 import { createInterface } from 'readline/promises';
 import {
@@ -19,8 +20,10 @@ import {
   isArsDevelopmentRepo,
   locateSourcePackageRoot,
   patchClaudeMd,
+  patchClaudeSettings,
   syncAgents,
   syncEngineFiles,
+  syncHookScripts,
   syncSkills,
   writeVersionMetadata,
 } from './install';
@@ -45,6 +48,7 @@ export interface RepoInitResult {
   installedSkills: string[];
   versionPath: string;
   usedDefaults: boolean;
+  npmInstalled: boolean;
 }
 
 export async function ensureRepoInitialized(options: RepoInitOptions): Promise<RepoInitResult> {
@@ -92,6 +96,12 @@ export async function ensureRepoInitialized(options: RepoInitOptions): Promise<R
     pluginRoot: runtime.pluginRoot,
     overwrite: overwriteEverything,
   });
+  syncHookScripts({
+    root,
+    pluginRoot: runtime.pluginRoot,
+    overwrite: overwriteEverything,
+  });
+  patchClaudeSettings({ root });
   installStatusLine(runtime.pluginRoot);
   const versionPath = writeVersionMetadata({
     root,
@@ -102,6 +112,22 @@ export async function ensureRepoInitialized(options: RepoInitOptions): Promise<R
     installMethod: detectInstallMethod(sourceRoot),
   });
 
+  // Run npm install if package.json was just generated (node_modules absent)
+  const nodeModulesPath = path.join(root, 'node_modules');
+  const packageJsonPath = path.join(root, 'package.json');
+  let npmInstalled = false;
+  if (fs.existsSync(packageJsonPath) && !fs.existsSync(nodeModulesPath)) {
+    const result = spawnSync('npm', ['install'], {
+      cwd: root,
+      stdio: 'inherit',
+      shell: false,
+    });
+    npmInstalled = result.status === 0;
+    if (result.status !== 0) {
+      console.warn('[ars] npm install exited with non-zero status — check output above');
+    }
+  }
+
   return {
     root,
     config,
@@ -111,6 +137,7 @@ export async function ensureRepoInitialized(options: RepoInitOptions): Promise<R
     installedSkills,
     versionPath,
     usedDefaults: !interactive && overwriteConfig,
+    npmInstalled,
   };
 }
 

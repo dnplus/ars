@@ -17,13 +17,18 @@ const PACKAGE_NAME = 'agentic-remotion-studio';
 const ARS_MARKER_BEGIN = '<!-- ars:begin -->';
 const ARS_MARKER_END = '<!-- ars:end -->';
 const ARS_COMMANDS_BLOCK = `${ARS_MARKER_BEGIN}
+## ARS
+
+**重要**：ARS hooks（stage tracking、workstate）需要透過 \`ars\` launcher 啟動 Claude Code 才能生效。
+在此 repo 目錄下執行 \`ars\` 啟動，不要直接用 \`claude\`。
+
 ## ARS Commands
 - \`/ars:onboard\`：ARS 的正式首次入口；先訪談頻道風格，再確認 repo 已完成 \`npx ars init <series>\`、初始化主題與品牌預設
 - \`/ars:doctor\`：檢查 ARS 設定、engine 安裝狀態與 provider 憑證
 - \`/ars:plan\`：討論主題、建立 episode 計畫，並寫入 \`.ars/episodes/<epId>/\` artifacts
 - \`/ars:build\`：依 \`plan.md\` 實作 episode source
 - \`/ars:episode-create\`：低階 episode scaffold primitive，通常由 \`/ars:plan\` 自動觸發
-- \`/ars:review-open\`：開啟 review surface，針對目前 repo 的 episode 審稿
+- \`/ars:review\`：開啟 review surface，針對目前 repo 的 episode 審稿，並進入 intent polling loop
 - \`/ars:apply-review\`：根據 review intents 將修正套回 episode source
 - \`/ars:polish\`：只做後段 refinement，不重寫整集結構
 - \`/ars:prepare-youtube\`：整理 YouTube metadata 與發布前檢查
@@ -35,6 +40,8 @@ ${ARS_MARKER_END}`;
 
 interface PackageJsonLike {
   name?: unknown;
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
 }
 
 export interface InstallState {
@@ -304,7 +311,51 @@ export function syncEngineFiles(options: SyncEngineOptions): string[] {
     copied,
   );
 
+  // Bootstrap package.json if not present
+  const consumerPkgPath = path.join(options.root, 'package.json');
+  if (!fs.existsSync(consumerPkgPath)) {
+    const generated = generateConsumerPackageJson(options.sourceRoot);
+    fs.writeFileSync(consumerPkgPath, JSON.stringify(generated, null, 2) + '\n', 'utf-8');
+    copied.push('package.json (generated)');
+  }
+
   return copied;
+}
+
+function generateConsumerPackageJson(sourceRoot: string): Record<string, unknown> {
+  // Extract deps from ARS source package.json to avoid hardcoding versions
+  let dependencies: Record<string, string> = {};
+  let devDependencies: Record<string, string> = {};
+  const srcPkgPath = path.join(sourceRoot, 'package.json');
+  if (fs.existsSync(srcPkgPath)) {
+    try {
+      const src = JSON.parse(fs.readFileSync(srcPkgPath, 'utf-8')) as PackageJsonLike;
+      dependencies = src.dependencies ?? {};
+      devDependencies = src.devDependencies ?? {};
+    } catch { /* ignore */ }
+  }
+
+  // Remove ARS-internal-only entries not needed in consumer repos
+  const { tsx: _tsx, ...consumerDeps } = dependencies as Record<string, string>;
+  void _tsx;
+
+  return {
+    name: 'my-ars-channel',
+    version: '1.0.0',
+    private: true,
+    engines: { node: '>=22.12.0' },
+    scripts: {
+      dev: 'remotion studio',
+      build: 'remotion bundle',
+      lint: 'eslint src && tsc',
+      test: 'vitest run',
+      'dev:studio': 'vite --config vite.studio.config.ts',
+      'build:studio': 'vite build --config vite.studio.config.ts',
+    },
+    dependencies: consumerDeps,
+    devDependencies,
+    sideEffects: ['*.css'],
+  };
 }
 
 export function backupEngine(root = getTargetRepoRoot()): string {
@@ -555,6 +606,142 @@ export function installStatusLine(pluginRoot: string): 'installed' | 'already-in
 
   fs.copyFileSync(wrapperSrc, wrapperDest);
   return 'installed';
+}
+
+/**
+ * Copy ARS hook scripts into the consumer repo's .ars/hooks/scripts/ directory
+ * so hooks can reference them via repo-relative paths (independent of $CLAUDE_PLUGIN_ROOT).
+ *
+ * Copies all .mjs files from plugin/scripts/ and the entire lib/ subdirectory.
+ * Returns the list of script names that were copied.
+ */
+export function syncHookScripts(options: {
+  root: string;
+  pluginRoot: string;
+  overwrite: boolean;
+}): string[] {
+  const { root, pluginRoot, overwrite } = options;
+  const sourceScriptsDir = path.join(pluginRoot, 'scripts');
+  const targetScriptsDir = path.join(root, '.ars', 'hooks', 'scripts');
+
+  if (!fs.existsSync(sourceScriptsDir)) {
+    return [];
+  }
+
+  const copied: string[] = [];
+
+  // Copy top-level .mjs hook scripts
+  for (const file of fs.readdirSync(sourceScriptsDir)) {
+    if (!file.endsWith('.mjs')) continue;
+    const src = path.join(sourceScriptsDir, file);
+    const dst = path.join(targetScriptsDir, file);
+    if (fs.existsSync(dst) && !overwrite) continue;
+    fs.mkdirSync(targetScriptsDir, { recursive: true });
+    fs.copyFileSync(src, dst);
+    copied.push(file);
+  }
+
+  // Copy lib/ subdirectory (ars-workstate.mjs and friends)
+  const sourceLibDir = path.join(sourceScriptsDir, 'lib');
+  const targetLibDir = path.join(targetScriptsDir, 'lib');
+  if (fs.existsSync(sourceLibDir)) {
+    for (const file of fs.readdirSync(sourceLibDir)) {
+      if (!file.endsWith('.mjs') && !file.endsWith('.js')) continue;
+      const src = path.join(sourceLibDir, file);
+      const dst = path.join(targetLibDir, file);
+      if (fs.existsSync(dst) && !overwrite) continue;
+      fs.mkdirSync(targetLibDir, { recursive: true });
+      fs.copyFileSync(src, dst);
+      copied.push(`lib/${file}`);
+    }
+  }
+
+  return copied;
+}
+
+/**
+ * Patch the consumer repo's .claude/settings.json to wire ARS hooks via
+ * repo-relative paths (.ars/hooks/scripts/...) instead of $CLAUDE_PLUGIN_ROOT.
+ *
+ * This avoids conflicts when $CLAUDE_PLUGIN_ROOT is taken by another plugin (e.g. OMC).
+ * Existing non-ARS hook entries are preserved; ARS entries are replaced.
+ */
+export function patchClaudeSettings(options: {
+  root: string;
+}): void {
+  const { root } = options;
+  const settingsPath = path.join(root, '.claude', 'settings.json');
+
+  // ARS hook definitions using repo-relative script paths
+  const arsHooks: Record<string, Array<{ matcher: string; hooks: Array<{ type: string; command: string; timeout: number }> }>> = {
+    UserPromptSubmit: [
+      {
+        matcher: '*',
+        hooks: [
+          { type: 'command', command: 'node ".ars/hooks/scripts/keyword-detector.mjs"', timeout: 3 },
+          { type: 'command', command: 'node ".ars/hooks/scripts/prompt-stage-context.mjs"', timeout: 3 },
+        ],
+      },
+    ],
+    SessionStart: [
+      {
+        matcher: '*',
+        hooks: [
+          { type: 'command', command: 'node ".ars/hooks/scripts/session-start.mjs"', timeout: 5 },
+        ],
+      },
+    ],
+    PostToolUse: [
+      {
+        matcher: '*',
+        hooks: [
+          { type: 'command', command: 'node ".ars/hooks/scripts/post-tool-use-stage.mjs"', timeout: 3 },
+        ],
+      },
+    ],
+    Stop: [
+      {
+        matcher: '*',
+        hooks: [
+          { type: 'command', command: 'node ".ars/hooks/scripts/review-intent-stop.mjs"', timeout: 3 },
+        ],
+      },
+    ],
+  };
+
+  // Load existing settings or start fresh
+  let settings: Record<string, unknown> = {};
+  fs.mkdirSync(path.join(root, '.claude'), { recursive: true });
+  if (fs.existsSync(settingsPath)) {
+    try {
+      settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) as Record<string, unknown>;
+    } catch { /* start fresh */ }
+  }
+
+  // ARS hook command fingerprint — used to detect existing ARS entries
+  const ARS_HOOK_MARKER = '.ars/hooks/scripts/';
+
+  for (const [event, arsEntries] of Object.entries(arsHooks)) {
+    const existing = Array.isArray(settings[event])
+      ? (settings[event] as Array<unknown>)
+      : [];
+
+    // Remove any pre-existing ARS hook entries (identified by marker in command string)
+    const nonArs = existing.filter((entry) => {
+      if (typeof entry !== 'object' || entry === null) return true;
+      const e = entry as Record<string, unknown>;
+      const hooks = Array.isArray(e.hooks) ? e.hooks : [];
+      return !hooks.some((h) => {
+        if (typeof h !== 'object' || h === null) return false;
+        const hh = h as Record<string, unknown>;
+        return typeof hh.command === 'string' && hh.command.includes(ARS_HOOK_MARKER);
+      });
+    });
+
+    settings[event] = [...arsEntries, ...nonArs];
+  }
+
+  fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}\n`, 'utf-8');
 }
 
 function readPluginVersionFromRoot(pluginRoot: string): string | null {
