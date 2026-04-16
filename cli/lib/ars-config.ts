@@ -224,21 +224,6 @@ function expectOptionalString(value: unknown, field: string): string | undefined
   return value;
 }
 
-function expectOptionalStringArray(
-  value: unknown,
-  field: string,
-): string[] | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
-    throw new Error(`Config field "${field}" must be an array of strings.`);
-  }
-
-  return value;
-}
-
 function expectOptionalOneOf<const T extends readonly string[]>(
   value: unknown,
   allowed: T,
