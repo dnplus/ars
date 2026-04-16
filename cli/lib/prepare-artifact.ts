@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { getRepoRoot } from './ars-config';
 
 export interface PreparedYoutubeCandidate {
   id: string;
@@ -26,7 +27,7 @@ interface ReadyYoutubePrepareArtifact {
   };
 }
 
-const ROOT = path.resolve(__dirname, '../..');
+const ROOT = getRepoRoot();
 
 function readJsonIfExists<T>(filePath: string): T | null {
   if (!fs.existsSync(filePath)) return null;

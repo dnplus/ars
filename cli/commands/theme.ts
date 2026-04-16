@@ -19,6 +19,7 @@ import {
   serializeSeed,
   type ThemeSeed,
 } from '../../src/engine/shared/theme-derive';
+import { getRepoRoot } from '../lib/ars-config';
 
 export const THEME_PRESETS: Record<string, ThemeSeed> = {
   'gold-dark': {
@@ -132,7 +133,7 @@ function resolveSeriesConfigPath(series: string): string {
     process.exit(1);
   }
 
-  const root = path.resolve(__dirname, '../..');
+  const root = getRepoRoot();
   const configPath = path.join(root, 'src/episodes', series, 'series-config.ts');
   if (!fs.existsSync(configPath)) {
     console.error(`❌ Series "${series}" not found at src/episodes/${series}/series-config.ts`);

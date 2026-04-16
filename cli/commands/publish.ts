@@ -12,6 +12,7 @@ import { execFileSync } from 'child_process';
 import { createInterface } from 'readline';
 import { resolveEpisodeTarget } from '../lib/context';
 import { readPreparedYoutubeCandidate } from '../lib/prepare-artifact';
+import { getRepoRoot } from '../lib/ars-config';
 
 type PublishMode = 'package' | 'youtube';
 
@@ -25,7 +26,7 @@ interface PublishOptions {
   privacy: 'public' | 'unlisted' | 'private';
 }
 
-const ROOT = path.resolve(__dirname, '../..');
+const ROOT = getRepoRoot();
 
 const HELP = `
 🚀 ARS Publish — High-Level Release Commands

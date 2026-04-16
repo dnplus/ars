@@ -10,8 +10,9 @@ import path from 'path';
 import type { Step } from '../../src/engine/shared/types';
 import { resolveEpisodeTarget } from '../lib/context';
 import { loadEpisode, type LoadedEpisode } from '../lib/episode-file';
+import { getRepoRoot } from '../lib/ars-config';
 
-const ROOT = path.resolve(__dirname, '../..');
+const ROOT = getRepoRoot();
 
 const HELP = `
 📝 ARS Prepare — Publish Context Preparation

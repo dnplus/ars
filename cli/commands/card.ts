@@ -10,8 +10,9 @@ import fs from 'fs';
 import path from 'path';
 import ts from 'typescript';
 import { getActiveSeries } from '../lib/context';
+import { getRepoRoot } from '../lib/ars-config';
 
-const ROOT = path.resolve(__dirname, '../..');
+const ROOT = getRepoRoot();
 
 const HELP = `
 Usage: npx ars card <subcommand> [options]

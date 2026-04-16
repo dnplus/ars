@@ -189,7 +189,7 @@ async function generate(args: string[]) {
     process.exit(1);
   }
 
-  const { series, epId } = resolveEpisodeTarget(target, path.resolve(__dirname, '../..'));
+  const { series, epId } = resolveEpisodeTarget(target);
   const ctx = resolveSeriesContext(series);
 
   if (!process.env.MINIMAX_API_KEY || !process.env.MINIMAX_GROUP_ID) {

@@ -7,12 +7,12 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { configExists } from '../lib/ars-config';
+import { configExists, getRepoRoot } from '../lib/ars-config';
 import { getActiveSeries, listAvailableSeries, setActiveSeries, validateSeriesName } from '../lib/context';
 
 export async function run(args: string[]) {
   const seriesName = args[0];
-  const root = path.resolve(__dirname, '../..');
+  const root = getRepoRoot();
 
   if (!seriesName) {
     console.error('❌ Please provide a series name');

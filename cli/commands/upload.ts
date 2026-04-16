@@ -8,6 +8,7 @@
 import fs from 'fs';
 import path from 'path';
 import { resolveEpisodeTarget, resolveSeriesContext } from '../lib/context';
+import { getRepoRoot } from '../lib/ars-config';
 import { loadEpisodeMetadata, writeEpisodePublishState } from '../lib/episode-file';
 import { readPreparedYoutubeCandidate } from '../lib/prepare-artifact';
 import {
@@ -45,7 +46,7 @@ interface ResolvedAssets {
   srtPath: string | null;
 }
 
-const ROOT = path.resolve(__dirname, '../..');
+const ROOT = getRepoRoot();
 
 const HELP = `
 📤 ARS Upload — YouTube

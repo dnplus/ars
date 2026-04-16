@@ -11,6 +11,7 @@ import { execSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { resolveEpisodeTarget, resolveSeriesContext } from '../lib/context';
+import { getRepoRoot } from '../lib/ars-config';
 import type { Episode } from '../../src/engine/shared/types';
 import type { SubtitlePhrase } from '../../src/engine/shared/subtitle';
 
@@ -46,7 +47,7 @@ async function exportSrt(args: string[]) {
     process.exit(1);
   }
 
-  const root = path.resolve(__dirname, '../..');
+  const root = getRepoRoot();
   const { series, epId } = resolveEpisodeTarget(target, root);
   const ctx = resolveSeriesContext(series);
 
@@ -141,7 +142,7 @@ export async function run(args: string[]) {
     process.exit(1);
   }
 
-  const root = path.resolve(__dirname, '../..');
+  const root = getRepoRoot();
   const compositionPrefix = 'cover';
   const outBase = path.join(root, 'output/covers');
 

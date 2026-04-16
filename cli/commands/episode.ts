@@ -17,6 +17,7 @@ import {
   resolveSeriesArgument,
   resolveSeriesContext,
 } from '../lib/context';
+import { getRepoRoot } from '../lib/ars-config';
 import { analyzeEpisodeDuration, formatDurationReport } from '../lib/estimate-duration';
 import { loadEpisode } from '../lib/episode-file';
 import { getLayoutKey } from '../../src/engine/layouts';
@@ -56,7 +57,7 @@ async function create(args: string[]) {
     process.exit(1);
   }
 
-  const root = path.resolve(__dirname, '../..');
+  const root = getRepoRoot();
   const { series, epId } = resolveEpisodeTarget(target, root);
   const ctx = resolveSeriesContext(series);
 
@@ -103,7 +104,7 @@ Next steps:
 // ── list ────────────────────────────────────────────────
 async function list(args: string[]) {
   const seriesArg = args[0];
-  const root = path.resolve(__dirname, '../..');
+  const root = getRepoRoot();
 
   if (!seriesArg) {
     const activeSeries = getActiveSeries(root);
@@ -153,7 +154,7 @@ async function validate(args: string[]) {
     process.exit(1);
   }
 
-  const { series, epId } = resolveEpisodeTarget(target, path.resolve(__dirname, '../..'));
+  const { series, epId } = resolveEpisodeTarget(target, getRepoRoot());
   const ctx = resolveSeriesContext(series);
 
   const epFilePath = path.join(ctx.episodesDir, `${epId}.ts`);
@@ -540,7 +541,7 @@ function listEpisodeIdsInSeries(series: string): string[] {
 
 async function loadEpisodesForStats(target?: string, allMode?: boolean) {
   if (allMode) {
-    const seriesList = target ? [target] : listAvailableSeries(path.resolve(__dirname, '../..'));
+    const seriesList = target ? [target] : listAvailableSeries(getRepoRoot());
     const loaded = [];
     for (const series of seriesList) {
       for (const epId of listEpisodeIdsInSeries(series)) {
@@ -557,7 +558,7 @@ async function loadEpisodesForStats(target?: string, allMode?: boolean) {
     process.exit(1);
   }
 
-  const { series, epId } = resolveEpisodeTarget(target, path.resolve(__dirname, '../..'));
+  const { series, epId } = resolveEpisodeTarget(target, getRepoRoot());
   return [await loadEpisode(series, epId)];
 }
 

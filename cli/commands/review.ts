@@ -6,6 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
 import { resolveEpisodeTarget, resolveSeriesContext } from '../lib/context';
+import { getRepoRoot } from '../lib/ars-config';
 import {
   createReviewIntent,
   getReviewIntentsDir,
@@ -85,7 +86,7 @@ export async function run(args: string[]) {
 
 async function openReview(args: string[]): Promise<void> {
   const target = args[0];
-  const root = path.resolve(__dirname, '../..');
+  const root = getRepoRoot();
 
   if (!target) {
     console.error('❌ 請提供 epId。');
@@ -144,7 +145,7 @@ async function handleIntent(args: string[]): Promise<void> {
 }
 
 async function listIntents(): Promise<void> {
-  const root = path.resolve(__dirname, '../..');
+  const root = getRepoRoot();
   const reviewDir = getReviewIntentsDir(root);
   const records = listReviewIntentRecords(root);
   const pending = records.filter(({ intent }) => !intent.processedAt);
@@ -186,7 +187,7 @@ async function showIntent(args: string[]): Promise<void> {
     process.exit(1);
   }
 
-  const root = path.resolve(__dirname, '../..');
+  const root = getRepoRoot();
   const record = readReviewIntent(id, root);
   console.log(JSON.stringify(record.intent, null, 2));
 }
@@ -198,7 +199,7 @@ async function clearIntent(args: string[]): Promise<void> {
     process.exit(1);
   }
 
-  const root = path.resolve(__dirname, '../..');
+  const root = getRepoRoot();
 
   if (target === 'all') {
     const records = markAllReviewIntentsProcessed(root);
@@ -212,7 +213,7 @@ async function clearIntent(args: string[]): Promise<void> {
 
 async function createIntent(args: string[]): Promise<void> {
   const opts = parseCreateOptions(args);
-  const root = path.resolve(__dirname, '../..');
+  const root = getRepoRoot();
   const record = createReviewIntent({
     target: {
       series: opts.series,

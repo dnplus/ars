@@ -148,7 +148,7 @@ export function resolveSeriesArgument(seriesArg?: string, root = getRepoRoot()):
  */
 export function resolveSeriesContext(series: string): SeriesContext {
   validateSeriesName(series);
-  const root = path.resolve(__dirname, '../..');
+  const root = getRepoRoot();
   const episodesDir = path.join(root, 'src/episodes', series);
 
   if (!fs.existsSync(episodesDir)) {
