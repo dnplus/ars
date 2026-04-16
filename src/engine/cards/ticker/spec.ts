@@ -5,7 +5,6 @@ export const cardSpec = {
   type: "ticker",
   title: "Ticker",
   description: "Large-format kinetic text card for slogans, takeaways, and short punchlines.",
-  schemaVersion: 1,
   defaults: {
     scale: 1,
     style: "flash",
@@ -19,5 +18,4 @@ export const cardSpec = {
       style: "kinetic",
     },
   },
-  status: "active",
 } satisfies CardSpec<TickerCardData>;

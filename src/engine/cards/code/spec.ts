@@ -5,7 +5,6 @@ export const cardSpec = {
   type: "code",
   title: "Code",
   description: "Scrollable syntax-highlighted code card for snippets and configs.",
-  schemaVersion: 1,
   defaults: {
     language: "tsx",
     showLineNumbers: true,
@@ -20,5 +19,4 @@ export const cardSpec = {
       code: "export const handler = () => 'ok';",
     },
   },
-  status: "active",
 } satisfies CardSpec<CodeCardData>;

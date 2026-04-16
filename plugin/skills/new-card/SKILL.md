@@ -50,19 +50,19 @@ Output path: `src/episodes/<series>/cards/<card-name>/`
      // fields derived from description
    };
 
-   export const cardSpec: CardSpec<<CardName>Data> = {
+   export const cardSpec = {
      type: "<series>/<card-name>",
+     title: "<Human Label>",
+     description: "<one-line description of what this card renders>",
      schema: z.object({ /* matching fields */ }),
-     defaults: { /* sensible defaults */ },
+     defaults: { /* sensible defaults */ } satisfies Partial<<CardName>Data>,
      component: <CardName>Component,
      agentHints: {
-       description: "<what this card is for>",
-       when: "<when to use this card>",
-       fields: {
-         // field: "description of what value to put here"
-       },
+       whenToUse: "<when an agent should pick this card>",
+       notForUseCases: "<what this card is NOT for>",
+       exampleData: { /* minimal working data object */ },
      },
-   };
+   } satisfies CardSpec<<CardName>Data>;
    ```
 
    Create `src/episodes/<series>/cards/<card-name>/component.tsx`:

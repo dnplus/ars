@@ -22,7 +22,6 @@ export interface CardSpec<TData> {
   type: string;
   title: string;
   description: string;
-  schemaVersion: number;
   schema?: ZodType<TData>;
   defaults?: Partial<TData>;
   component: ComponentType<CardRenderProps<TData>>;
@@ -31,6 +30,4 @@ export interface CardSpec<TData> {
     notForUseCases?: string;
     exampleData?: unknown;
   };
-  status?: "active" | "legacy" | "deprecated";
-  replacement?: string;
 }

@@ -55,7 +55,7 @@ src/episodes/<series>/cards/<type>/
 export const cardSpec = {
   type: "my-type",          // unique, kebab-case
   title: "Human Label",
-  schemaVersion: 1,
+  description: "One-line description of what this card renders.",
   component: MyCardComponent,
   schema: MyZodSchema,      // optional but strongly recommended
 } satisfies CardSpec<MyCardData>;

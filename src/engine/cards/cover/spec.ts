@@ -5,7 +5,6 @@ export const cardSpec = {
   type: "cover",
   title: "Cover",
   description: "Full-bleed title slide for episode intros and chapter resets.",
-  schemaVersion: 1,
   defaults: {
     animation: "none",
   } satisfies Partial<CoverCardData>,
@@ -19,5 +18,4 @@ export const cardSpec = {
       animation: "matrix",
     },
   },
-  status: "active",
 } satisfies CardSpec<CoverCardData>;

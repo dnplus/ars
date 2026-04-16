@@ -5,7 +5,6 @@ export const cardSpec = {
   type: "mermaid",
   title: "Mermaid",
   description: "Diagram card that renders Mermaid charts inside a windowed canvas.",
-  schemaVersion: 1,
   defaults: {
     frame: "mac",
   } satisfies Partial<MermaidCardData>,
@@ -18,5 +17,4 @@ export const cardSpec = {
       chart: "graph TD\n  A[Plan] --> B[Build]\n  B --> C[Review]",
     },
   },
-  status: "active",
 } satisfies CardSpec<MermaidCardData>;

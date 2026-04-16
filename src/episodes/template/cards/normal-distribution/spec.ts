@@ -8,7 +8,6 @@ export const cardSpec = {
   type: "template/normal-distribution",
   title: "Normal Distribution",
   description: "Animated bell-curve chart for showing a mean-centered distribution.",
-  schemaVersion: 1,
   defaults: {
     title: "常態分配圖",
     subtitle: "平均值附近最集中，越往兩端機率越低",
@@ -41,5 +40,4 @@ export const cardSpec = {
       ],
     },
   },
-  status: "active",
 } satisfies CardSpec<NormalDistributionData>;

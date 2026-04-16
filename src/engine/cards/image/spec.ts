@@ -5,7 +5,6 @@ export const cardSpec = {
   type: "image",
   title: "Image",
   description: "Windowed image viewer for screenshots, diagrams, and still visuals.",
-  schemaVersion: 1,
   defaults: {
     objectFit: "contain",
     frame: "mac",
@@ -20,5 +19,4 @@ export const cardSpec = {
       objectFit: "contain",
     },
   },
-  status: "active",
 } satisfies CardSpec<ImageCardData>;

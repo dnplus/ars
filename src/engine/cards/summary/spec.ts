@@ -5,7 +5,6 @@ export const cardSpec = {
   type: "summary",
   title: "Summary",
   description: "Full-bleed recap card for endings, chapter wrap-ups, and CTA screens.",
-  schemaVersion: 1,
   defaults: {
     showCta: true,
   } satisfies Partial<SummaryCardData>,
@@ -22,5 +21,4 @@ export const cardSpec = {
       ],
     },
   },
-  status: "active",
 } satisfies CardSpec<SummaryCardData>;
