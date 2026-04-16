@@ -528,17 +528,33 @@ export function installStatusLine(pluginRoot: string): 'installed' | 'already-in
     if (existing?.command === wrapperCommand) {
       // Copy wrapper unconditionally so it stays up-to-date
       fs.copyFileSync(wrapperSrc, wrapperDest);
+      // Update pluginScriptsDir in config so it tracks the current install location
+      if (fs.existsSync(configDest)) {
+        try {
+          const cfg = JSON.parse(fs.readFileSync(configDest, 'utf-8')) as Record<string, unknown>;
+          cfg.pluginScriptsDir = path.join(pluginRoot, 'scripts');
+          fs.writeFileSync(configDest, `${JSON.stringify(cfg, null, 2)}\n`, 'utf-8');
+        } catch { /* ignore */ }
+      }
       return 'already-installed';
     }
 
     // Save existing delegate if it has a command and is not our wrapper
     const existingCommand = typeof existing?.command === 'string' ? existing.command.trim() : '';
+    const pluginScriptsDir = path.join(pluginRoot, 'scripts');
     if (existingCommand && existingCommand !== wrapperCommand) {
-      const delegateConfig = { delegate: existingCommand };
+      const delegateConfig = { delegate: existingCommand, pluginScriptsDir };
       fs.writeFileSync(configDest, `${JSON.stringify(delegateConfig, null, 2)}\n`, 'utf-8');
     } else if (!existingCommand && !fs.existsSync(configDest)) {
-      // No existing statusLine — write empty delegate config
-      fs.writeFileSync(configDest, `${JSON.stringify({ delegate: '' }, null, 2)}\n`, 'utf-8');
+      // No existing statusLine — write config with only pluginScriptsDir
+      fs.writeFileSync(configDest, `${JSON.stringify({ delegate: '', pluginScriptsDir }, null, 2)}\n`, 'utf-8');
+    } else if (fs.existsSync(configDest)) {
+      // Update pluginScriptsDir in existing config to keep it current
+      try {
+        const existing2 = JSON.parse(fs.readFileSync(configDest, 'utf-8')) as Record<string, unknown>;
+        existing2.pluginScriptsDir = pluginScriptsDir;
+        fs.writeFileSync(configDest, `${JSON.stringify(existing2, null, 2)}\n`, 'utf-8');
+      } catch { /* ignore */ }
     }
 
     // Patch settings.json

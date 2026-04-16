@@ -7,7 +7,7 @@
  * If not, outputs only the ARS status segment.
  *
  * Config schema:
- *   { "delegate": "<shell command>" }
+ *   { "delegate": "<shell command>", "pluginScriptsDir": "/abs/path/to/plugin/scripts" }
  */
 import { execSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
@@ -28,11 +28,15 @@ try {
 // Load delegate config
 const configPath = join(homedir(), '.claude', 'ars-statusline-config.json');
 let delegateCommand = null;
+let pluginScriptsDir = null;
 if (existsSync(configPath)) {
   try {
     const config = JSON.parse(readFileSync(configPath, 'utf8'));
     if (typeof config.delegate === 'string' && config.delegate.trim()) {
       delegateCommand = config.delegate.trim();
+    }
+    if (typeof config.pluginScriptsDir === 'string' && config.pluginScriptsDir.trim()) {
+      pluginScriptsDir = config.pluginScriptsDir.trim();
     }
   } catch {
     // ignore malformed config
@@ -57,8 +61,9 @@ if (delegateCommand) {
 // Compute ARS segment
 let arsSegment = '';
 try {
+  const workstateDir = pluginScriptsDir ?? __dirname;
   const { renderStatusLine } = await import(
-    join(__dirname, 'lib', 'ars-workstate.mjs')
+    join(workstateDir, 'lib', 'ars-workstate.mjs')
   );
   const payload = (() => {
     try { return JSON.parse(stdinData); } catch { return {}; }
