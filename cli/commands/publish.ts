@@ -13,6 +13,7 @@ import { createInterface } from 'readline';
 import { resolveEpisodeTarget } from '../lib/context';
 import { readPreparedYoutubeCandidate } from '../lib/prepare-artifact';
 import { getRepoRoot } from '../lib/ars-config';
+import { getRuntimePackageInfo } from '../lib/runtime-package';
 
 type PublishMode = 'package' | 'youtube';
 
@@ -92,7 +93,10 @@ async function confirmExecution(opts: PublishOptions, target: string): Promise<v
 }
 
 function cliArgs(...args: string[]): [string, string[]] {
-  return ['npx', ['tsx', 'cli/index.ts', ...args]];
+  const { packageRoot } = getRuntimePackageInfo(import.meta.url);
+  const cliEntry = path.join(packageRoot, 'cli', 'index.ts');
+  const tsxBin = path.join(packageRoot, 'node_modules', '.bin', 'tsx');
+  return [tsxBin, [cliEntry, ...args]];
 }
 
 function remotionArgs(...args: string[]): [string, string[]] {
