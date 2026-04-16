@@ -17,13 +17,11 @@ const HELP = `
 Usage: npx ars card <subcommand> [options]
 
 Subcommands:
-  list                      List all card types (engine + series-scoped)
-  list --series <name>      Use <name> as the live-example source series
-  list --json               Output as JSON (for agent consumption)
+  list          List all card types with agentHints and live examples
+  list --json   Output as JSON (for agent consumption)
 
 Examples:
   npx ars card list
-  npx ars card list --series template
   npx ars card list --json
 `;
 
@@ -40,6 +38,7 @@ type CardMeta = {
   description?: string;
   agentHints?: AgentHints;
   liveExample?: unknown;
+  usageCount?: number;
   scope: 'engine' | 'series';
   series?: string;
   specPath: string;
@@ -154,22 +153,31 @@ async function loadRecentEpisodes(series: string): Promise<Array<{ steps: Array<
   return episodes;
 }
 
+type EpisodeStats = {
+  liveExamples: Map<string, unknown>;
+  usageCounts: Map<string, number>;
+};
+
 /**
- * Build a map of contentType → first real step.data found in recent episodes.
+ * Build usage stats from all episodes in the active series.
+ * liveExamples: contentType → most recent real step.data
+ * usageCounts: contentType → total step count across all episodes
  */
-async function buildLiveExampleMap(series: string): Promise<Map<string, unknown>> {
-  const map = new Map<string, unknown>();
+async function buildEpisodeStats(series: string): Promise<EpisodeStats> {
+  const liveExamples = new Map<string, unknown>();
+  const usageCounts = new Map<string, number>();
   const episodes = await loadRecentEpisodes(series);
 
   for (const ep of episodes) {
     for (const step of ep.steps) {
-      if (!map.has(step.contentType) && step.data != null) {
-        map.set(step.contentType, step.data);
+      usageCounts.set(step.contentType, (usageCounts.get(step.contentType) ?? 0) + 1);
+      if (!liveExamples.has(step.contentType) && step.data != null) {
+        liveExamples.set(step.contentType, step.data);
       }
     }
   }
 
-  return map;
+  return { liveExamples, usageCounts };
 }
 
 // ── Discovery ────────────────────────────────────────────
@@ -225,7 +233,7 @@ function printCards(cards: CardMeta[]): void {
   if (engine.length > 0) {
     console.log('\n── Engine cards (built-in) ──────────────────────────────');
     for (const c of engine) {
-      console.log(`\n  ${c.type}`);
+      console.log(`\n  ${c.type}${c.usageCount != null ? ` (${c.usageCount} uses)` : ''}`);
       if (c.title) console.log(`    title       : ${c.title}`);
       if (c.description) console.log(`    description : ${c.description}`);
       if (c.agentHints?.whenToUse) console.log(`    whenToUse   : ${c.agentHints.whenToUse}`);
@@ -242,7 +250,7 @@ function printCards(cards: CardMeta[]): void {
         console.log(`\n  [${c.series}]`);
         lastSeries = c.series!;
       }
-      console.log(`    ${c.type}`);
+      console.log(`    ${c.type}${c.usageCount != null ? ` (${c.usageCount} uses)` : ''}`);
       if (c.description) console.log(`      description : ${c.description}`);
       if (c.agentHints?.whenToUse) console.log(`      whenToUse   : ${c.agentHints.whenToUse}`);
       if (c.agentHints?.notForUseCases) console.log(`      notFor      : ${c.agentHints.notForUseCases}`);
@@ -264,12 +272,10 @@ export async function run(args: string[]): Promise<void> {
   }
 
   if (sub === 'list') {
-    const seriesFlag = rest.indexOf('--series');
-    const filterSeries = seriesFlag >= 0 ? rest[seriesFlag + 1] : undefined;
     const asJson = rest.includes('--json');
 
     const engineCards = discoverEngineCards();
-    const seriesCards = discoverSeriesCards(filterSeries);
+    const seriesCards = discoverSeriesCards();
     const all = [...engineCards, ...seriesCards];
 
     if (all.length === 0) {
@@ -277,13 +283,15 @@ export async function run(args: string[]): Promise<void> {
       return;
     }
 
-    // Enrich with live examples from the most recent episodes
-    const activeSeries = filterSeries ?? getActiveSeries(ROOT);
+    // Enrich with live examples and usage counts from the active series
+    const activeSeries = getActiveSeries(ROOT);
     if (activeSeries) {
-      const liveMap = await buildLiveExampleMap(activeSeries);
+      const stats = await buildEpisodeStats(activeSeries);
       for (const card of all) {
-        const live = liveMap.get(card.type);
+        const live = stats.liveExamples.get(card.type);
         if (live != null) card.liveExample = live;
+        const count = stats.usageCounts.get(card.type);
+        if (count != null) card.usageCount = count;
       }
     }
 
