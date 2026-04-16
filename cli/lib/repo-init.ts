@@ -15,6 +15,7 @@ import {
   detectInstallMethod,
   detectInstallState,
   getTargetRepoRoot,
+  installStatusLine,
   isArsDevelopmentRepo,
   locateSourcePackageRoot,
   patchClaudeMd,
@@ -91,6 +92,7 @@ export async function ensureRepoInitialized(options: RepoInitOptions): Promise<R
     pluginRoot: runtime.pluginRoot,
     overwrite: overwriteEverything,
   });
+  installStatusLine(runtime.pluginRoot);
   const versionPath = writeVersionMetadata({
     root,
     sourceRoot,

@@ -1,4 +1,5 @@
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { spawnSync } from 'child_process';
 import { getArsDir } from './ars-config';
@@ -492,4 +493,66 @@ function readPackageName(root: string): string | null {
 
 function samePath(left: string, right: string): boolean {
   return path.resolve(left) === path.resolve(right);
+}
+
+/**
+ * Install the ARS statusline wrapper into the user's global Claude config.
+ *
+ * Steps:
+ *  1. Copy plugin/scripts/ars-statusline.mjs → ~/.claude/ars-statusline.mjs
+ *  2. Read ~/.claude/settings.json; if statusLine.command exists and is not
+ *     already the ARS wrapper, save it as the delegate in
+ *     ~/.claude/ars-statusline-config.json
+ *  3. Overwrite settings.json statusLine to point at the wrapper
+ *
+ * Returns 'installed' | 'already-installed' | 'skipped' (no settings.json).
+ */
+export function installStatusLine(pluginRoot: string): 'installed' | 'already-installed' | 'skipped' {
+  const claudeDir = path.join(os.homedir(), '.claude');
+  const settingsPath = path.join(claudeDir, 'settings.json');
+  const wrapperDest = path.join(claudeDir, 'ars-statusline.mjs');
+  const configDest = path.join(claudeDir, 'ars-statusline-config.json');
+  const wrapperSrc = path.join(pluginRoot, 'scripts', 'ars-statusline.mjs');
+
+  if (!fs.existsSync(wrapperSrc)) {
+    return 'skipped';
+  }
+
+  // Determine the command Claude Code will use to invoke the wrapper
+  const wrapperCommand = `node "${wrapperDest}"`;
+
+  // Check if already installed
+  if (fs.existsSync(settingsPath)) {
+    const raw = JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) as Record<string, unknown>;
+    const existing = raw.statusLine as Record<string, unknown> | undefined;
+    if (existing?.command === wrapperCommand) {
+      // Copy wrapper unconditionally so it stays up-to-date
+      fs.copyFileSync(wrapperSrc, wrapperDest);
+      return 'already-installed';
+    }
+
+    // Save existing delegate if it has a command and is not our wrapper
+    const existingCommand = typeof existing?.command === 'string' ? existing.command.trim() : '';
+    if (existingCommand && existingCommand !== wrapperCommand) {
+      const delegateConfig = { delegate: existingCommand };
+      fs.writeFileSync(configDest, `${JSON.stringify(delegateConfig, null, 2)}\n`, 'utf-8');
+    } else if (!existingCommand && !fs.existsSync(configDest)) {
+      // No existing statusLine — write empty delegate config
+      fs.writeFileSync(configDest, `${JSON.stringify({ delegate: '' }, null, 2)}\n`, 'utf-8');
+    }
+
+    // Patch settings.json
+    raw.statusLine = { type: 'command', command: wrapperCommand };
+    fs.writeFileSync(settingsPath, `${JSON.stringify(raw, null, 2)}\n`, 'utf-8');
+  } else {
+    // No settings.json yet — create minimal one
+    const settings = { statusLine: { type: 'command', command: wrapperCommand } };
+    fs.mkdirSync(claudeDir, { recursive: true });
+    fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}\n`, 'utf-8');
+    fs.writeFileSync(configDest, `${JSON.stringify({ delegate: '' }, null, 2)}\n`, 'utf-8');
+  }
+
+  // Install wrapper script
+  fs.copyFileSync(wrapperSrc, wrapperDest);
+  return 'installed';
 }
