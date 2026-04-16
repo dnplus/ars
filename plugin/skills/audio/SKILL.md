@@ -1,5 +1,5 @@
 ---
-name: audio
+name: ars:audio
 description: Generate TTS audio and subtitles for an episode using MiniMax.
 argument-hint: "[epId] [--steps <id1,id2,...>] [--step <id>] [--speed <0.5-2.0>] [--no-subtitle]"
 model: claude-sonnet-4-6

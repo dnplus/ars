@@ -1,5 +1,5 @@
 ---
-name: doctor
+name: ars:doctor
 description: Validate repo bootstrap readiness, ARS config, providers, and environment readiness with npx ars doctor.
 model: claude-sonnet-4-6
 effort: low

@@ -127,10 +127,9 @@ export async function run(args: string[]) {
 🎉 Series "${seriesName}" initialized!
 
 Next steps:
-  1. Edit src/episodes/${seriesName}/series-config.ts — Customize theme, VTuber, brand info
-  2. Replace public/episodes/${seriesName}/shared/vtuber/ images
-  3. /ars:plan <topic>   — 貼 URL、筆記、文章片段，或直接描述題材
-  4. /ars:build <epId>
+  1. Run \`ars\` to launch Claude Code with the ARS plugin
+  2. Run /ars:onboard — interview-driven setup for theme, brand, and VTuber
+  3. Run /ars:plan <topic> — paste URLs, notes, or ideas to plan your first episode
 `);
 }
 

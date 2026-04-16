@@ -1,5 +1,5 @@
 ---
-name: publish-youtube
+name: ars:publish-youtube
 description: Run the confirmed YouTube publish flow through the publisher agent.
 argument-hint: "<epId>"
 model: claude-sonnet-4-6

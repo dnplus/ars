@@ -1,5 +1,5 @@
 ---
-name: polish
+name: ars:polish
 description: Late-stage refinement for an episode without changing tier A structure.
 argument-hint: "<epId>"
 model: claude-sonnet-4-6

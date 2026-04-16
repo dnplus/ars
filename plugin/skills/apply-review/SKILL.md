@@ -1,5 +1,5 @@
 ---
-name: apply-review
+name: ars:apply-review
 description: Apply review intents back into the episode source and validate the result.
 argument-hint: "[<intent-id>|latest|all]"
 model: claude-sonnet-4-6

@@ -44,34 +44,29 @@ npm install
 npm link
 ```
 
-### 2. Launch Claude Code with the ARS plugin
+### 2. Initialize your content repo
 
-From your content repo:
+In a new directory for your channel:
+
+```bash
+npx ars init <series-name>
+```
+
+This bootstraps `.ars/config.json`, syncs the ARS engine, installs skills, and scaffolds your series from the template.
+
+### 3. Launch Claude Code and onboard
 
 ```bash
 ars
 ```
 
-Bare `ars` launches Claude Code with the bundled ARS plugin attached.
-
-### 3. Run plugin-first onboarding
-
-Inside Claude Code:
+Then inside Claude Code:
 
 ```text
 /ars:onboard
 ```
 
-`/ars:onboard` is the official first-run entrypoint. It should:
-
-- start by explaining the onboarding flow: repo init first, then branding/theme questions
-- use a mix of short menu questions and open-ended creative questions
-- let you paste extra branding/reference material and digest it into config/theme defaults
-- interview you for series id, brand, visual direction, tone, mascot / VTuber preference, and layout bias
-- run `npx ars init <series>`
-- generate a theme seed
-- write repo-level branding defaults into `.ars/config.json`
-- leave `src/episodes/<series>/series-config.ts` ready for the first episode
+`/ars:onboard` is the official first-run entrypoint — it interviews you for brand, theme, VTuber preference, and visual direction, then writes the results into your series config.
 
 ### 4. Plan the first episode
 

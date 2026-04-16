@@ -1,5 +1,5 @@
 ---
-name: analytics
+name: ars:analytics
 description: Query YouTube analytics through ARS helpers and produce a concise channel report for Claude Code.
 argument-hint: "[--days N] [--fresh]"
 model: claude-sonnet-4-6

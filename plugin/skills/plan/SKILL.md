@@ -1,5 +1,5 @@
 ---
-name: plan
+name: ars:plan
 description: Official episode planning entrypoint. Create topic.md and plan.md under .ars/episodes/<epId>/.
 argument-hint: "[topic...]"
 model: claude-opus-4-6

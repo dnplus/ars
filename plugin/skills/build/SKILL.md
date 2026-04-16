@@ -1,5 +1,5 @@
 ---
-name: build
+name: ars:build
 description: Build episode source from the approved planning artifacts under .ars/episodes/<epId>/.
 argument-hint: "<epId>"
 model: claude-sonnet-4-6

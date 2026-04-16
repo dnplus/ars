@@ -1,5 +1,5 @@
 ---
-name: prepare-youtube
+name: ars:prepare-youtube
 description: Read prepare-youtube context, generate YouTube metadata, and mark the artifact ready before publish.
 argument-hint: "<epId>"
 model: claude-sonnet-4-6

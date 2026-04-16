@@ -1,5 +1,5 @@
 ---
-name: review
+name: ars:review
 description: Open the ARS review studio for a target episode and automatically apply review intents as they arrive.
 argument-hint: "<epId>"
 model: claude-sonnet-4-6

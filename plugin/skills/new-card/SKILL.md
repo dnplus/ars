@@ -1,5 +1,5 @@
 ---
-name: new-card
+name: ars:new-card
 description: Generate a new custom card for a series using ARS primitives. Creates a self-contained CardSpec at src/episodes/<series>/cards/.
 argument-hint: "<series> <card-name> [description]"
 model: claude-sonnet-4-6

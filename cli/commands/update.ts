@@ -4,9 +4,14 @@ import {
   backupEngine,
   detectInstallMethod,
   getTargetRepoRoot,
+  installStatusLine,
   locateSourcePackageRoot,
   patchClaudeMd,
+  patchClaudeSettings,
+  syncAgents,
   syncEngineFiles,
+  syncHookScripts,
+  syncSkills,
   writeVersionMetadata,
 } from '../lib/install';
 import { getRuntimePackageInfo } from '../lib/runtime-package';
@@ -40,6 +45,15 @@ export async function run(args: string[]) {
 
   console.log(`✅ Backed up engine to ${result.backupDir}`);
   console.log(`✅ Refreshed engine from ${path.join(result.sourceRoot, 'src', 'engine')}`);
+  if (result.installedSkills.length > 0) {
+    console.log(`✅ Synced ${result.installedSkills.length} ARS skills into .claude/skills/ars/`);
+  }
+  if (result.installedAgents.length > 0) {
+    console.log(`✅ Synced ${result.installedAgents.length} ARS agents into .claude/agents/`);
+  }
+  if (result.installedHookScripts.length > 0) {
+    console.log(`✅ Synced ${result.installedHookScripts.length} hook scripts into .ars/hooks/scripts/`);
+  }
   if (result.claudeMdPath) {
     console.log(`✅ Patched ${result.claudeMdPath}`);
   }
@@ -56,6 +70,9 @@ Promise<{
   backupDir: string;
   versionPath: string;
   claudeMdPath?: string;
+  installedSkills: string[];
+  installedAgents: string[];
+  installedHookScripts: string[];
 }> {
   const root = options.root ?? getTargetRepoRoot();
   const runtime = getRuntimePackageInfo(import.meta.url);
@@ -68,6 +85,12 @@ Promise<{
     overwriteEngine: true,
     overwriteSupportFiles: options.force || options.forceEngine,
   });
+
+  const installedSkills = syncSkills({ root, pluginRoot: runtime.pluginRoot, overwrite: true });
+  const installedAgents = syncAgents({ root, pluginRoot: runtime.pluginRoot, overwrite: true });
+  const installedHookScripts = syncHookScripts({ root, pluginRoot: runtime.pluginRoot, overwrite: true });
+  patchClaudeSettings({ root });
+  installStatusLine(runtime.pluginRoot);
 
   const claudeMdPath =
     options.force || options.forceClaudeMd ? patchClaudeMd(root) : undefined;
@@ -86,6 +109,9 @@ Promise<{
     backupDir,
     versionPath,
     claudeMdPath,
+    installedSkills,
+    installedAgents,
+    installedHookScripts,
   };
 }
 

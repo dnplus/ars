@@ -1,5 +1,5 @@
 ---
-name: theme
+name: ars:theme
 description: Generate or tweak the visual theme for a series. Produces a complete Theme from a short style description.
 argument-hint: "<series> [description]"
 model: claude-sonnet-4-6

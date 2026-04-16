@@ -1,5 +1,5 @@
 ---
-name: episode-create
+name: ars:episode-create
 description: Create a new episode scaffold for a series with npx ars episode create.
 argument-hint: "<epId>"
 model: claude-sonnet-4-6

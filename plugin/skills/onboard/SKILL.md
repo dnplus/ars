@@ -1,5 +1,5 @@
 ---
-name: onboard
+name: ars:onboard
 description: Plugin-first ARS onboarding. Interview the user, then orchestrate repo init, theme generation, and branding defaults.
 model: claude-sonnet-4-6
 effort: medium
@@ -9,49 +9,38 @@ effort: medium
 
 Do not treat this skill as a thin wrapper around `npx ars init`. Your job is to gather branding defaults, initialize the repo, and leave it ready for the first episode.
 
-Interview format:
-- Start by briefly explaining how onboarding will run:
-  - `npx ars init <series>` handles repo bootstrap and the single active series
-  - the interview then fills branding defaults, theme direction, and safe series config customization
-  - concise answers are fine; the user can also paste extra reference material and you should digest it into the resulting config/theme choices
-- Use short menu-style questions when the answer space is already constrained:
-  - `default visual density / layout bias`
-  - `TTS provider`
-  - `YouTube publishing`
-- Use open-ended questions when creative interpretation matters:
-  - `channel / brand name`
-  - `visual direction`
-  - `tone / narration vibe`
-  - `mascot or VTuber preference`
-- For branding or visual direction, explicitly invite the user to paste any useful context:
-  - channel description
-  - brand notes
-  - reference links
-  - image direction
-  - prior scripts
-  - audience notes
-- When the user gives raw material instead of direct answers, summarize it back into the concrete defaults you plan to write before making file changes.
+## Mode detection
 
-Interview checklist:
-- `series id`: short, filesystem-safe, one repo = one series
-- `channel / brand name`
-- `visual direction`: colors, aesthetic, references, overall atmosphere
-- `tone / narration vibe`
-- `mascot or VTuber preference`
-- `default visual density / layout bias`
-- `TTS provider`: ask if they want MiniMax TTS for audio generation. If yes, remind them to add `MINIMAX_API_KEY` and `MINIMAX_GROUP_ID` to `.env`, and set `tts.provider: "minimax"` in `.ars/config.json`.
-- `YouTube publishing`: ask if they plan to publish to YouTube. If yes, remind them to add `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, and `YOUTUBE_REFRESH_TOKEN` to `.env`, and set `publish.youtube.enabled: true` in `.ars/config.json`.
+Check whether `src/episodes/<series>/series-config.ts` already has content (from `ars init` template copy):
+
+**Fresh repo (no series-config yet):** run full interview mode — ask each field from scratch.
+
+**Already initialized (series-config exists):** run confirmation mode — read the current values and present them as a structured checklist. Do not re-ask from scratch. Instead:
+- List every field with its current value
+- Flag fields that are still placeholder defaults (e.g. `channelName: 'Your Channel Name'`, `decorationText: 'Template Demo'`) as **← must change**
+- For the rest, ask: "ok 保留 / 要改？"
+- Accept bulk answers like "1 改成 X，其他 ok"
+- Only ask follow-up questions for fields the user wants to change
+
+Fields to confirm:
+- `channelName` — 頻道正式名稱
+- `decorationText` (brandTag) — 品牌標語 / decoration text
+- `theme` — current theme preset name and primary color; show it, ask if they want to change visual direction
+- `tone / narration vibe` — not in config, but ask once to inform future build prompts
+- `vtuber` — remind user to replace image files at `public/episodes/<series>/shared/vtuber/` if needed; do NOT touch the paths in config
+- `TTS provider` — confirm current setting; if minimax, remind about `.env` keys
+- `YouTube publishing` — confirm current setting; if enabled, remind about credential files
+
+When the user gives raw material (brand notes, reference links, image direction), summarize the interpretation choices before writing files.
 
 Behavior:
-1. If `.ars/config.json` is missing or the repo has no active series yet, run `npx ars init <series>`.
-2. Generate a theme seed with `npx ars theme generate <series> --prompt "<branding summary>"`.
-3. Update `.ars/config.json` so `project.activeSeries` and the collected branding defaults are stored in repo state.
-4. Update `src/episodes/<series>/series-config.ts` so the generated defaults reflect the interview:
+1. If `.ars/config.json` is missing or the repo has no active series yet, run `npx ars init <series>` first, then enter confirmation mode.
+2. Generate or update the theme seed with `npx ars theme generate <series> --prompt "<branding summary>"` if the user wants a theme change.
+3. Update `src/episodes/<series>/series-config.ts` with confirmed values:
    - `episodeDefaults.channelName`
    - `episodeDefaults.decorationText`
-   - any safe theme / branding copy changes that should exist before the first episode
-   - **Do NOT modify `vtuber.closedImg` or `vtuber.openImg` paths.** These are set correctly by `npx ars init` and point to assets already in `public/episodes/<series>/shared/vtuber/`. Tell the user to replace the image files there directly if they want a custom VTuber.
-5. Do not stop after raw file copies. The repo should be immediately usable for `/ars:plan`.
+   - **Do NOT modify `vtuber.closedImg` or `vtuber.openImg` paths.**
+4. Do not stop after file writes. The repo should be immediately usable for `/ars:plan`.
 
 Output requirements:
 - Report the active series.
