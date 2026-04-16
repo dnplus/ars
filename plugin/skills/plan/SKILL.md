@@ -1,6 +1,6 @@
 ---
 name: ars:plan
-description: Official episode planning entrypoint. Create topic.md and plan.md under .ars/episodes/<epId>/.
+description: Official episode planning entrypoint. Create plan.md under .ars/episodes/<epId>/.
 argument-hint: "[topic...]"
 model: claude-opus-4-6
 effort: high
@@ -21,8 +21,7 @@ Argument parsing:
 Behavior:
 - Resolve the active series from repo state. One repo maps to one series, so `/ars:plan` should operate on `<epId>` within that active series.
 - If `src/episodes/<active-series>/<epId>.ts` does not exist, run `npx ars episode create <epId>` first to scaffold the container.
-- Summarize the episode discussion into `.ars/episodes/<epId>/topic.md`.
-- Produce or revise `.ars/episodes/<epId>/plan.md` as the canonical episode contract.
+- Produce or revise `.ars/episodes/<epId>/plan.md` as the canonical episode contract. Include a `## Topic` section at the top that summarizes audience, thesis, key claims, and source material.
 - Keep planning read-only with respect to episode content. Do not write the actual step implementation into `ep.ts`.
 - Before adding any custom-card requirement, run `npx ars card list` to see all available built-in and series-scoped cards with their agentHints and live examples. Do not manually scan spec.ts files.
 - Treat existing series-scoped custom cards as a reusable local library for that series. Prefer reusing or slightly extending them before proposing a new custom card.
@@ -37,8 +36,7 @@ Behavior:
 - Do not create a repo-level `todo.json`.
 
 Required outputs:
-- `topic.md`
-- `plan.md`
+- `plan.md` (with `## Topic` section at the top)
 
 Plan contract:
 - `plan.md` should capture audience, thesis, section flow, per-step goals, preferred cards/layouts, continuity rules, banned moves, and dependencies.

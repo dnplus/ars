@@ -21,12 +21,12 @@ Rules:
 - When multiple variants are proposed, label them explicitly and make each variant buildable without extra invention.
 - If the user asks for direct episode edits, refuse that part and produce planning artifacts instead.
 - Produce:
-  - `topic.md` for audience, thesis, constraints, and discussion summary
-  - `plan.md` for the approved episode structure and per-step contract
+  - `plan.md` for the approved episode structure and per-step contract. Include a `## Topic` section at the top with audience, thesis, key claims, supporting material, open questions, and constraints.
   - `card-specs/<card-name>.md` only when a new custom card is required
 - Add card-spec briefs only when existing cards are insufficient.
 
 Recommended output shape:
-- `topic.md`: audience, thesis, key claims, supporting material, open questions, and constraints
-- `plan.md`: target metadata, continuity block, scenes array with `stepId`, tier, goal, card/layout expectations, asset dependencies, implementation notes, and banned moves
+- `plan.md`:
+  - `## Topic`: audience, thesis, key claims, supporting material, open questions, constraints
+  - `## Plan`: target metadata, continuity block, scenes array with `stepId`, tier, goal, card/layout expectations, asset dependencies, implementation notes, and banned moves
 - `card-specs/<card-name>.md`: short brief describing the missing custom card, required data shape, and the visual purpose

@@ -289,7 +289,6 @@ export function detectEpisodeProgress(root = process.cwd(), seriesId, episodeId)
   const coverFile = path.join(root, 'output', 'covers', seriesId, `${episodeId}.jpg`);
   const pendingReview = getPendingReviewCounts(root, seriesId).get(episodeId) ?? 0;
 
-  const hasTopic = fs.existsSync(path.join(planDir, 'topic.md'));
   const hasPlan = fs.existsSync(path.join(planDir, 'plan.md'));
   const cardSpecBriefs = listMatchingFiles(cardSpecsDir, (name) => name.endsWith('.md'));
   const pendingCardSpec = cardSpecBriefs.length;
@@ -315,7 +314,7 @@ export function detectEpisodeProgress(root = process.cwd(), seriesId, episodeId)
           ? 'audio'
           : hasSource && hasPlan
           ? 'review'
-          : hasPlan || hasTopic
+          : hasPlan
               ? 'build'
                 : hasSource
                   ? 'draft'
@@ -333,7 +332,7 @@ export function detectEpisodeProgress(root = process.cwd(), seriesId, episodeId)
           ? `npx ars prepare youtube ${episodeId}`
           : hasSource && hasPlan
           ? `/ars:review ${episodeId}`
-          : hasPlan || hasTopic
+          : hasPlan
               ? `/ars:build ${episodeId}`
                 : hasSource
                   ? `/ars:plan ${episodeId}`
@@ -355,7 +354,6 @@ export function detectEpisodeProgress(root = process.cwd(), seriesId, episodeId)
     stage,
     nextAction,
     pendingReview,
-    hasTopic,
     hasPlan,
     pendingCardSpec,
     hasSource,
@@ -457,7 +455,6 @@ export function formatChecklistLine(progress) {
   }
 
   const checklist = [
-    `topic:${progress.hasTopic ? 'yes' : 'no'}`,
     `plan:${progress.hasPlan ? 'yes' : 'no'}`,
     `src:${progress.hasSource ? 'yes' : 'no'}`,
     `audio:${progress.audioCount}`,

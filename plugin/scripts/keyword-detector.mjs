@@ -15,7 +15,7 @@ const TRIGGER_RULES = [
       /規劃.*ep\d+/,
     ],
     suggestion:
-      'ARS: Detected planning intent. Use /ars:plan <epId> to generate topic.md and plan.md under .ars/episodes/<epId>/ before editing episode content.',
+      'ARS: Detected planning intent. Use /ars:plan to generate plan.md under .ars/episodes/<epId>/ before editing episode content.',
   },
   {
     patterns: [
