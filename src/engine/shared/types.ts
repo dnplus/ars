@@ -88,7 +88,7 @@ export type EpisodeMetadata = {
    * StreamingLayout 右側垂直裝飾文字，例如 'GSS Exception'
    * 省略則不顯示
    */
-  decorationText?: string;
+  brandTag?: string;
   /**
    * Cover 畫面左上角標籤文字，例如 'EP5 · Demo'
    * 省略則不顯示
@@ -194,7 +194,7 @@ export type Step = {
   /** 佈局模式：title-card（預設）| card-only | fullscreen */
   layoutMode?: LayoutMode;
   /** 背景預設：default | gradient-mesh | aurora | spotlight | minimal */
-  backgroundPreset?: BackgroundPreset;
+  background?: BackgroundPreset;
   narration: string;
   durationInSeconds: number;
 

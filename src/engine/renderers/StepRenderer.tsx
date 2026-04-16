@@ -9,7 +9,7 @@ export type EpisodeInfo = {
   title: string;
   subtitle?: string;
   channelName?: string;
-  decorationText?: string;
+  brandTag?: string;
   episodeTag?: string;
 };
 
@@ -48,13 +48,13 @@ export const StepRenderer: React.FC<StepRendererProps> = ({
     <>
       <Layout
         config={config}
-        decorationText={episodeInfo.decorationText}
+        brandTag={episodeInfo.brandTag}
         audioSrc={audioSrc ?? silentAudioFallback}
         narration={step.narration}
         subtitles={subtitles}
         layoutMode={step.layoutMode}
         prevLayoutMode={prevLayoutMode}
-        backgroundPreset={step.backgroundPreset}
+        background={step.background}
       >
         <Scene
           step={step}

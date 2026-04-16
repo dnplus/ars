@@ -57,7 +57,7 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode }) => {
       title: info.title || fallbackEpId,
       subtitle: info.subtitle ?? `${fallbackSeries}/${fallbackEpId}`,
       channelName: info.channelName ?? fallbackSeries,
-      decorationText: info.decorationText ?? fallbackSeries,
+      brandTag: info.brandTag ?? fallbackSeries,
       episodeTag: info.episodeTag ?? `${fallbackSeries}/${fallbackEpId}`,
     };
   }, [draftEpisode, fallbackEpId, fallbackSeries]);

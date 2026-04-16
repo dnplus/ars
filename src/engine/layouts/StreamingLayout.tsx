@@ -55,13 +55,13 @@ export type StreamingLayoutProps = {
   /** Whisper 生成的字幕時間戳（優先於均勻分段） */
   subtitles?: SubtitlePhrase[];
   /** 右側垂直裝飾文字（省略則不顯示） */
-  decorationText?: string;
+  brandTag?: string;
   /** 佈局模式：title-card（預設）| card-only | fullscreen */
   layoutMode?: LayoutMode;
   /** 前一個 step 的 layoutMode（用於過場動畫） */
   prevLayoutMode?: LayoutMode;
   /** 背景預設 */
-  backgroundPreset?: BackgroundPreset;
+  background?: BackgroundPreset;
 };
 
 export const StreamingLayout: React.FC<StreamingLayoutProps> = ({
@@ -70,10 +70,10 @@ export const StreamingLayout: React.FC<StreamingLayoutProps> = ({
   audioSrc,
   narration,
   subtitles,
-  decorationText,
+  brandTag,
   layoutMode = 'title-card',
   prevLayoutMode,
-  backgroundPreset,
+  background,
 }) => {
   const theme = useTheme();
   const frame = useCurrentFrame();
@@ -148,7 +148,7 @@ export const StreamingLayout: React.FC<StreamingLayoutProps> = ({
       }}
     >
       {/* 動態背景層 */}
-      <BackgroundLayer preset={backgroundPreset} />
+      <BackgroundLayer preset={background} />
       {/* 內容框 */}
       <div style={contentBoxStyle}>
         {children}
@@ -183,7 +183,7 @@ export const StreamingLayout: React.FC<StreamingLayoutProps> = ({
             whiteSpace: "nowrap",
           }}
         >
-          {decorationText}
+          {brandTag}
         </div>
       </div>
 

@@ -40,7 +40,7 @@ export const epDemo: Episode = {
       id: 'intro',
       contentType: 'cover',
       layoutMode: 'fullscreen',
-      backgroundPreset: 'aurora',
+      background: 'aurora',
       data: {
         animation: 'matrix',
       },
@@ -51,7 +51,7 @@ export const epDemo: Episode = {
       id: 'demo_markdown',
       contentType: 'markdown',
       layoutMode: 'title-card',
-      backgroundPreset: 'default',
+      background: 'default',
       effect: 'fadeIn',
       phase: 'Part 1: Narrative Cards',
       title: 'Markdown Card',
@@ -73,7 +73,7 @@ export const epDemo: Episode = {
       id: 'demo_code',
       contentType: 'code',
       layoutMode: 'card-only',
-      backgroundPreset: 'minimal',
+      background: 'minimal',
       effect: 'slideUp',
       data: {
         title: 'summary/spec.ts',
@@ -94,7 +94,7 @@ export const cardSpec = {
       id: 'demo_image',
       contentType: 'image',
       layoutMode: 'fullscreen',
-      backgroundPreset: 'default',
+      background: 'default',
       effect: 'scaleIn',
       data: {
         title: 'Ginseng YouTube Cover',
@@ -108,13 +108,13 @@ export const cardSpec = {
       id: 'demo_mermaid',
       contentType: 'mermaid',
       layoutMode: 'card-only',
-      backgroundPreset: 'default',
+      background: 'default',
       effect: 'fadeIn',
       data: {
         title: 'Renderer Path',
         chart: `graph TB
-    A[Episode Step] --> B[WebinarScene]
-    B --> C[getCard type]
+    A[Episode Step] --> B[CaCScene]
+    B --> C[getCard contentType]
     C --> D[CardSpec component]
     D --> E[BaseSlide primitives]`,
       },
@@ -147,7 +147,7 @@ export const cardSpec = {
       id: 'demo_ticker',
       contentType: 'ticker',
       layoutMode: 'card-only',
-      backgroundPreset: 'spotlight',
+      background: 'spotlight',
       data: {
         title: 'Ticker',
         content: `One Schema
@@ -161,7 +161,7 @@ One Renderer`,
       id: 'demo_ticker_kinetic',
       contentType: 'ticker',
       layoutMode: 'card-only',
-      backgroundPreset: 'spotlight',
+      background: 'spotlight',
       data: {
         style: 'kinetic',
         title: 'Kinetic',
@@ -176,7 +176,7 @@ Mermaid`,
       id: 'ending',
       contentType: 'summary',
       layoutMode: 'fullscreen',
-      backgroundPreset: 'aurora',
+      background: 'aurora',
       effect: 'fadeIn',
       data: {
         title: 'Registry-first baseline',

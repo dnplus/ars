@@ -22,18 +22,12 @@ import {
 import { getCard } from "../cards/registry";
 import { Step, type LayoutMode } from "../shared/types";
 import { useTheme } from "../shared/ThemeContext";
+import type { EpisodeInfo } from "../renderers/StepRenderer";
 
 export type CaCSceneProps = {
   step: Step;
   episodeTitle: string;
   episodeSubtitle?: string;
-  channelName?: string;
-  episodeTag?: string;
-};
-
-type EpisodeCardContext = {
-  title: string;
-  subtitle?: string;
   channelName?: string;
   episodeTag?: string;
 };
@@ -91,7 +85,7 @@ const isRegistryRenderable = (
 const buildRegistryCardData = (
   step: Step,
   layoutMode: LayoutMode,
-  episode: EpisodeCardContext,
+  episode: EpisodeInfo,
 ) => {
   const resolvedType = resolveRegistryType(step.contentType);
   const frame = resolveCardFrame(layoutMode);
@@ -183,7 +177,7 @@ const buildRegistryCardData = (
 const renderRegistryCard = (
   step: Step,
   layoutMode: LayoutMode,
-  episode: EpisodeCardContext,
+  episode: EpisodeInfo,
 ) => {
   const resolvedType = resolveRegistryType(step.contentType);
   const spec = getCard(resolvedType);
@@ -218,7 +212,7 @@ export const CaCScene: React.FC<CaCSceneProps> = ({
     subtitle: episodeSubtitle,
     channelName,
     episodeTag,
-  } satisfies EpisodeCardContext;
+  } satisfies EpisodeInfo;
 
   if (step.contentType === "cover" || step.contentType === "summary") {
     return renderRegistryCard(step, step.layoutMode || "fullscreen", episode);
@@ -315,7 +309,7 @@ export const CaCScene: React.FC<CaCSceneProps> = ({
 function renderCard(
   step: Step,
   layoutMode: LayoutMode,
-  episode: EpisodeCardContext,
+  episode: EpisodeInfo,
 ) {
   if (isRegistryRenderable(step.contentType)) {
     return renderRegistryCard(step, layoutMode, episode);

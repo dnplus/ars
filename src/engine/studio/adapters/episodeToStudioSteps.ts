@@ -52,7 +52,7 @@ export function getStudioEpisodeInfo(episode: Episode) {
     title: episode.metadata.title,
     subtitle: episode.metadata.subtitle,
     channelName: episode.metadata.channelName,
-    decorationText: episode.metadata.decorationText,
+    brandTag: episode.metadata.brandTag,
     episodeTag: episode.metadata.episodeTag,
   };
 }

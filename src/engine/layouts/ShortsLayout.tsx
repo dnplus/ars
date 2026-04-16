@@ -27,9 +27,9 @@ export const ShortsLayout: React.FC<StreamingLayoutProps> = ({
   audioSrc,
   narration,
   subtitles,
-  decorationText,
+  brandTag,
   layoutMode = 'title-card',
-  backgroundPreset,
+  background,
 }) => {
   const theme = useTheme();
   const isFullscreen = layoutMode === 'fullscreen';
@@ -90,7 +90,7 @@ export const ShortsLayout: React.FC<StreamingLayoutProps> = ({
       {/* Header */}
       {!isFullscreen && (
         <div style={headerStyle}>
-          {decorationText ? `#${decorationText}` : '#Shorts'}
+          {brandTag ? `#${brandTag}` : '#Shorts'}
         </div>
       )}
 

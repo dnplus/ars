@@ -80,6 +80,6 @@ export const SERIES_CONFIG: SeriesConfig = {
     height: 1080,
     fps: 30,
     channelName: 'Your Channel Name', // TODO: customize with your channel name
-    decorationText: 'Template Demo',
+    brandTag: 'Template Demo',
   },
 };
