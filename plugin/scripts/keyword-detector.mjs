@@ -57,7 +57,7 @@ const TRIGGER_RULES = [
   },
   {
     patterns: [
-      /\bars:review-open\b/,
+      /\bars:review\b/,
       /\breview open\b/,
       /\bopen review\b/,
       /\breview\b.*\b(episode|ep\d+)\b/,
@@ -66,7 +66,7 @@ const TRIGGER_RULES = [
       /審稿這集/,
     ],
     suggestion:
-      'ARS: Detected review intent. Use /ars:review-open <epId> to open review UI, then /ars:apply-review latest after a review intent is created.',
+      'ARS: Detected review intent. Use /ars:review <epId> to open review UI, then /ars:apply-review latest after a review intent is created.',
   },
   {
     patterns: [

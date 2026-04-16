@@ -11,9 +11,12 @@ Delegate planning work to the `ars:planner` subagent (defined in `.claude/agents
 `/ars:plan` is the official planning entrypoint for a new or existing episode.
 
 Argument parsing:
-- The argument (if any) is the episode topic in free text. There is no epId argument.
+- The argument (if any) is the episode source material — anything goes: free text, a Notion URL, any other URL, a pasted article, raw notes, or a mix. There is no epId argument.
+- If the argument contains a Notion URL, fetch the page via MCP Notion tool.
+- If the argument contains any other URL, fetch it with WebFetch.
+- If the argument is plain text or pasted content, use it directly as source material.
 - epId is always determined automatically: list `src/episodes/<active-series>/` to find the highest existing `ep\d+`, then use the next one (e.g. ep001 exists → use ep002). If no episodes exist, start at ep001.
-- If no topic argument is provided, ask the user to describe the episode in free text — do NOT show a fixed menu of category options. Just ask: "這集要講什麼？" A short free-form description like "正態分佈：為什麼身高、考試成績都呈鐘形曲線" is ideal.
+- If no argument is provided, ask the user: "這集要講什麼？可以貼 URL、筆記、文章片段，或直接描述題材都行。"
 
 Behavior:
 - Resolve the active series from repo state. One repo maps to one series, so `/ars:plan` should operate on `<epId>` within that active series.
@@ -25,7 +28,13 @@ Behavior:
 - Treat existing series-scoped custom cards as a reusable local library for that series. Prefer reusing or slightly extending them before proposing a new custom card.
 - Add `card-specs/<card-name>.md` briefs only when neither built-in cards nor existing series-scoped custom cards are sufficient.
 - If a custom card is required, create `.ars/episodes/<epId>/card-specs/<card-name>.md` with the card brief.
-- Leave execution tracking to Claude Code todos and repo artifacts. Do not create a repo-level `todo.json`.
+- After producing plan.md, use TodoWrite to create session todos for the full pipeline so the user can track progress:
+  - `/ars:build <epId>` — 建卡片 + 寫 ep.ts（含所有 card-specs）
+  - `/ars:review <epId>` — 審閱畫面
+  - `/ars:audio <epId>` — 生成語音
+  - `/ars:prepare <epId>` — 準備上架素材
+  - `npx ars publish <epId>` — 發布
+- Do not create a repo-level `todo.json`.
 
 Required outputs:
 - `topic.md`
@@ -36,5 +45,5 @@ Plan contract:
 - For every special visual beat, `plan.md` should explicitly record whether it uses a built-in card, an existing series-scoped custom card, or a new custom card.
 
 Next-step guidance:
-- If `card-specs/*.md` briefs exist, direct the user to `/ars:new-card`.
-- Otherwise direct the user to `/ars:build <epId>`.
+- Always direct the user to `/ars:build <epId>` as the next step.
+- If `card-specs/*.md` briefs exist, note that build will handle card creation automatically — do not tell the user to run `/ars:new-card` separately.

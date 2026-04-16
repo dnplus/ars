@@ -17,7 +17,7 @@ describe('plugin skill surface', () => {
       'build',
       'apply-review',
       'polish',
-      'review-open',
+      'review',
       'new-card',
       'prepare-youtube',
       'publish-youtube',

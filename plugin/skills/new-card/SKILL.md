@@ -84,7 +84,7 @@ Output path: `src/episodes/<series>/cards/<card-name>/`
    };
    ```
 
-7. **Verify**: Run `npx tsc --noEmit` to confirm no type errors.
+7. **Verify**: Run `./node_modules/.bin/tsc --noEmit` to confirm no type errors. Never use `npx tsc` — it may install a fake `tsc` package instead of TypeScript.
 
 8. **Report**: Tell the user:
    - Files created
