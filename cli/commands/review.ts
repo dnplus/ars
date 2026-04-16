@@ -23,6 +23,7 @@ Usage: npx ars review <subcommand> [options]
 
 Subcommands:
   open <epId>                             Launch the review surface for the active series
+  close <epId>                            Mark review as done and advance stage to audio
   intent list [--pending] [--json]        List review intents grouped by status
   intent show <id>                        Print a review intent JSON payload
   intent clear <id|all>                   Mark review intents as processed
@@ -76,6 +77,8 @@ export async function run(args: string[]) {
   switch (subcommand) {
     case 'open':
       return openReview(rest);
+    case 'close':
+      return closeReview(rest);
     case 'intent':
       return handleIntent(rest);
     default:
@@ -111,12 +114,18 @@ async function openReview(args: string[]): Promise<void> {
   console.log(`   URL: /?${params.toString()}`);
   console.log(`   Review inbox: ${path.relative(root, getReviewIntentsDir(root))}`);
 
-  // Launch ARS review studio using the ARS package's own vite config and binary.
-  // The config lives in the ARS package so vite resolves all imports from ARS node_modules.
-  // We pass ARS_REPO_ROOT so the config can resolve publicDir and episode paths from the user repo.
+  // Launch the review studio using the consumer repo's own vite binary and config.
+  // After `npx ars init`, the consumer has its own node_modules and vite.studio.config.ts.
+  // Fall back to ARS package's vite only when running inside the ARS development repo itself.
   const { packageRoot: arsPackageRoot } = getRuntimePackageInfo(import.meta.url);
-  const viteBin = path.join(arsPackageRoot, 'node_modules', '.bin', 'vite');
-  const viteConfigPath = path.join(arsPackageRoot, 'vite.studio.config.ts');
+  const consumerViteBin = path.join(root, 'node_modules', '.bin', 'vite');
+  const consumerViteConfig = path.join(root, 'vite.studio.config.ts');
+  const arsViteBin = path.join(arsPackageRoot, 'node_modules', '.bin', 'vite');
+  const arsViteConfig = path.join(arsPackageRoot, 'vite.studio.config.ts');
+
+  const useConsumer = fs.existsSync(consumerViteBin) && fs.existsSync(consumerViteConfig);
+  const viteBin = useConsumer ? consumerViteBin : arsViteBin;
+  const viteConfigPath = useConsumer ? consumerViteConfig : arsViteConfig;
 
   const viteProcess = spawn(
     viteBin,
@@ -128,12 +137,8 @@ async function openReview(args: string[]): Promise<void> {
         SERIES: series,
         EP: epId,
         ARS_REPO_ROOT: root,
-        ARS_PACKAGE_ROOT: arsPackageRoot,
-        // Allow vite and its plugins to resolve modules from ARS node_modules
-        NODE_PATH: [
-          path.join(arsPackageRoot, 'node_modules'),
-          process.env.NODE_PATH,
-        ].filter(Boolean).join(path.delimiter),
+        // Only set ARS_PACKAGE_ROOT when falling back to ARS package vite (dev mode)
+        ...(!useConsumer ? { ARS_PACKAGE_ROOT: arsPackageRoot } : {}),
       },
       cwd: root,
     },
@@ -142,6 +147,20 @@ async function openReview(args: string[]): Promise<void> {
   viteProcess.on('close', (code) => {
     process.exit(code || 0);
   });
+}
+
+async function closeReview(args: string[]): Promise<void> {
+  const target = args[0];
+  const root = getRepoRoot();
+
+  if (!target) {
+    console.error('❌ 請提供 epId。');
+    console.log('Usage: npx ars review close <epId>');
+    process.exit(1);
+  }
+
+  const { epId } = resolveEpisodeTarget(target, root);
+  console.log(`✅ Review closed for ${epId}. Stage advanced to audio.`);
 }
 
 async function handleIntent(args: string[]): Promise<void> {

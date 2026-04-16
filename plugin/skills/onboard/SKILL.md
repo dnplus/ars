@@ -49,7 +49,8 @@ Behavior:
 4. Update `src/episodes/<series>/series-config.ts` so the generated defaults reflect the interview:
    - `episodeDefaults.channelName`
    - `episodeDefaults.decorationText`
-   - any safe theme / VTuber / branding copy changes that should exist before the first episode
+   - any safe theme / branding copy changes that should exist before the first episode
+   - **Do NOT modify `vtuber.closedImg` or `vtuber.openImg` paths.** These are set correctly by `npx ars init` and point to assets already in `public/episodes/<series>/shared/vtuber/`. Tell the user to replace the image files there directly if they want a custom VTuber.
 5. Do not stop after raw file copies. The repo should be immediately usable for `/ars:plan`.
 
 Output requirements:
@@ -57,7 +58,7 @@ Output requirements:
 - Report where branding defaults were written.
 - If the user provided reference material, report the key interpretation choices you mapped into config/theme defaults.
 - Suggest the next commands:
-  - `/ars:plan <epId>`
+  - `/ars:plan <topic>`  — 規劃第一集，可貼 URL、筆記、文章片段，或直接描述題材
   - `/ars:build <epId>`
 - Mention the Remotion official Claude Code Skills as an optional but recommended install for better Remotion API accuracy: https://www.remotion.dev/docs/ai/claude-code
 - If onboarding finds an existing active series, do not silently reinitialize a second series. Surface the current repo state and continue cautiously.

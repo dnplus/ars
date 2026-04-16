@@ -85,11 +85,18 @@ export async function run(args: string[]) {
     if (result.usedDefaults) {
       console.log('   Non-interactive defaults were applied.');
     }
+    if (result.npmInstalled) {
+      console.log('✅ Ran npm install');
+    }
     console.log(`🚀 Initializing series "${seriesName}" from template...`);
   }
 
   // 複製 src/episodes/template/ → src/episodes/{seriesName}/
   copyDir(templateSrcDir, srcDir);
+  // Rewrite card type strings from "template/<name>" → "<seriesName>/<name>"
+  rewriteCardTypes(srcDir, 'template', seriesName);
+  // Rewrite path references in series-config.ts from "episodes/template/" → "episodes/<seriesName>/"
+  rewriteSeriesConfig(srcDir, 'template', seriesName);
   if (!options.quiet) {
     console.log(`✅ Created: src/episodes/${seriesName}/`);
   }
@@ -124,8 +131,8 @@ export async function run(args: string[]) {
 Next steps:
   1. Edit src/episodes/${seriesName}/series-config.ts — Customize theme, VTuber, brand info
   2. Replace public/episodes/${seriesName}/shared/vtuber/ images
-  3. /ars:plan ep001
-  4. /ars:build ep001
+  3. /ars:plan <topic>   — 貼 URL、筆記、文章片段，或直接描述題材
+  4. /ars:build <epId>
 `);
 }
 
@@ -165,6 +172,41 @@ function parseArgs(args: string[]): {
       quiet: args.includes('--quiet') || args.includes('-q'),
     },
   };
+}
+
+/**
+ * Rewrite path references in series-config.ts after copying from template.
+ * Template uses "episodes/template/" — consumer series must use "episodes/<series>/".
+ */
+function rewriteSeriesConfig(seriesDir: string, fromSeries: string, toSeries: string): void {
+  const configPath = path.join(seriesDir, 'series-config.ts');
+  if (!fs.existsSync(configPath)) return;
+
+  const content = fs.readFileSync(configPath, 'utf-8');
+  const updated = content.replaceAll(`episodes/${fromSeries}/`, `episodes/${toSeries}/`);
+  if (updated !== content) {
+    fs.writeFileSync(configPath, updated, 'utf-8');
+  }
+}
+
+/**
+ * Rewrite card `type` strings in spec.ts files after copying from template.
+ * Template cards use "template/<name>" — consumer series must use "<series>/<name>".
+ */
+function rewriteCardTypes(seriesDir: string, fromSeries: string, toSeries: string): void {
+  const cardsDir = path.join(seriesDir, 'cards');
+  if (!fs.existsSync(cardsDir)) return;
+
+  for (const cardName of fs.readdirSync(cardsDir)) {
+    const specPath = path.join(cardsDir, cardName, 'spec.ts');
+    if (!fs.existsSync(specPath)) continue;
+
+    let content = fs.readFileSync(specPath, 'utf-8');
+    const updated = content.replaceAll(`"${fromSeries}/${cardName}"`, `"${toSeries}/${cardName}"`);
+    if (updated !== content) {
+      fs.writeFileSync(specPath, updated, 'utf-8');
+    }
+  }
 }
 
 const COPY_IGNORE = ['.bak', '.DS_Store'];

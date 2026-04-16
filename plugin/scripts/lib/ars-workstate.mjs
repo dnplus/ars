@@ -314,7 +314,7 @@ export function detectEpisodeProgress(root = process.cwd(), seriesId, episodeId)
         : hasSubtitles || hasAudio
           ? 'audio'
           : hasSource && hasPlan
-          ? 'build'
+          ? 'review'
           : hasPlan || hasTopic
               ? 'plan'
                 : hasSource
@@ -332,7 +332,7 @@ export function detectEpisodeProgress(root = process.cwd(), seriesId, episodeId)
         : hasSubtitles || hasAudio
           ? `npx ars prepare youtube ${episodeId}`
           : hasSource && hasPlan
-          ? `/ars:review-open ${episodeId}`
+          ? `/ars:review ${episodeId}`
           : hasPlan || hasTopic
               ? `/ars:build ${episodeId}`
                 : hasSource
@@ -545,7 +545,8 @@ export function parseArsCommand(command, activeSeries) {
   const patterns = [
     { regex: /(?:^|\s)(?:npx\s+)?ars\s+episode\s+create\s+([^\s]+)/i, stage: 'draft', action: 'episode-create' },
     { regex: /(?:^|\s)(?:npx\s+)?ars\s+episode\s+(?:validate|stats)\s+([^\s]+)/i, stage: null, action: 'episode-validate' },
-    { regex: /(?:^|\s)(?:npx\s+)?ars\s+review\s+open\s+([^\s]+)/i, stage: 'review', action: 'review-open' },
+    { regex: /(?:^|\s)(?:npx\s+)?ars\s+review\s+open\s+([^\s]+)/i, stage: 'review', action: 'review' },
+    { regex: /(?:^|\s)(?:npx\s+)?ars\s+review\s+close\s+([^\s]+)/i, stage: 'audio', action: 'review-close' },
     { regex: /(?:^|\s)(?:npx\s+)?ars\s+audio\s+generate\s+([^\s]+)/i, stage: 'audio', action: 'audio-generate' },
     { regex: /(?:^|\s)(?:npx\s+)?ars\s+prepare\s+youtube\s+([^\s]+)/i, stage: 'prepare-youtube', action: 'prepare-youtube' },
     { regex: /(?:^|\s)(?:npx\s+)?ars\s+publish\s+package\s+([^\s]+)/i, stage: 'package', action: 'publish-package' },
@@ -613,8 +614,8 @@ const CYAN = '\x1b[36m';
  */
 function stageToStep(stage) {
   if (!stage) return -1;
-  if (stage === 'draft') return 0;
-  if (stage === 'review') return 1;
+  if (stage === 'idle' || stage === 'draft' || stage === 'plan') return 0;
+  if (stage === 'card-spec' || stage === 'review') return 1;
   if (stage === 'audio') return 2;
   if (stage === 'prepare-youtube' || stage === 'package') return 3;
   if (stage === 'publish-youtube') return 4;
