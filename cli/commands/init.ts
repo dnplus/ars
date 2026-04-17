@@ -99,8 +99,14 @@ export async function run(args: string[]) {
   const templatePublicDir = path.join(root, 'public/episodes/template/shared');
 
   if (fs.existsSync(srcDir)) {
-    console.error(`❌ Series "${targetSeries}" already exists at ${srcDir}`);
-    process.exit(1);
+    if (!options.force) {
+      console.error(`❌ Series "${targetSeries}" already exists at ${srcDir}`);
+      process.exit(1);
+    }
+    fs.rmSync(srcDir, { recursive: true, force: true });
+    if (!options.quiet) {
+      console.log(`🗑  Removed existing series at src/episodes/${targetSeries}/ (--force)`);
+    }
   }
 
   if (!fs.existsSync(templateSrcDir)) {
