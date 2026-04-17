@@ -300,13 +300,15 @@ export function detectEpisodeProgress(root = process.cwd(), seriesId, episodeId)
   const hasRender = fs.existsSync(renderFile);
   const hasCover = fs.existsSync(coverFile);
 
-  // Read persisted stage from workstate (written by review close, audio generate, etc.)
-  // Only use it when there are no overriding real-time review signals.
+  // Read persisted stage from workstate so review-close can hand off to prepare
+  // before prepare artifacts exist. Real-time review signals still win.
   const persistedWorkState = pendingReview === 0
     ? readWorkState(root)
     : null;
-  const persistedStage = persistedWorkState?.seriesId === seriesId && persistedWorkState?.episodeId === episodeId
-    ? persistedWorkState.stage
+  const persistedStage = pendingReview === 0
+    ? persistedWorkState?.seriesId === seriesId && persistedWorkState?.episodeId === episodeId
+      ? persistedWorkState.stage
+      : null
     : null;
 
   // Late-stage artifacts (audio, prepare, render, cover) only count when the
@@ -321,11 +323,9 @@ export function detectEpisodeProgress(root = process.cwd(), seriesId, episodeId)
       ? 'prepare-youtube'
       : lateStageValid && (hasRender || hasCover)
         ? 'package'
-        : lateStageValid && (hasSubtitles || hasAudio)
-          ? 'audio'
-          : lateStageValid && persistedStage === 'audio'
-            ? 'audio'
-          : hasSource && hasPlan
+        : lateStageValid && persistedStage === 'prepare-youtube'
+          ? 'prepare-youtube'
+        : hasSource && hasPlan
           ? 'review'
           : hasPlan
               ? 'build'
@@ -339,11 +339,9 @@ export function detectEpisodeProgress(root = process.cwd(), seriesId, episodeId)
       ? `/ars:publish-youtube ${episodeId}`
       : lateStageValid && (hasRender || hasCover)
         ? `npx ars prepare youtube ${episodeId}`
-        : lateStageValid && (hasSubtitles || hasAudio)
+        : lateStageValid && persistedStage === 'prepare-youtube'
           ? `npx ars prepare youtube ${episodeId}`
-          : lateStageValid && persistedStage === 'audio'
-            ? `npx ars audio generate ${episodeId}`
-          : hasSource && hasPlan
+        : hasSource && hasPlan
           ? `/ars:review ${episodeId}`
           : hasPlan
               ? `/ars:build ${episodeId}`
@@ -549,8 +547,7 @@ export function parseArsCommand(command, activeSeries) {
     { regex: /(?:^|\s)(?:npx\s+)?ars\s+episode\s+(?:validate|stats)\s+([^\s]+)/i, stage: null, action: 'episode-validate' },
     { regex: /(?:^|\s)(?:npx\s+)?ars\s+build\s+([^\s]+)/i, stage: 'build', action: 'build' },
     { regex: /(?:^|\s)(?:npx\s+)?ars\s+review\s+open\s+([^\s]+)/i, stage: 'review', action: 'review' },
-    { regex: /(?:^|\s)(?:npx\s+)?ars\s+review\s+close\s+([^\s]+)/i, stage: 'audio', action: 'review-close' },
-    { regex: /(?:^|\s)(?:npx\s+)?ars\s+audio\s+generate\s+([^\s]+)/i, stage: 'audio', action: 'audio-generate' },
+    { regex: /(?:^|\s)(?:npx\s+)?ars\s+review\s+close\s+([^\s]+)/i, stage: 'prepare-youtube', action: 'review-close' },
     { regex: /(?:^|\s)(?:npx\s+)?ars\s+prepare\s+youtube\s+([^\s]+)/i, stage: 'prepare-youtube', action: 'prepare-youtube' },
     { regex: /(?:^|\s)(?:npx\s+)?ars\s+publish\s+package\s+([^\s]+)/i, stage: 'package', action: 'publish-package' },
     { regex: /(?:^|\s)(?:npx\s+)?ars\s+publish\s+youtube\s+([^\s]+)/i, stage: 'publish-youtube', action: 'publish-youtube' },
@@ -612,16 +609,15 @@ const CYAN = '\x1b[36m';
 
 /**
  * Map a raw stage string to a pipeline step index (0-based).
- * Pipeline: plan(0) › build(1) › review(2) › audio(3) › prepare(4) › publish(5)
+ * Pipeline: plan(0) › build(1) › review(2) › prepare(3) › publish(4)
  */
 function stageToStep(stage) {
   if (!stage) return -1;
   if (stage === 'idle' || stage === 'draft' || stage === 'plan') return 0;
   if (stage === 'build') return 1;
   if (stage === 'review') return 2;
-  if (stage === 'audio') return 3;
-  if (stage === 'prepare-youtube' || stage === 'package') return 4;
-  if (stage === 'publish-youtube') return 5;
+  if (stage === 'prepare-youtube' || stage === 'package') return 3;
+  if (stage === 'publish-youtube') return 4;
   return -1;
 }
 
@@ -642,13 +638,13 @@ function renderOnboardPipeline(currentStep) {
 }
 
 /**
- * Render the 6-step pipeline with ANSI colors:
+ * Render the 5-step pipeline with ANSI colors:
  *   done  → green
  *   current → cyan bold with ▶ prefix
  *   todo  → dim
  */
 function renderPipeline(currentStep) {
-  const steps = ['plan', 'build', 'review', 'audio', 'prepare', 'publish'];
+  const steps = ['plan', 'build', 'review', 'prepare', 'publish'];
   return steps.map((label, i) => {
     if (i < currentStep) return `${GREEN}${label}${RESET}`;
     if (i === currentStep) return `${CYAN}${BOLD}▶${label}${RESET}`;

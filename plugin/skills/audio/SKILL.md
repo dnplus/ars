@@ -1,12 +1,14 @@
 ---
 name: ars:audio
-description: Generate TTS audio and subtitles for an episode using MiniMax.
+description: Usage guide for generating TTS audio and subtitles for an episode using MiniMax.
 argument-hint: "[epId] [--steps <id1,id2,...>] [--step <id>] [--speed <0.5-2.0>] [--no-subtitle]"
 model: claude-haiku-4-5-20251001
 effort: low
 ---
 
-Run TTS audio generation for the target episode.
+Audio is not a standalone workflow stage in ARS. It happens inside the review phase: the user can trigger full-episode audio from the studio's `generate-full-audio` button or by using this skill.
+
+Use this skill as an execution guide for TTS audio generation and subtitle refresh on the target episode.
 
 ## Command
 
@@ -40,9 +42,11 @@ When validate reports `Subtitles file exists but episode does not import/use it`
 
 Other validation issues (missing summary CTA, long points, deprecated cards) are advisory — surface them to the user but do not auto-fix unless asked.
 
-After success (and any auto-fix), guide the user to the listening round of review. Do not jump straight to `/ars:prepare-youtube` — pronunciation errors are the most common issue at this stage and studio is the place to catch them.
+## After success
+
+After success (and any auto-fix), guide the user back into the listening round of review. Pronunciation issues are the common follow-up, and the studio is the place to catch them.
 
 Suggest in this order:
 1. Open (or return to) the studio: `npx ars review open <epId>`. If `/ars:review` is already running for this epId, the existing watch loop picks up new pronunciation intents automatically — just tell the user to listen through and hit ✨ on any step where TTS reads something wrong.
 2. `/ars:apply-review latest` (or the agent watching the loop) will route pronunciation intents to `cli/pronunciation_dict.yaml` and re-run `npx ars audio generate <epId> --step <stepId>` for just that step.
-3. Only when the user says audio sounds right, move on to `/ars:prepare-youtube <epId>`.
+3. Re-run full-episode or per-step audio generation as needed until the listening round is clean.
