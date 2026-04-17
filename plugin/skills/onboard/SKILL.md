@@ -82,14 +82,14 @@ npx ars init <series>
 5. Ask: customize now or do it later?
 
 If the user chooses customize now:
-- run a brand interview covering `channelName`, `brandTag`, theme direction, tone, and a VTuber reminder
-- update `series-config.ts`
-- write `STYLING.md`
+- run a brand interview — see `references/branding-guide.md` for questions and color derivation rules
+- update `series-config.ts` — see `references/series-structure.md` for the full file structure and key fields
+- write `STYLING.md` at repo root — use `references/styling-template.md` as the template, fill in values from the interview
 - add optional custom skills if the user wants them
 
 If the user chooses do it later:
 - skip the interview
-- tell the user: `跑 \`/ars:onboard\` 可以隨時回來客製化`
+- tell the user they can run `/ars:onboard` at any time to come back and customize
 - point them to these key files:
   `series-config.ts` (brand + theme)
   `STYLING.md` (tone + writing rules)
