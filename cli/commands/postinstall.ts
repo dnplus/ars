@@ -1,5 +1,5 @@
 import { getRuntimePackageInfo } from '../lib/runtime-package';
-import { installStatusLine, resolveSetupTargetRoot, syncAgents, syncSkills } from '../lib/install';
+import { resolveSetupTargetRoot, syncAgents, syncSkills } from '../lib/install';
 
 export interface PostinstallResult {
   skipped: boolean;
@@ -24,7 +24,6 @@ export async function postinstallCommand(): Promise<PostinstallResult> {
   try {
     syncSkills({ root, pluginRoot: runtime.pluginRoot, overwrite: true });
     syncAgents({ root, pluginRoot: runtime.pluginRoot, overwrite: true });
-    installStatusLine(runtime.pluginRoot);
     return {
       skipped: false,
       root,

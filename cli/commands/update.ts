@@ -4,7 +4,6 @@ import {
   backupEngine,
   detectInstallMethod,
   getTargetRepoRoot,
-  installStatusLine,
   locateSourcePackageRoot,
   patchClaudeMd,
   patchClaudeSettings,
@@ -89,8 +88,7 @@ Promise<{
   const installedSkills = syncSkills({ root, pluginRoot: runtime.pluginRoot, overwrite: true });
   const installedAgents = syncAgents({ root, pluginRoot: runtime.pluginRoot, overwrite: true });
   const installedHookScripts = syncHookScripts({ root, pluginRoot: runtime.pluginRoot, overwrite: true });
-  patchClaudeSettings({ root });
-  installStatusLine(runtime.pluginRoot);
+  patchClaudeSettings({ root, pluginRoot: runtime.pluginRoot });
 
   const claudeMdPath =
     options.force || options.forceClaudeMd ? patchClaudeMd(root) : undefined;

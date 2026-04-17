@@ -1,5 +1,4 @@
 import fs from 'fs';
-import os from 'os';
 import path from 'path';
 import { spawnSync } from 'child_process';
 import { getArsDir } from './ars-config';
@@ -568,68 +567,6 @@ function samePath(left: string, right: string): boolean {
 }
 
 /**
- * Install the ARS statusline wrapper into the user's global Claude config.
- *
- * Steps:
- *  1. Copy plugin/scripts/ars-statusline.mjs → ~/.claude/ars-statusline.mjs
- *  2. Read ~/.claude/settings.json; if statusLine.command exists and is not
- *     already the ARS wrapper, save it as the delegate in
- *     ~/.claude/ars-statusline-config.json
- *  3. Overwrite settings.json statusLine to point at the wrapper
- *
- * Returns 'installed' | 'already-installed' | 'skipped' (no settings.json).
- */
-export function installStatusLine(pluginRoot: string): 'installed' | 'already-installed' | 'skipped' {
-  const claudeDir = path.join(os.homedir(), '.claude');
-  const settingsPath = path.join(claudeDir, 'settings.json');
-  const wrapperDest = path.join(claudeDir, 'ars-statusline.mjs');
-  const configDest = path.join(claudeDir, 'ars-statusline-config.json');
-  const wrapperSrc = path.join(pluginRoot, 'scripts', 'ars-statusline.mjs');
-
-  if (!fs.existsSync(wrapperSrc)) {
-    return 'skipped';
-  }
-
-  const pluginScriptsDir = path.join(pluginRoot, 'scripts');
-  const arsVersion = readPluginVersionFromRoot(pluginRoot);
-  const wrapperCommand = `node "${wrapperDest}"`;
-
-  const patchConfig = (extra: Record<string, unknown> = {}): void => {
-    let cfg: Record<string, unknown> = {};
-    if (fs.existsSync(configDest)) {
-      try { cfg = JSON.parse(fs.readFileSync(configDest, 'utf-8')) as Record<string, unknown>; } catch { /* ignore */ }
-    }
-    Object.assign(cfg, { pluginScriptsDir, arsVersion: arsVersion ?? '' }, extra);
-    fs.writeFileSync(configDest, `${JSON.stringify(cfg, null, 2)}\n`, 'utf-8');
-  };
-
-  if (fs.existsSync(settingsPath)) {
-    const raw = JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) as Record<string, unknown>;
-    const existing = raw.statusLine as Record<string, unknown> | undefined;
-
-    if (existing?.command === wrapperCommand) {
-      fs.copyFileSync(wrapperSrc, wrapperDest);
-      patchConfig();
-      return 'already-installed';
-    }
-
-    const existingCommand = typeof existing?.command === 'string' ? existing.command.trim() : '';
-    patchConfig(existingCommand && existingCommand !== wrapperCommand ? { delegate: existingCommand } : {});
-
-    raw.statusLine = { type: 'command', command: wrapperCommand };
-    fs.writeFileSync(settingsPath, `${JSON.stringify(raw, null, 2)}\n`, 'utf-8');
-  } else {
-    fs.mkdirSync(claudeDir, { recursive: true });
-    const settings = { statusLine: { type: 'command', command: wrapperCommand } };
-    fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}\n`, 'utf-8');
-    patchConfig({ delegate: '' });
-  }
-
-  fs.copyFileSync(wrapperSrc, wrapperDest);
-  return 'installed';
-}
-
-/**
  * Copy ARS hook scripts into the consumer repo's .ars/hooks/scripts/ directory
  * so hooks can reference them via repo-relative paths (independent of $CLAUDE_PLUGIN_ROOT).
  *
@@ -689,9 +626,12 @@ export function syncHookScripts(options: {
  */
 export function patchClaudeSettings(options: {
   root: string;
+  pluginRoot?: string;
 }): void {
-  const { root } = options;
+  const { root, pluginRoot } = options;
   const settingsPath = path.join(root, '.claude', 'settings.json');
+  const statusLineConfigPath = path.join(root, '.ars', 'hooks', 'ars-statusline-config.json');
+  const statusLineCommand = 'node ".ars/hooks/scripts/ars-statusline.mjs"';
 
   // ARS hook definitions using repo-relative script paths
   const arsHooks: Record<string, Array<{ matcher: string; hooks: Array<{ type: string; command: string; timeout: number }> }>> = {
@@ -739,8 +679,38 @@ export function patchClaudeSettings(options: {
     } catch { /* start fresh */ }
   }
 
+  let statusLineConfig: Record<string, unknown> = {};
+  if (fs.existsSync(statusLineConfigPath)) {
+    try {
+      statusLineConfig = JSON.parse(fs.readFileSync(statusLineConfigPath, 'utf-8')) as Record<string, unknown>;
+    } catch { /* start fresh */ }
+  }
+
   // ARS hook command fingerprint — used to detect existing ARS entries
   const ARS_HOOK_MARKER = '.ars/hooks/scripts/';
+  const existingStatusLine =
+    typeof settings.statusLine === 'object' && settings.statusLine !== null
+      ? settings.statusLine as Record<string, unknown>
+      : undefined;
+  const existingCommand =
+    typeof existingStatusLine?.command === 'string' ? existingStatusLine.command.trim() : '';
+  const delegateCommand = existingCommand && existingCommand !== statusLineCommand
+    ? existingCommand
+    : typeof statusLineConfig.delegate === 'string'
+      ? statusLineConfig.delegate
+      : '';
+
+  fs.mkdirSync(path.dirname(statusLineConfigPath), { recursive: true });
+  fs.writeFileSync(
+    statusLineConfigPath,
+    `${JSON.stringify({
+      ...statusLineConfig,
+      delegate: delegateCommand,
+      arsVersion: pluginRoot ? (readPluginVersionFromRoot(pluginRoot) ?? '') : '',
+    }, null, 2)}\n`,
+    'utf-8',
+  );
+  settings.statusLine = { type: 'command', command: statusLineCommand };
 
   for (const [event, arsEntries] of Object.entries(arsHooks)) {
     const existing = Array.isArray(settings[event])
@@ -766,7 +736,6 @@ export function patchClaudeSettings(options: {
 }
 
 function readPluginVersionFromRoot(pluginRoot: string): string | null {
-  // pluginRoot is the plugin/ subdirectory; package.json lives one level up (the package root)
   for (const dir of [pluginRoot, path.dirname(pluginRoot)]) {
     try {
       const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf-8')) as { version?: unknown };

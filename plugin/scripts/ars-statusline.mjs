@@ -2,16 +2,15 @@
 /**
  * ARS statusline wrapper.
  *
- * Reads ~/.claude/ars-statusline-config.json for an optional delegate command.
+ * Reads .ars/hooks/ars-statusline-config.json for an optional delegate command.
  * If delegate exists, runs it and prepends its output to the ARS status segment.
  * If not, outputs only the ARS status segment.
  *
  * Config schema:
- *   { "delegate": "<shell command>", "pluginScriptsDir": "/abs/path/to/plugin/scripts" }
+ *   { "delegate": "<shell command>", "arsVersion": "<version>" }
  */
 import { execSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -26,18 +25,14 @@ try {
 }
 
 // Load delegate config
-const configPath = join(homedir(), '.claude', 'ars-statusline-config.json');
+const configPath = join(__dirname, '..', 'ars-statusline-config.json');
 let delegateCommand = null;
-let pluginScriptsDir = null;
 let arsVersion = '';
 if (existsSync(configPath)) {
   try {
     const config = JSON.parse(readFileSync(configPath, 'utf8'));
     if (typeof config.delegate === 'string' && config.delegate.trim()) {
       delegateCommand = config.delegate.trim();
-    }
-    if (typeof config.pluginScriptsDir === 'string' && config.pluginScriptsDir.trim()) {
-      pluginScriptsDir = config.pluginScriptsDir.trim();
     }
     if (typeof config.arsVersion === 'string' && config.arsVersion.trim()) {
       arsVersion = config.arsVersion.trim();
@@ -65,9 +60,8 @@ if (delegateCommand) {
 // Compute ARS segment
 let arsSegment = '';
 try {
-  const workstateDir = pluginScriptsDir ?? __dirname;
   const { renderStatusLine } = await import(
-    join(workstateDir, 'lib', 'ars-workstate.mjs')
+    join(__dirname, 'lib', 'ars-workstate.mjs')
   );
   const payload = (() => {
     try { return JSON.parse(stdinData); } catch { return {}; }

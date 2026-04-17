@@ -32,7 +32,9 @@ describe('postinstallCommand', () => {
 
   it('syncs plugin assets against INIT_CWD without bootstrapping the repo', async () => {
     const targetRoot = makeTempRoot('ars-postinstall-target-');
+    const homeRoot = makeTempRoot('ars-postinstall-home-');
     vi.stubEnv('INIT_CWD', targetRoot);
+    vi.stubEnv('HOME', homeRoot);
 
     const { postinstallCommand } = await import('../commands/postinstall');
     const result = await postinstallCommand();
@@ -42,5 +44,6 @@ describe('postinstallCommand', () => {
       root: targetRoot,
     });
     expect(fs.existsSync(path.join(targetRoot, '.ars', 'config.json'))).toBe(false);
+    expect(fs.existsSync(path.join(homeRoot, '.claude', 'settings.json'))).toBe(false);
   });
 });
