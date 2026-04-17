@@ -32,15 +32,6 @@ export type CaCSceneProps = {
   episodeTag?: string;
 };
 
-type RegistryRenderableType =
-  | "cover"
-  | "code"
-  | "image"
-  | "markdown"
-  | "mermaid"
-  | "summary"
-  | "ticker";
-
 const resolveCardFrame = (layoutMode: LayoutMode) =>
   layoutMode === "fullscreen"
     ? "none"
@@ -59,12 +50,8 @@ const getStepDataRecord = (step: Step): Record<string, unknown> => {
   return step.data as Record<string, unknown>;
 };
 
-const isRegistryRenderable = (
-  contentType: Step["contentType"],
-): contentType is RegistryRenderableType | "text" => {
-  const resolvedType = resolveRegistryType(contentType);
-  return hasCard(resolvedType);
-};
+const isRegistryRenderable = (contentType: Step["contentType"]): boolean =>
+  hasCard(resolveRegistryType(contentType));
 
 const buildRegistryCardData = (
   step: Step,
