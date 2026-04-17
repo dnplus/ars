@@ -161,7 +161,6 @@ Stable backend commands:
 - `npx ars episode ...`
 - `npx ars review ...`
 - `npx ars audio ...`
-- `npx ars theme ...`
 - `npx ars export ...`
 - `npx ars prepare youtube <epId>`
 - `npx ars publish package <epId>`
@@ -171,7 +170,7 @@ Stable backend commands:
 Notes:
 
 - `npx ars init <series>` is the only first-run CLI entrypoint. It bootstraps the repo and creates the repo's only active series.
-- `/ars:onboard` is the preferred first-run UX when you want guided branding/theme setup after init.
+- `/ars:onboard` is the preferred first-run UX — it guides branding, theme direction, and visual style setup directly in series-config.ts.
 
 ## One repo = one series
 

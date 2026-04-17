@@ -19,7 +19,6 @@ const KNOWN_COMMANDS = new Set([
   'prepare',
   'publish',
   'review',
-  'theme',
   'update',
   'upload',
 ]);
@@ -47,7 +46,6 @@ Commands:
   publish <subcommand> [...]       Package and publish outputs
   audio <subcommand> [...]         Audio/TTS workflows
   review <subcommand> [...]        Review surface + review intent workflows
-  theme <subcommand> [...]         Theme generation and preview tools
   export <subcommand> [...]        Export cover or subtitle artifacts
   upload <subcommand> [...]        Upload to YouTube
 
@@ -78,8 +76,6 @@ async function loadCommandModule(command: string): Promise<CommandModule> {
       return import('./commands/publish');
     case 'review':
       return import('./commands/review');
-    case 'theme':
-      return import('./commands/theme');
     case 'update':
       return import('./commands/update');
     case 'upload':
