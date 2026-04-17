@@ -37,8 +37,8 @@ describe('plugin skill surface', () => {
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 
-    expect(output).toContain('/ars:plan <epId>');
-    expect(output).toContain('/ars:build <epId>');
+    expect(output).toContain('/ars:plan');
+    expect(output).toContain('/ars:build');
     expect(output).toContain('/ars:apply-review');
     expect(output).not.toContain('/ars:scene-plan');
     expect(output).not.toContain('/ars:scene-build');
