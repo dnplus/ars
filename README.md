@@ -31,10 +31,6 @@ ARS is a Claude Code plugin-first workflow for building Remotion-based video epi
 
 ### 1. Install the CLI
 
-```bash
-npm install -g github:<owner>/<repo>
-```
-
 For local development of ARS itself:
 
 ```bash
@@ -44,31 +40,37 @@ npm install
 npm link
 ```
 
-### 2. Initialize your content repo
+### 2. Launch Claude Code
 
-In a new directory for your channel:
-
-```bash
-npx ars init <series-name>
-```
-
-This bootstraps `.ars/config.json`, syncs the ARS engine, installs skills, and scaffolds your series from the template.
-
-### 3. Launch Claude Code and onboard
+In your content repo directory:
 
 ```bash
-ars
+npx ars
 ```
 
-Then inside Claude Code:
+`npx ars` launches Claude Code with the ARS plugin pre-loaded (`--plugin-dir`). If tmux is available, it opens in a managed tmux session.
+
+### 3. Onboard
+
+Inside Claude Code:
 
 ```text
 /ars:onboard
 ```
 
-`/ars:onboard` is the official first-run entrypoint — it interviews you for brand, theme, VTuber preference, and visual direction, then writes the results into your series config.
+`/ars:onboard` is the official first-run entrypoint. It walks you through a demo, collects your series name, TTS provider, and YouTube preference, initializes the repo if needed, then guides you through brand, theme, and visual direction setup.
 
-### 4. Plan the first episode
+### 4. (Optional) Manual init
+
+If you prefer to initialize without the guided flow:
+
+```bash
+npx ars init <series-name>
+```
+
+This bootstraps `.ars/config.json`, syncs the ARS engine, installs skills, and scaffolds your series from the template. Then run `/ars:onboard` to fill in brand and theme settings.
+
+### 5. Plan the first episode
 
 Inside Claude Code:
 
@@ -78,7 +80,7 @@ Inside Claude Code:
 
 `/ars:plan` is the official episode planning entrypoint. It writes topic and plan artifacts under `.ars/episodes/ep001/` and decides whether custom cards are needed.
 
-### 5. Build the episode
+### 6. Build the episode
 
 Inside Claude Code:
 
@@ -88,7 +90,7 @@ Inside Claude Code:
 
 If the plan emitted `card-spec` todos, run `/ars:new-card` first and then come back to `/ars:build`.
 
-### 6. Open review
+### 7. Open review
 
 Inside Claude Code:
 
@@ -102,7 +104,7 @@ Or directly from the terminal:
 npx ars review open ep001
 ```
 
-### 7. Apply review and polish
+### 8. Apply review and polish
 
 Inside Claude Code:
 
@@ -111,7 +113,7 @@ Inside Claude Code:
 /ars:polish ep001
 ```
 
-### 8. Prepare and publish to YouTube
+### 9. Prepare and publish to YouTube
 
 Inside Claude Code:
 
@@ -127,7 +129,7 @@ npx ars prepare youtube ep001
 npx ars publish youtube ep001 --privacy private
 ```
 
-### 9. Optional analytics report
+### 10. Optional analytics report
 
 Inside Claude Code:
 
@@ -169,8 +171,8 @@ Stable backend commands:
 
 Notes:
 
-- `npx ars init <series>` is the only first-run CLI entrypoint. It bootstraps the repo and creates the repo's only active series.
-- `/ars:onboard` is the preferred first-run UX — it guides branding, theme direction, and visual style setup directly in series-config.ts.
+- `/ars:onboard` is the preferred first-run UX — it bootstraps the repo, guides branding and theme setup, and calls `npx ars init` when needed.
+- `npx ars init <series>` is the low-level alternative for non-interactive or scripted setup.
 
 ## One repo = one series
 
