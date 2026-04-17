@@ -1,19 +1,40 @@
 # Branding Interview Guide
 
-Use this guide during Phase 3 customize to collect brand information and derive theme tokens.
+Use this guide during Phase 2 customize to collect brand information and derive theme tokens.
+
+Channel name, TTS provider, YouTube publishing, and layout are already handled by `npx ars init` — do not re-ask them here.
 
 ## Interview Questions
 
-Ask these in order. Stop as soon as the user says "do it later."
+Ask these in order, **one question at a time**. Wait for the user's reply before asking the next question.
 
-1. **Channel name** — What's the full display name of your channel?
-2. **Brand tag** — Short label shown on episode covers (e.g. `EP · Tutorial`, `EP · Deep Dive`). Usually `EP · <type>`.
-3. **Primary color** — Do you have a brand color? (hex preferred; can describe if not)
-4. **Visual tone** — Warm/earthy, cool/tech, minimal/clean, or something else?
-5. **Font** — Any preferred font? (defaults to Noto Sans TC for CJK, Inter for Latin)
-6. **VTuber** — Do you have a VTuber character? If yes, ask them to drop the images in `public/episodes/<series>/shared/vtuber/`
-7. **Voice** — MiniMax voice ID or leave as default `female-shaonv`?
-8. **Layout** — `streaming` (16:9 horizontal, standard YouTube) or `shorts` (9:16 vertical, YouTube Shorts)? The walkthrough demo uses `streaming`. Default: `streaming`.
+Interview rules:
+- Default to a conversational flow, not a form dump.
+- If the user answers multiple questions in one reply, capture the answered fields and skip them.
+- Do not re-ask information the user already gave clearly.
+- Accept "沿用" / "same" / "default" / "skip" as an answer — record it as "use template default" for that field, do NOT silently invent richer content.
+- Stop as soon as the user says "do it later."
+- If the user is lazy or says "just do your best", stop the interview and fall back to the minimal defaults in `references/series-guide-template.md`.
+
+### Visual identity (→ `series-config.ts`)
+
+1. **Primary color** — Do you have a brand color? (hex preferred; can describe if not)
+2. **Visual tone** — Warm/earthy, cool/tech, minimal/clean, or something else?
+3. **Font** — Any preferred font? (defaults to Noto Sans TC for CJK, Inter for Latin)
+4. **VTuber** — Do you have a VTuber character? If yes, ask them to drop the images in `public/episodes/<series>/shared/vtuber/`
+
+### Series identity (→ `SERIES_GUIDE.md`)
+
+These drive `SERIES_GUIDE.md` and are **required** — do NOT invent them from channel name alone. If the user says "沿用" / "default", use the minimal defaults from `references/series-guide-template.md` verbatim and tell them which defaults you used.
+
+5. **Host / creator** — Who is presenting this series? (one-line background, e.g. "資深後端工程師兼小團隊主管", "獨立開發者", "ServiceNow 顧問") — drives narration credibility and the depth of claims the series can make.
+6. **Audience** — Who is this series for? (one line, e.g. "台灣的資深工程師、對 AI 工具落地有興趣")
+7. **Mission / takeaway** — What should a viewer walk away with after each episode? (one sentence)
+8. **Narration tone** — Pick one or describe: direct / opinionated / playful / didactic / other
+9. **Episode length range** — what length spectrum does this series cover? short 1–3 min / medium 3–6 min / long 6–30 min / mixed (any combination). Per-episode length is decided at `/ars:plan` time based on source material — this question sets the *acceptable range*, not a per-episode default.
+10. **CTA policy** — Soft (description link / subscribe) / Direct (call out action) / Mixed / None
+
+`brandTag` is derived — default to `EP`. Offer to set it only if the user spontaneously mentions episode-type labeling (e.g. "我想每集標 Tutorial / Deep Dive"). Don't ask proactively.
 
 ## Color Derivation Rules
 
@@ -55,8 +76,13 @@ shadow        → primary hex + alpha 0.2
 After the interview, update `series-config.ts`:
 - Replace all placeholder colors in `theme.colors`
 - Set `fontFamily` to chosen font (use Google Fonts via `@remotion/google-fonts/<FontName>` if available)
-- Update `episodeDefaults.channelName` and `episodeDefaults.brandTag`
 - Update `vtuber.closedImg` / `openImg` paths if user provided images
-- If user chose `shorts`, change `shell.layout` from `'streaming'` to `'shorts'`
+- Only touch `episodeDefaults.brandTag` if the user explicitly asked for a custom tag
 
-Then write `STYLING.md` — see `references/styling-template.md`.
+Do NOT touch `episodeDefaults.channelName` during the branding interview — `npx ars init` already set it.
+
+For `shell.layout`:
+- In normal onboarding, leave the built-in layout choice from `npx ars init` as-is.
+- Only change it if the user explicitly wants to switch between built-in `'streaming'` / `'shorts'`, or they are intentionally setting up a series custom layout override.
+
+Then write `SERIES_GUIDE.md` — see `references/series-guide-template.md`.

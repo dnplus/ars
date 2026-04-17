@@ -17,15 +17,16 @@ This ensures the correct schema version and timestamp.
 
 ## Re-run detection
 
-Before starting Phase 1, inspect the target `series-config.ts`.
+**Do this before any workstate write or phase action.**
 
-If `series-config.ts` already has non-placeholder values, skip Phase 1, enter Phase 2 confirmation mode, then continue to Phase 3 normally.
+Read `.ars/config.json` and check `project.onboardedAt`.
 
-Placeholder detection rule:
-- If `episodeDefaults.channelName === 'Your Channel Name'`, treat it as placeholder
-- If `episodeDefaults.channelName !== 'Your Channel Name'`, treat it as already customized
+- If `onboardedAt` is **not set** → first onboard run, proceed normally from Phase 1
+- If `onboardedAt` **is set** → onboard already completed; **skip Phase 1 entirely**, write workstate `onboard-customize`, enter Phase 2 confirmation mode, then continue to Phase 3 normally
 
 ## Phase 1 — walkthrough
+
+**Skip this entire phase if re-run detection determined the series is already customized. Go directly to Phase 2 confirmation mode.**
 
 Stage name: `onboard-walkthrough`
 
@@ -61,31 +62,46 @@ npx ars init <series>
 
    If `project.activeSeries` is already set, skip directly to step 3.
 
-3. Ask: customize branding now or do it later?
+3. Ask the user to pick one of three modes:
 
-If the user chooses customize now:
-- run a brand interview — see `references/branding-guide.md` for questions and color derivation rules
+   - **from template** — keep the demo content (`ep-demo.ts`, series-scoped cards) as reference, run a brand interview to update theme/vtuber/STYLING
+   - **from scratch** — delete the demo content, keep a bare series skeleton, run a brand interview to update theme/vtuber/STYLING
+   - **skip for now** — do nothing, come back later with `/ars:onboard`
+
+### from template
+- run a brand interview — see `references/branding-guide.md` for the full question set (visual identity AND series identity — audience, mission, tone, length, CTA). Do NOT skip the series identity questions; they drive SERIES_GUIDE.md.
 - update `series-config.ts` — see `references/series-structure.md` for the full file structure and key fields
-- write `STYLING.md` at repo root — use `references/styling-template.md` as the template, fill in values from the interview
-- proactively mention that `shell.layout` can be changed to `'shorts'` if they want 9:16 vertical output — most channels stay on `'streaming'` but it's worth flagging
+- write `SERIES_GUIDE.md` at repo root — use `references/series-guide-template.md` as the template. **Every field must map to an interview answer, an existing config value, or a documented minimal default.** If the user said "沿用" for series identity questions, use the minimal defaults verbatim and announce which defaults were applied. Never infer audience/mission/takeaway from the channel name.
+- mention the advanced extension points when relevant:
+  - `shell.layout` can stay on built-in `'streaming'` / `'shorts'`, or advanced users can swap in a series custom layout component
+  - series-scoped cards under `src/episodes/<series>/cards/` can add new card types or override built-in engine cards by reusing the same `type`
 - add optional custom skills if the user wants them
 
-If the user chooses do it later:
+### from scratch
+- delete demo content in `src/episodes/<series>/`:
+  - remove `ep-demo.ts`
+  - remove `cards/` (series-scoped card overrides, if any)
+- keep `series-config.ts` and `episode.template.ts`
+- run the same brand interview and write SERIES_GUIDE.md as in "from template"
+
+### skip for now
 - skip the interview
 - tell the user they can run `/ars:onboard` at any time to come back and customize
 - point them to these key files:
   `series-config.ts` (brand + theme)
-  `STYLING.md` (tone + writing rules)
+  `SERIES_GUIDE.md` (series background knowledge, tone, and structure defaults)
   `public/episodes/<series>/shared/vtuber/` (VTuber images)
 
 ## Phase 2 confirmation mode
 
-Use this mode only when re-run detection shows the series already has non-placeholder values.
+Use this mode only when re-run detection shows `project.onboardedAt` is already set.
 
-Do not restart from scratch. Instead:
-- summarize the current customized state
+Do NOT offer the three-way choice here — the series already has customizations. Destroying them (especially via "from scratch") would lose user work.
+
+Instead:
+- summarize the current customized state (channel name, primary color, layout, VTuber status, etc.)
 - ask whether they want to update branding now or leave it as-is
-- if they want changes, perform the Phase 2 customize flow against the existing files
+- if they want changes, run the brand interview from `references/branding-guide.md` against the existing files (never delete `ep-demo.ts` / `cards/` in this mode)
 - if they do not want changes, continue directly to Phase 3
 
 ## Phase 3 — verify
@@ -103,7 +119,7 @@ npx ars doctor
 4. Especially flag:
 - YouTube enabled but no auth
 - MiniMax selected but no API key
-5. If all checks pass, run `npx ars workstate clear` to reset stage to idle
+5. If all checks pass, run `npx ars workstate clear --onboarded` — this clears the workstate AND stamps `project.onboardedAt` in `.ars/config.json`, which is the SSOT telling the statusline that onboard is complete
 6. Output next-step suggestions:
 - `/ars:plan <topic>`
 - `/ars:build <epId>`

@@ -20,6 +20,11 @@ public/episodes/<series>/
 
 This is the only file that needs to be customized after init. It exports `SERIES_CONFIG: SeriesConfig`.
 
+Notes:
+- In normal onboarding, `shell.layout` usually stays on a built-in key: `'streaming'` or `'shorts'`.
+- Advanced series can override the default layout by assigning a custom layout component to `shell.layout` instead of a string key.
+- `src/episodes/<series>/cards/` is the series-scoped extension point for cards: you can add new card types there, or fully replace a built-in engine card by reusing the same `type`.
+
 ```typescript
 import { DEFAULT_VTUBER_CONFIG, DEFAULT_SUBTITLE_CONFIG } from '../../engine/shared/defaults';
 import type { StreamingLayoutConfig } from '../../engine/layouts/StreamingLayout';
@@ -110,4 +115,4 @@ export const SERIES_CONFIG: SeriesConfig = {
 | `theme.colors.primary` | `theme.colors` | Brand primary hex color |
 | `fontFamily` | top of file | Google Font name or system font |
 | `vtuber.closedImg` / `openImg` | `vtuber` | Path relative to `public/` |
-| `shell.layout` | `shell` | `'streaming'` (16:9, default) or `'shorts'` (9:16 vertical) |
+| `shell.layout` | `shell` | Usually `'streaming'` (16:9, default) or `'shorts'` (9:16 vertical); advanced series may also pass a custom layout component |

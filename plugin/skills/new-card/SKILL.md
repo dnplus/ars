@@ -8,7 +8,7 @@ effort: medium
 
 Generate a new series-scoped card using ARS engine primitives.
 
-Prefer using this only when `/ars:plan` produced a matching `card-spec` todo or a card brief under `.ars/episodes/<epId>/card-specs/`.
+Prefer using this only when the episode plan clearly calls for a new custom card or the user explicitly asks for one.
 Existing series-scoped cards are reusable assets for that series, not throwaway episode-specific files.
 
 ## Overview
@@ -29,7 +29,7 @@ References:
 
 2. **Read series theme**: Check `src/episodes/<series>/series-config.ts` for theme seed / channel name to inform visual style.
 
-3. **Understand the card purpose**: If no description, first look for a matching brief under `.ars/episodes/*/card-specs/<card-name>.md`. Only ask one focused question if no brief exists.
+3. **Understand the card purpose**: If no description, first look at the relevant episode `plan.md`, especially the `## New card` section. Only ask one focused question if the concept is still unclear.
 
 4. **Check for reuse before scaffolding**:
    - Run `npx ars card list` to see all built-in and series-scoped cards with agentHints and live examples.

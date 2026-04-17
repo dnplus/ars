@@ -1,6 +1,6 @@
 # Custom Card Decision Guide
 
-Use this guide when deciding whether to create a new custom card during `/ars:plan`.
+Use this guide when deciding whether to add an entry under `## New card` during `/ars:plan`.
 
 ---
 
@@ -18,11 +18,15 @@ If only one condition is met, prefer extending an existing card or using a built
 
 ---
 
-## Differentiation check (required before creating)
+## Differentiation check (required before proposing)
 
-Before writing a card-spec brief, write this sentence in the brief's `## Purpose` section:
+Before adding a row under `## New card`:
+
+1. Write this sentence in your working notes:
 
 > "This differs from `<nearest-existing-card>` because ___."
+
+2. Make sure the `Concept` field states, in one sentence, what the audience should understand at a glance.
 
 **Reject the new card if the blank is filled with:**
 - "different colors" → use theme tokens on the existing card
@@ -33,6 +37,8 @@ Before writing a card-spec brief, write this sentence in the brief's `## Purpose
 - "it animates a spatial relationship that no grid/flow card can show"
 - "it overlays two data dimensions in a single glyph the audience reads at a glance"
 - "the interaction metaphor (e.g. a gauge, a stack trace, a diff view) has no built-in equivalent"
+
+If you cannot describe the concept cleanly in one sentence, the card is probably still an under-specified visual idea rather than a reusable card.
 
 ---
 
@@ -92,9 +98,10 @@ This is an advanced pattern. Don't override unless the built-in genuinely can't 
 
 ---
 
-## Checklist before writing the card-spec brief
+## Checklist before adding `## New card`
 
 - [ ] Ran `npx ars card list` and confirmed no existing card covers this need
 - [ ] Wrote the differentiation sentence — it names a structural difference, not cosmetic
+- [ ] Wrote a crisp card ask — one-glance promise, not implementation details
 - [ ] Card name is a specific noun phrase
 - [ ] Card will recur across 2+ episodes OR content cannot be expressed without it

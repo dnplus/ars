@@ -9,27 +9,28 @@ effort: high
 Use `.ars/episodes/<epId>/plan.md` as the implementation contract.
 
 References:
-- See `references/episode-step-properties.md` for all `contentType` step fields and the card selection guide.
 - See `references/card-primitives.md` for `BaseSlide`, `WindowSlide`, and `ScrollSlide` props API.
 
 Behavior:
-- Read `STYLING.md` at the repo root before doing anything else. Use it to inform narration copy, tone, and visual choices throughout the episode.
+- Read `SERIES_GUIDE.md` at the repo root before doing anything else. Use it to inform narration copy, tone, and visual choices throughout the episode.
 - Resolve the active series from repo state. One repo maps to one series, so `/ars:build` should operate on `<epId>` within that active series.
 - Require `.ars/episodes/<epId>/plan.md` before editing.
 - Apply the approved episode plan strictly. Do not invent new narrative beats, layouts, cards, or motion systems beyond what the plan allows.
+- Treat `plan.md` as a narrative + visual intent contract, not as a pre-filled `ep.ts` dump. If the plan gives a primary card direction plus approved alternates, prefer the primary choice and only use an alternate when implementation constraints justify it.
+- Use `## References` and `## Reminders` from the plan during implementation so sourced claims, unresolved assets, and cautions do not get lost.
 - Use Claude Code todos for session task tracking; do not create or update a repo-level `todo.json`.
 - If the plan is missing or ambiguous, stop and ask for `/ars:plan` instead of guessing.
 
 ## Phase 1 — Build pending custom cards (if any)
 
-Before writing `ep.ts`, check `.ars/episodes/<epId>/card-specs/` for pending briefs.
-If briefs exist, build each card inline using the rules below — do NOT ask the user to run `/ars:new-card` separately.
+Before writing `ep.ts`, read the `## New card` table in `.ars/episodes/<epId>/plan.md`.
+If the table contains real entries, build each card inline using the rules below — do NOT ask the user to run `/ars:new-card` separately.
 
-For each `card-specs/<card-name>.md` brief:
+For each new-card row:
 
-1. **Read the brief** to understand the card's purpose and visual intent.
+1. **Read the row** to understand the card name, why existing cards are insufficient, and the concept it must deliver at a glance.
 2. **Read series theme**: Check `src/episodes/<series>/series-config.ts` for theme seed / channel name.
-3. **Check for reuse**: Run `npx ars card list` first. If an existing card already covers the need, skip creation and update the plan reference. If creating, verify the differentiation check in the brief — see `references/custom-card-guide.md` for the agentHints quality bar.
+3. **Check for reuse**: Run `npx ars card list` first. If an existing card already covers the need, skip creation and update the plan reference. If creating, verify the differentiation check from `references/custom-card-guide.md`.
 4. **Choose the right primitive**:
    - `BaseSlide` — fullscreen content, no chrome (default for most cards)
    - `WindowSlide` — content inside a mac/terminal/browser window frame
@@ -60,7 +61,7 @@ For each `card-specs/<card-name>.md` brief:
    - Never import from legacy deleted cards
    - If the card uses SVG `<text>` for chart labels, ticks, legends, or axis titles, snap `x` / `y` to integer pixels, especially for centered text, and prefer `textRendering="geometricPrecision"` to avoid shimmer in Remotion output
 7. **Run `./node_modules/.bin/tsc --noEmit`** after each card to catch type errors immediately. Never use `npx tsc` — it may install a fake `tsc` package instead of TypeScript.
-8. **Delete the processed brief** from `card-specs/` after successful creation.
+8. **Update the plan if needed**: If implementation proves an existing card is enough, revise the `## New card` / `Card Suggestion` entries to match reality.
 
 ## Phase 2 — Write episode implementation
 

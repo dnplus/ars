@@ -9,7 +9,7 @@ effort: medium
 Polish work is constrained refinement, not a rebuild.
 
 Behavior:
-- Read `STYLING.md` at the repo root first. Use it to guide copy tightening, tone consistency, and visual cleanup decisions.
+- Read `SERIES_GUIDE.md` at the repo root first. Use it to guide copy tightening, tone consistency, and visual cleanup decisions.
 - Read `.ars/episodes/<epId>/plan.md` and the current episode source.
 - Limit changes to tier B steps and tier B notes from the plan.
 - Do not modify tier A structure, core narrative ordering, or locked variants.

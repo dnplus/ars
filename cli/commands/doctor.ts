@@ -91,7 +91,7 @@ export function runDoctor(options: { json: boolean; strict: boolean }): CheckRes
   validateEngine(root, results);
   validatePlugin(runtime.pluginRoot, results);
   validateClaudeMd(root, results);
-  validateStyling(root, results);
+  validateSeriesGuide(root, results);
   validateProviders(config, root, results);
 
   return results;
@@ -339,17 +339,17 @@ function validatePlugin(pluginRoot: string, results: CheckResult[]): void {
   });
 }
 
-function validateStyling(root: string, results: CheckResult[]): void {
-  const stylingPath = path.join(root, 'STYLING.md');
+function validateSeriesGuide(root: string, results: CheckResult[]): void {
+  const guidePath = path.join(root, 'SERIES_GUIDE.md');
   results.push({
-    id: 'content.styling',
-    status: fs.existsSync(stylingPath) ? 'pass' : 'warn',
-    detail: fs.existsSync(stylingPath)
-      ? `Found ${stylingPath}`
-      : `Missing ${stylingPath} — series tone/style guide not set up.`,
-    fixHint: fs.existsSync(stylingPath)
+    id: 'content.series-guide',
+    status: fs.existsSync(guidePath) ? 'pass' : 'warn',
+    detail: fs.existsSync(guidePath)
+      ? `Found ${guidePath}`
+      : `Missing ${guidePath} — series defaults and background guide not set up.`,
+    fixHint: fs.existsSync(guidePath)
       ? undefined
-      : 'Run /ars:onboard to generate STYLING.md for your series.',
+      : 'Run /ars:onboard to generate SERIES_GUIDE.md for your series.',
   });
 }
 

@@ -96,8 +96,8 @@ async function create(args: string[]) {
 
 Next steps:
   1. /ars:plan ${epId}
-  2. /ars:new-card ...   (only if the plan emits card-spec todos)
-  3. /ars:build ${epId}
+  2. /ars:build ${epId}
+     (build will handle any custom-card needs recorded in the plan)
 `);
 }
 
