@@ -1,15 +1,46 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { Step } from '../../shared/types';
 
 type StepEditorPanelProps = {
   step: Step;
   sourceStep: Step;
+  sourceFilePath?: string;
   onApply: (nextStep: Step) => void;
   onReset: () => void;
   onClose: () => void;
 };
 
 const formatStep = (step: Step) => JSON.stringify(step, null, 2);
+
+type TokenType = 'key' | 'string' | 'number' | 'boolean' | 'null' | 'punct' | 'text';
+type Token = { type: TokenType; value: string };
+
+function tokenizeJson(json: string): Token[] {
+  const tokens: Token[] = [];
+  const re = /("(?:[^"\\]|\\.)*"\s*:)|("(?:[^"\\]|\\.)*")|(true|false|null)|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|([{}[\],:])|([^\S\n]+|\n)|([^\s"{}[\],:]+)/g;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(json)) !== null) {
+    const [, key, str, boolNull, num, punct, ws, other] = match;
+    if (key) tokens.push({ type: 'key', value: key });
+    else if (str) tokens.push({ type: 'string', value: str });
+    else if (boolNull) tokens.push({ type: boolNull === 'null' ? 'null' : 'boolean', value: boolNull });
+    else if (num) tokens.push({ type: 'number', value: num });
+    else if (punct) tokens.push({ type: 'punct', value: punct });
+    else if (ws) tokens.push({ type: 'text', value: ws });
+    else if (other) tokens.push({ type: 'text', value: other });
+  }
+  return tokens;
+}
+
+const TOKEN_COLORS: Record<TokenType, string> = {
+  key: '#d2a8ff',
+  string: '#a5d6ff',
+  number: '#f0883e',
+  boolean: '#f0883e',
+  null: '#f0883e',
+  punct: 'rgba(255,255,255,0.35)',
+  text: 'inherit',
+};
 
 const isStepLike = (value: unknown): value is Step => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -28,6 +59,7 @@ const isStepLike = (value: unknown): value is Step => {
 export const StepEditorPanel: React.FC<StepEditorPanelProps> = ({
   step,
   sourceStep,
+  sourceFilePath,
   onApply,
   onReset,
   onClose,
@@ -35,6 +67,8 @@ export const StepEditorPanel: React.FC<StepEditorPanelProps> = ({
   const [draft, setDraft] = useState(() => formatStep(step));
   const [error, setError] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
+  const gutterRef = useRef<HTMLDivElement>(null);
+  const highlightRef = useRef<HTMLPreElement>(null);
 
   useEffect(() => {
     setDraft(formatStep(step));
@@ -70,17 +104,17 @@ export const StepEditorPanel: React.FC<StepEditorPanelProps> = ({
       style={{
         width: 380,
         flexShrink: 0,
-        background: '#111827',
-        borderLeft: '1px solid rgba(255,255,255,0.1)',
+        background: 'var(--color-bg-dark)',
+        borderLeft: '1px solid var(--color-border-light)',
         display: 'flex',
         flexDirection: 'column',
-        color: '#e5e7eb',
+        color: 'var(--color-text-on-dark)',
       }}
     >
       <div
         style={{
           padding: '12px 14px',
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          borderBottom: '1px solid var(--color-border-light)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -88,8 +122,8 @@ export const StepEditorPanel: React.FC<StepEditorPanelProps> = ({
         }}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <strong style={{ fontSize: 13, color: '#f9fafb' }}>Step Editor</strong>
-          <span style={{ fontSize: 11, color: '#9ca3af' }}>
+          <strong style={{ fontSize: 13, color: 'var(--color-text-on-dark)' }}>Step Editor</strong>
+          <span style={{ fontSize: 11, color: 'color-mix(in srgb, var(--color-text-on-dark) 65%, transparent)' }}>
             只影響目前 studio preview，不會直接回寫 episode 檔。
           </span>
         </div>
@@ -99,7 +133,7 @@ export const StepEditorPanel: React.FC<StepEditorPanelProps> = ({
           style={{
             border: 'none',
             background: 'transparent',
-            color: '#9ca3af',
+            color: 'color-mix(in srgb, var(--color-text-on-dark) 65%, transparent)',
             cursor: 'pointer',
             fontSize: 16,
           }}
@@ -111,49 +145,150 @@ export const StepEditorPanel: React.FC<StepEditorPanelProps> = ({
       <div
         style={{
           padding: '10px 14px',
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          borderBottom: '1px solid var(--color-border-light)',
           display: 'flex',
           flexDirection: 'column',
           gap: 4,
           fontSize: 12,
-          color: '#cbd5e1',
+          color: 'color-mix(in srgb, var(--color-text-on-dark) 82%, transparent)',
         }}
       >
-        <div><span style={{ color: '#94a3b8' }}>step</span> {step.id}</div>
-        <div><span style={{ color: '#94a3b8' }}>type</span> {step.contentType}</div>
+        <div><span style={{ color: 'color-mix(in srgb, var(--color-text-on-dark) 62%, transparent)' }}>step</span> {step.id}</div>
+        <div><span style={{ color: 'color-mix(in srgb, var(--color-text-on-dark) 62%, transparent)' }}>type</span> {step.contentType}</div>
+        {sourceFilePath ? (
+          <div>
+            <span style={{ color: 'color-mix(in srgb, var(--color-text-on-dark) 62%, transparent)' }}>source</span>
+            {' '}
+            <span style={{ fontFamily: 'var(--font-code, monospace)', fontSize: 11 }}>{sourceFilePath}</span>
+          </div>
+        ) : null}
       </div>
 
       <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minHeight: 0 }}>
-        <textarea
-          value={draft}
-          onChange={(e) => {
-            setDraft(e.target.value);
-            setIsDirty(true);
-          }}
-          spellCheck={false}
+        <div
+          className="editor-container"
           style={{
-            width: '100%',
+            borderRadius: 12,
+            border: '1px solid var(--color-border-light)',
+            background: 'color-mix(in srgb, var(--color-bg-dark) 78%, black)',
+            overflow: 'hidden',
+            position: 'relative',
             flex: 1,
             minHeight: 260,
-            resize: 'none',
-            borderRadius: 12,
-            border: '1px solid rgba(255,255,255,0.12)',
-            background: '#020617',
-            color: '#e2e8f0',
-            padding: 14,
-            fontSize: 12,
-            lineHeight: 1.6,
-            fontFamily: 'var(--font-code, monospace)',
           }}
-        />
+        >
+          <div
+            className="editor-gutter"
+            ref={gutterRef}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: 48,
+              height: '100%',
+              overflowY: 'hidden',
+              padding: '14px 0',
+              boxSizing: 'border-box',
+              textAlign: 'right',
+              paddingRight: 10,
+              fontFamily: 'var(--font-code, monospace)',
+              fontSize: 12,
+              lineHeight: 1.6,
+              color: 'rgba(255,255,255,0.25)',
+              background: 'color-mix(in srgb, var(--color-bg-dark) 78%, black)',
+              borderRadius: '12px 0 0 12px',
+              borderRight: '1px solid rgba(255,255,255,0.08)',
+              userSelect: 'none',
+              pointerEvents: 'none',
+            }}
+          >
+            {draft.split('\n').map((_, i) => (
+              <div key={i}>{i + 1}</div>
+            ))}
+          </div>
+
+          <pre
+            className="editor-highlight"
+            ref={highlightRef}
+            aria-hidden
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 48,
+              right: 0,
+              bottom: 0,
+              margin: 0,
+              padding: 14,
+              paddingLeft: 10,
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              fontFamily: 'var(--font-code, monospace)',
+              fontSize: 12,
+              lineHeight: 1.6,
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              pointerEvents: 'none',
+              color: 'var(--color-text-on-dark)',
+              background: 'transparent',
+              borderRadius: '0 12px 12px 0',
+            }}
+          >
+            {tokenizeJson(draft).map((token, i) => (
+              <span key={i} style={{ color: TOKEN_COLORS[token.type] }}>{token.value}</span>
+            ))}
+          </pre>
+
+          <textarea
+            className="editor-input"
+            value={draft}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              setIsDirty(true);
+            }}
+            onScroll={(e) => {
+              const scrollTop = (e.target as HTMLTextAreaElement).scrollTop;
+              if (highlightRef.current) {
+                highlightRef.current.scrollTop = scrollTop;
+              }
+              if (gutterRef.current) {
+                gutterRef.current.scrollTop = scrollTop;
+              }
+            }}
+            spellCheck={false}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 48,
+              right: 0,
+              bottom: 0,
+              width: 'calc(100% - 48px)',
+              height: '100%',
+              resize: 'none',
+              border: 'none',
+              outline: 'none',
+              background: 'transparent',
+              color: 'transparent',
+              caretColor: 'white',
+              padding: 14,
+              paddingLeft: 10,
+              fontFamily: 'var(--font-code, monospace)',
+              fontSize: 12,
+              lineHeight: 1.6,
+              boxSizing: 'border-box',
+              overflow: 'auto',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+            }}
+          />
+        </div>
 
         {error ? (
           <div
             style={{
               padding: '10px 12px',
               borderRadius: 10,
-              background: 'rgba(127,29,29,0.35)',
-              color: '#fecaca',
+              background: 'color-mix(in srgb, var(--color-negative) 24%, var(--color-overlay-bg))',
+              color: 'var(--color-text-on-dark)',
               fontSize: 12,
               lineHeight: 1.5,
             }}
@@ -171,8 +306,8 @@ export const StepEditorPanel: React.FC<StepEditorPanelProps> = ({
               padding: '8px 12px',
               borderRadius: 10,
               border: 'none',
-              background: isDirty ? 'var(--color-primary, #c4a77d)' : 'rgba(255,255,255,0.12)',
-              color: isDirty ? '#111827' : '#94a3b8',
+              background: isDirty ? 'var(--color-primary, #c4a77d)' : 'color-mix(in srgb, var(--color-text-on-dark) 12%, transparent)',
+              color: isDirty ? 'var(--color-bg-dark)' : 'color-mix(in srgb, var(--color-text-on-dark) 62%, transparent)',
               fontWeight: 700,
               cursor: isDirty ? 'pointer' : 'not-allowed',
             }}
@@ -185,9 +320,9 @@ export const StepEditorPanel: React.FC<StepEditorPanelProps> = ({
             style={{
               padding: '8px 12px',
               borderRadius: 10,
-              border: '1px solid rgba(255,255,255,0.14)',
+              border: '1px solid var(--color-border-light)',
               background: 'transparent',
-              color: '#cbd5e1',
+              color: 'color-mix(in srgb, var(--color-text-on-dark) 82%, transparent)',
               cursor: 'pointer',
             }}
           >
@@ -199,9 +334,9 @@ export const StepEditorPanel: React.FC<StepEditorPanelProps> = ({
             style={{
               padding: '8px 12px',
               borderRadius: 10,
-              border: '1px solid rgba(255,255,255,0.14)',
+              border: '1px solid var(--color-border-light)',
               background: 'transparent',
-              color: '#fca5a5',
+              color: 'var(--color-negative)',
               cursor: 'pointer',
             }}
           >

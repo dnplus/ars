@@ -1,9 +1,9 @@
 /**
  * @command init
- * @description Bootstrap a new ARS repo and initialize its only active series
+ * @description Bootstrap a new ARS repo and optionally initialize its only active series
  *
  * Usage:
- *   npx ars init <series-name> [options]
+ *   npx ars init [series-name] [options]
  */
 import fs from 'fs';
 import path from 'path';
@@ -13,7 +13,7 @@ import { getActiveSeries, listAvailableSeries, setActiveSeries, validateSeriesNa
 import { getRuntimePackageInfo } from '../lib/runtime-package';
 
 const HELP = `
-Usage: npx ars init <series-name> [options]
+Usage: npx ars init [series-name] [options]
 
 Initializes .ars/config.json, syncs the ARS engine/plugin assets into this repo,
 copies the template series into src/episodes/<series-name>, and sets project.activeSeries.
@@ -23,6 +23,7 @@ Options:
   --force-engine       Overwrite engine files and version metadata only
   --force-config       Overwrite config.json only
   --force-claude-md    Rebuild the ARS block in CLAUDE.md
+  --skip-series        Initialize the repo without copying the template series
   -y, --yes            Skip interactive confirmation and use defaults
   -q, --quiet          Suppress non-error output
 `;
@@ -30,32 +31,75 @@ Options:
 export async function run(args: string[]) {
   const { options, seriesName } = parseArgs(args);
   const root = getRepoRoot();
+  const result = await ensureRepoInitialized({
+    force: options.force,
+    forceEngine: options.forceEngine,
+    forceConfig: options.forceConfig,
+    forceClaudeMd: options.forceClaudeMd,
+    yes: options.yes,
+    quiet: options.quiet,
+    root,
+  });
 
-  validateSeriesName(seriesName);
+  if (options.skipSeries) {
+    if (!options.quiet) {
+      console.log(`✅ Wrote ${result.configPath}`);
+      console.log(`   tts.provider = ${result.config.tts.provider}`);
+      console.log(
+        `   publish.youtube.enabled = ${String(result.config.publish.youtube.enabled)}`,
+      );
+      if (result.copiedFiles.length > 0) {
+        console.log(`✅ Synced engine into ${path.join(result.root, 'src', 'engine')}`);
+        for (const copiedFile of result.copiedFiles) {
+          console.log(`   ${copiedFile}`);
+        }
+      }
+      if (result.claudeMdPath) {
+        console.log(`✅ Patched ${result.claudeMdPath}`);
+      }
+      if (result.installedSkills.length > 0) {
+        console.log(`✅ Installed ${result.installedSkills.length} ARS skills into .claude/skills/ars/`);
+      }
+      console.log(`✅ Wrote ${result.versionPath}`);
+      if (result.usedDefaults) {
+        console.log('   Non-interactive defaults were applied.');
+      }
+      if (result.npmInstalled) {
+        console.log('✅ Ran npm install');
+      }
+      console.log('ℹ️  Skipped series initialization (--skip-series).');
+    }
+    return;
+  }
+
+  const targetSeries = seriesName;
+  if (!targetSeries) {
+    throw new Error('Please provide a series name');
+  }
+  validateSeriesName(targetSeries);
   const activeSeries = getActiveSeries(root);
   const existingUserSeries = listAvailableSeries(root).filter((series) => series !== 'template');
 
-  if (activeSeries && activeSeries !== seriesName) {
+  if (activeSeries && activeSeries !== targetSeries) {
     console.error(`❌ This repo is already initialized for series "${activeSeries}".`);
     console.error('   ARS now supports one active series per repo.');
     process.exit(1);
   }
 
-  const conflictingSeries = existingUserSeries.filter((series) => series !== seriesName);
+  const conflictingSeries = existingUserSeries.filter((series) => series !== targetSeries);
   if (conflictingSeries.length > 0) {
     console.error(`❌ Found existing user series: ${conflictingSeries.join(', ')}`);
     console.error('   ARS now supports one active series per repo.');
     process.exit(1);
   }
 
-  const result = await ensureRepoInitialized({ ...options, root });
-  const srcDir = path.join(root, 'src/episodes', seriesName);
-  const publicDir = path.join(root, 'public/episodes', seriesName);
+  const srcDir = path.join(root, 'src/episodes', targetSeries);
+  const publicDir = path.join(root, 'public/episodes', targetSeries);
   const templateSrcDir = path.join(root, 'src/episodes/template');
   const templatePublicDir = path.join(root, 'public/episodes/template/shared');
 
   if (fs.existsSync(srcDir)) {
-    console.error(`❌ Series "${seriesName}" already exists at ${srcDir}`);
+    console.error(`❌ Series "${targetSeries}" already exists at ${srcDir}`);
     process.exit(1);
   }
 
@@ -89,15 +133,15 @@ export async function run(args: string[]) {
     if (result.npmInstalled) {
       console.log('✅ Ran npm install');
     }
-    console.log(`🚀 Initializing series "${seriesName}" from template...`);
+    console.log(`🚀 Initializing series "${targetSeries}" from template...`);
   }
 
   // 複製 src/episodes/template/ → src/episodes/{seriesName}/
   copyDir(templateSrcDir, srcDir);
   // Rewrite path references in series-config.ts from "episodes/template/" → "episodes/<seriesName>/"
-  rewriteSeriesConfig(srcDir, 'template', seriesName);
+  rewriteSeriesConfig(srcDir, 'template', targetSeries);
   if (!options.quiet) {
-    console.log(`✅ Created: src/episodes/${seriesName}/`);
+    console.log(`✅ Created: src/episodes/${targetSeries}/`);
   }
 
   // 複製 pronunciation_dict.yaml 範本（TTS 破音字字典）
@@ -115,18 +159,18 @@ export async function run(args: string[]) {
   // 建立 public dirs
   fs.mkdirSync(path.join(publicDir, 'shared'), { recursive: true });
   if (!options.quiet) {
-    console.log(`✅ Created: public/episodes/${seriesName}/`);
+    console.log(`✅ Created: public/episodes/${targetSeries}/`);
   }
 
   // 複製 shared 資源（vtuber 等）
   if (fs.existsSync(templatePublicDir)) {
     copyDir(templatePublicDir, path.join(publicDir, 'shared'));
     if (!options.quiet) {
-      console.log(`✅ Created: public/episodes/${seriesName}/shared/`);
+      console.log(`✅ Created: public/episodes/${targetSeries}/shared/`);
     }
   }
 
-  const configPath = setActiveSeries(seriesName, root);
+  const configPath = setActiveSeries(targetSeries, root);
   if (options.quiet) {
     return;
   }
@@ -137,7 +181,7 @@ export async function run(args: string[]) {
   console.log(`ℹ️  Series will be auto-discovered by Root.tsx require.context`);
 
   console.log(`
-🎉 Series "${seriesName}" initialized!
+🎉 Series "${targetSeries}" initialized!
 
 Next steps:
   1. Run \`ars\` to launch Claude Code with the ARS plugin
@@ -147,12 +191,13 @@ Next steps:
 }
 
 function parseArgs(args: string[]): {
-  seriesName: string;
+  seriesName?: string;
   options: {
     force: boolean;
     forceEngine: boolean;
     forceConfig: boolean;
     forceClaudeMd: boolean;
+    skipSeries: boolean;
     yes: boolean;
     quiet: boolean;
   };
@@ -164,8 +209,13 @@ function parseArgs(args: string[]): {
 
   const positional = args.filter((arg) => !arg.startsWith('-'));
   const seriesName = positional[0];
+  const skipSeries = args.includes('--skip-series');
 
-  if (!seriesName) {
+  if (skipSeries && seriesName) {
+    throw new Error('Cannot use --skip-series with a series name argument');
+  }
+
+  if (!seriesName && !skipSeries) {
     console.error('❌ Please provide a series name');
     console.log(HELP.trim());
     process.exit(1);
@@ -178,6 +228,7 @@ function parseArgs(args: string[]): {
       forceEngine: args.includes('--force-engine'),
       forceConfig: args.includes('--force-config'),
       forceClaudeMd: args.includes('--force-claude-md'),
+      skipSeries,
       yes: args.includes('--yes') || args.includes('-y'),
       quiet: args.includes('--quiet') || args.includes('-q'),
     },

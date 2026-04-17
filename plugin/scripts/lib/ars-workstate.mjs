@@ -634,6 +634,23 @@ function stageToStep(stage) {
   return -1;
 }
 
+function onboardStageToStep(stage) {
+  if (stage === 'onboard-walkthrough') return 0;
+  if (stage === 'onboard-bootstrap') return 1;
+  if (stage === 'onboard-customize') return 2;
+  if (stage === 'onboard-verify') return 3;
+  return -1;
+}
+
+function renderOnboardPipeline(currentStep) {
+  const steps = ['walkthrough', 'bootstrap', 'customize', 'verify'];
+  return steps.map((label, i) => {
+    if (i < currentStep) return `${GREEN}${label}${RESET}`;
+    if (i === currentStep) return `${CYAN}${BOLD}▶${label}${RESET}`;
+    return `${DIM}${label}${RESET}`;
+  }).join(` ${DIM}›${RESET} `);
+}
+
 /**
  * Render the 6-step pipeline with ANSI colors:
  *   done  → green
@@ -665,6 +682,13 @@ export function renderStatusLine(root = process.cwd(), sessionId, version = '') 
   }
 
   const rawStage = workState?.stage ?? progress.stage ?? '';
+
+  if (rawStage.startsWith('onboard-')) {
+    const onboardStep = onboardStageToStep(rawStage);
+    const pipeline = renderOnboardPipeline(onboardStep >= 0 ? onboardStep : 0);
+    return `${versionTag} ${BOLD}${activeSeries}${RESET}  ${pipeline}`;
+  }
+
   const currentStep = stageToStep(rawStage);
   const pipeline = renderPipeline(currentStep >= 0 ? currentStep : 0);
   const epLabel = `${BOLD}${activeSeries}/${progress.episodeId}${RESET}`;
