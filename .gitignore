@@ -9,3 +9,4 @@ dist/
 .omc/
 .playwright-mcp/
 build/
+.claude/
