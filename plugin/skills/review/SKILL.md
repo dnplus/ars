@@ -47,4 +47,8 @@ Each stdout line from Monitor is a notification. On every notification:
 - Run `npx ars review open` in the background so it doesn't block the watch loop.
 - Apply fixes conservatively: only change what the feedback message describes, do not restructure unrelated steps.
 - If a fix is ambiguous, apply best-effort and surface what you changed so the user can verify in the studio.
-- When the user says review is done, run `npx ars review close <epId>` to advance the stage to `audio`, then call `TaskStop` to end the monitor.
+- Review is an iterative loop, not a single pass. It commonly spans two rounds:
+  1. **Visual round** — user checks visuals before audio is generated. Intents are usually content / layout fixes.
+  2. **Audio round** — after `/ars:audio` runs, the studio plays TTS output. Intents at this point are often pronunciation fixes (see `/ars:apply-review` for how those route to `cli/pronunciation_dict.yaml` instead of `ep.ts`).
+- Do not push the user to `review close` just because visual intents are cleared. If audio has not been generated yet, suggest `/ars:audio <epId>` and keep the watch loop running so they can come back and submit pronunciation intents against the newly generated audio.
+- When the user explicitly says review is done (or there is no audio round needed, e.g. a shorts with pre-approved voice), run `npx ars review close <epId>` to advance the stage, then call `TaskStop` to end the monitor.

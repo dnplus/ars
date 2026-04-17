@@ -2,7 +2,7 @@
 name: ars:publish-youtube
 description: Run the confirmed YouTube publish flow through the publisher agent.
 argument-hint: "<epId>"
-model: claude-sonnet-4-6
+model: claude-haiku-4-5-20251001
 effort: medium
 ---
 

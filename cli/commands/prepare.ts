@@ -8,6 +8,7 @@
 import fs from 'fs';
 import path from 'path';
 import type { Step } from '../../src/engine/shared/types';
+import type { SubtitlePhrase } from '../../src/engine/shared/subtitle';
 import { resolveEpisodeTarget } from '../lib/context';
 import { loadEpisode, type LoadedEpisode } from '../lib/episode-file';
 import { getRepoRoot } from '../lib/ars-config';
@@ -47,6 +48,20 @@ interface StepContextSummary {
   narrationSummary: string;
 }
 
+interface ChapterEntry {
+  timestamp: string;
+  label: string;
+}
+
+interface YoutubeCandidate {
+  id: string;
+  title: string;
+  description: string;
+  tags: string[];
+  rationale: string;
+  warnings: string[];
+}
+
 interface YoutubePrepareArtifact {
   phase: 'youtube';
   status: 'pending-review' | 'ready';
@@ -63,7 +78,10 @@ interface YoutubePrepareArtifact {
     totalDurationInSeconds: number;
   };
   steps: StepContextSummary[];
+  chapters: ChapterEntry[];
   youtube: {
+    candidates: YoutubeCandidate[];
+    selected: string | null;
     title: string | null;
     description: string | null;
     tags: string[];
@@ -120,6 +138,12 @@ function formatDuration(totalSeconds: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
+function formatTimestamp(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = Math.max(0, Math.floor(totalSeconds % 60));
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
 function stepHeading(step: Step): string {
   const stepData =
     step.data && typeof step.data === 'object' && !Array.isArray(step.data)
@@ -141,6 +165,71 @@ function stepHeading(step: Step): string {
   if (step.id === 'intro') return '開場';
   if (step.id === 'ending') return '結尾';
   return step.id;
+}
+
+function chapterLabelCandidate(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const firstLine = value
+    .split('\n')
+    .map((line) => line.trim())
+    .find(Boolean);
+
+  if (!firstLine) return null;
+  return previewText(firstLine, 32);
+}
+
+function chapterLabel(step: Step): string {
+  const stepData =
+    step.data && typeof step.data === 'object' && !Array.isArray(step.data)
+      ? (step.data as Record<string, unknown>)
+      : {};
+
+  const candidates: unknown[] = [
+    step.title,
+    stepData.title,
+    stepData.cardTitle,
+    stepData.summaryTitle,
+    stepData.cardContent,
+    step.phase,
+  ];
+
+  for (const candidate of candidates) {
+    const label = chapterLabelCandidate(candidate);
+    if (label) return label;
+  }
+
+  if (step.id === 'intro') return '開場';
+  if (step.id === 'ending') return '結尾';
+  return step.id;
+}
+
+function actualStepDuration(
+  step: Step,
+  subtitles?: Record<string, SubtitlePhrase[]>,
+): number {
+  const phrases = subtitles?.[step.id];
+  if (phrases && phrases.length > 0) {
+    const last = phrases[phrases.length - 1];
+    if (typeof last.endTime === 'number' && Number.isFinite(last.endTime) && last.endTime > 0) {
+      return last.endTime;
+    }
+  }
+  return step.durationInSeconds;
+}
+
+function buildChapters(
+  steps: Step[],
+  subtitles?: Record<string, SubtitlePhrase[]>,
+): ChapterEntry[] {
+  let cursor = 0;
+  return steps.map((step) => {
+    const entry = {
+      timestamp: formatTimestamp(cursor),
+      label: chapterLabel(step),
+    };
+    cursor += actualStepDuration(step, subtitles);
+    return entry;
+  });
 }
 
 function summarizeSteps(steps: Step[]): StepContextSummary[] {
@@ -181,14 +270,22 @@ function buildYoutubePrepareArtifact(episode: LoadedEpisode): YoutubePrepareArti
       totalDurationInSeconds,
     },
     steps: summarizeSteps(episode.episode.steps),
+    chapters: buildChapters(episode.episode.steps, episode.episode.subtitles),
     youtube: {
+      candidates: [],
+      selected: null,
       title: null,
       description: null,
       tags: [],
     },
     contextMarkdownPath,
-    note: 'Claude Code will fill youtube.title / youtube.description / youtube.tags via /ars:prepare-youtube.',
+    note: 'Claude Code /ars:prepare-youtube will fill youtube.candidates[] and the user picks one (youtube.selected), which flattens to youtube.title/description/tags.',
   };
+}
+
+function renderChaptersMarkdown(chapters: ChapterEntry[]): string {
+  if (chapters.length === 0) return '_No chapters derived._';
+  return chapters.map((chapter) => `- ${chapter.timestamp} ${chapter.label}`).join('\n');
 }
 
 function buildYoutubePrepareMarkdown(artifact: YoutubePrepareArtifact): string {
@@ -217,13 +314,17 @@ function buildYoutubePrepareMarkdown(artifact: YoutubePrepareArtifact): string {
     '## Steps Summary',
     stepsSection,
     '',
-    '## TODO: YouTube Title',
-    'TODO: Claude Code will fill this via /ars:prepare-youtube skill.',
+    '## Chapters',
+    '> 時間碼由 CLI 從 step durations（若已生音訊則從 subtitles 實際結束時間）推算。',
+    '> /ars:prepare-youtube 應把此章節表原樣附在 description 末尾，不要重算時間。',
     '',
-    '## TODO: YouTube Description',
-    'TODO: Claude Code will fill this via /ars:prepare-youtube skill.',
+    renderChaptersMarkdown(artifact.chapters),
     '',
-    '## TODO: YouTube Tags',
+    '## TODO: YouTube Candidates',
+    '> /ars:prepare-youtube 會在此產生 youtube-1 / youtube-2 / youtube-3 三個候選。',
+    '> 每個候選需包含 Title / Tags / Rationale / Warnings / Description（description 末尾必含 Chapters 區塊）。',
+    '> 使用者挑選後，skill 會把選中候選 flatten 到 artifact.youtube.title/description/tags 並將 status 設為 ready。',
+    '',
     'TODO: Claude Code will fill this via /ars:prepare-youtube skill.',
     '',
   ].join('\n');
@@ -262,6 +363,7 @@ async function runPrepareYoutube(options: PrepareOptions, episode: LoadedEpisode
     console.log(`   Subtitle: ${artifact.episode.subtitle ?? '(none)'}`);
     console.log(`   Steps: ${artifact.episode.totalSteps}`);
     console.log(`   Duration: ${formatDuration(artifact.episode.totalDurationInSeconds)}`);
+    console.log(`   Chapters: ${artifact.chapters.length}`);
     console.log('\n   DRY RUN: artifacts were not written.');
     console.log(`   Planned Markdown: ${artifact.contextMarkdownPath}`);
     return;
@@ -272,7 +374,8 @@ async function runPrepareYoutube(options: PrepareOptions, episode: LoadedEpisode
   console.log(`${'═'.repeat(50)}`);
   console.log(`   Markdown: ${path.relative(ROOT, paths.markdownPath)}`);
   console.log(`   JSON: ${path.relative(ROOT, paths.jsonPath)}`);
-  console.log(`Context prepared. Run /ars:prepare-youtube ${options.series}/${options.epId} in Claude Code to generate YouTube metadata.`);
+  console.log(`   Chapters: ${artifact.chapters.length} derived`);
+  console.log(`Context prepared. Run /ars:prepare-youtube ${options.series}/${options.epId} in Claude Code to generate candidates.`);
 }
 
 export async function run(args: string[]) {

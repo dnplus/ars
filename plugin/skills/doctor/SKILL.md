@@ -1,7 +1,7 @@
 ---
 name: ars:doctor
 description: Validate repo bootstrap readiness, ARS config, providers, and environment readiness with npx ars doctor.
-model: claude-sonnet-4-6
+model: claude-haiku-4-5-20251001
 effort: low
 ---
 
