@@ -6,6 +6,7 @@
 :root {
   --transition-fast: 0.2s ease;
   --transition-normal: 0.3s ease;
+  --studio-fullscreen-nav-height: 76px;
 }
 
 *,
@@ -243,11 +244,19 @@ body {
   left: 0;
   right: 0;
   opacity: 0;
-  transition: opacity var(--transition-normal);
+  transform: translateY(calc(100% - 10px));
+  transition: opacity var(--transition-normal), transform var(--transition-normal);
+  pointer-events: none;
 }
 
 .studio-app.fullscreen:hover .studio-navigation {
   opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.studio-app.fullscreen .studio-main-column {
+  padding-bottom: var(--studio-fullscreen-nav-height);
 }
 
 /* ========================================

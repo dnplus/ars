@@ -32,6 +32,35 @@ type FixAppliedResponse = {
   latest: FixAppliedEntry | null;
 };
 
+type AudioJobState = {
+  status: 'idle' | 'running' | 'succeeded' | 'failed';
+  series?: string;
+  epId?: string;
+  startedAt?: string;
+  finishedAt?: string;
+  updatedAt?: string;
+  exitCode?: number | null;
+  outputTail?: string[];
+};
+
+type AudioJobResponse = {
+  ok: boolean;
+  job?: AudioJobState;
+  error?: string;
+};
+
+type AudioCapability = {
+  visible: boolean;
+  enabled: boolean;
+  reason?: string;
+};
+
+type AudioCapabilityResponse = {
+  ok: boolean;
+  capability?: AudioCapability;
+  error?: string;
+};
+
 export const StudioApp: React.FC<StudioAppProps> = ({ episode, episodeId, seriesId }) => {
   const [draftEpisode, setDraftEpisode] = useState(episode);
   const shell = draftEpisode.shell!;
@@ -102,8 +131,69 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode, episodeId, series
   const [showStepEditor, setShowStepEditor] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [audioExists, setAudioExists] = useState<boolean | null>(null);
+  const [audioJob, setAudioJob] = useState<AudioJobState>({ status: 'idle' });
+  const [audioCapability, setAudioCapability] = useState<AudioCapability>({
+    visible: false,
+    enabled: false,
+  });
   const latestFixTimestampRef = useRef<string | null>(null);
   const fixInitializedRef = useRef(false);
+
+  const pollAudioJob = useCallback(async () => {
+    try {
+      const res = await fetch('/__ars/audio-generate');
+      if (!res.ok) return;
+      const payload = (await res.json()) as AudioJobResponse;
+      if (payload.job) {
+        setAudioJob(payload.job);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const handleGenerateFullAudio = useCallback(async () => {
+    try {
+      const res = await fetch('/__ars/audio-generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ series: fallbackSeries, epId: fallbackEpId }),
+      });
+      const payload = (await res.json()) as AudioJobResponse;
+      if (!res.ok || !payload.job) {
+        throw new Error(payload.error ?? `HTTP ${res.status}`);
+      }
+      setAudioJob(payload.job);
+    } catch (error) {
+      setAudioJob({
+        status: 'failed',
+        series: fallbackSeries,
+        epId: fallbackEpId,
+        finishedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        outputTail: [error instanceof Error ? error.message : String(error)],
+      });
+    }
+  }, [fallbackEpId, fallbackSeries]);
+
+  const loadAudioCapability = useCallback(async () => {
+    try {
+      const params = new URLSearchParams();
+      params.set('series', fallbackSeries);
+      const res = await fetch(`/__ars/audio-capability?${params.toString()}`);
+      const payload = (await res.json()) as AudioCapabilityResponse;
+      if (!res.ok || !payload.capability) {
+        throw new Error(payload.error ?? `HTTP ${res.status}`);
+      }
+      setAudioCapability(payload.capability);
+    } catch (error) {
+      setAudioCapability({
+        visible: true,
+        enabled: false,
+        reason: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }, [fallbackSeries]);
 
   const handleToggleFullscreen = useCallback(async () => {
     try {
@@ -195,7 +285,21 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode, episodeId, series
     fetch(`/${src}`, { method: 'HEAD' })
       .then((r) => setAudioExists(r.ok))
       .catch(() => setAudioExists(false));
-  }, [currentStudioStep.audioSrc]);
+  }, [currentStudioStep.audioSrc, audioJob.status, audioJob.finishedAt]);
+
+  useEffect(() => {
+    void loadAudioCapability();
+  }, [loadAudioCapability]);
+
+  useEffect(() => {
+    void pollAudioJob();
+    if (audioJob.status !== 'running') {
+      return;
+    }
+
+    const timer = window.setInterval(() => void pollAudioJob(), 2000);
+    return () => window.clearInterval(timer);
+  }, [audioJob.status, pollAudioJob]);
 
   // On slide change: seek to 0 and play
   useEffect(() => {
@@ -259,6 +363,20 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode, episodeId, series
 
   const step = currentStudioStep.step;
   const sourceStep = episode.steps[currentIndex] ?? step;
+  const audioButtonLabel =
+    audioJob.status === 'running'
+      ? '🔊 生成中…'
+      : audioJob.status === 'succeeded'
+        ? '🔊 已生成'
+        : audioJob.status === 'failed'
+          ? '🔊 重試音訊'
+          : '🔊 生成音訊';
+  const audioButtonTitle =
+    audioJob.status === 'running'
+      ? '正在背景生成整集語音'
+      : audioCapability.enabled
+        ? '為整集生成語音與字幕'
+        : (audioCapability.reason ?? '目前無法生成音訊');
 
   return (
     <ThemeProvider theme={theme}>
@@ -268,7 +386,7 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode, episodeId, series
         style={{ ...themeStyles, flexDirection: 'row' }}
       >
         {/* Left column: viewport + nav */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        <div className="studio-main-column" style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
           {/* Viewport */}
           <div
             ref={viewportRef}
@@ -384,6 +502,16 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode, episodeId, series
           </div>
 
           <div className="nav-right" style={{ position: 'relative' }}>
+            {audioCapability.visible && (
+              <button
+                className={`nav-btn${audioJob.status === 'running' ? ' active' : ''}`}
+                onClick={() => void handleGenerateFullAudio()}
+                disabled={audioJob.status === 'running' || !audioCapability.enabled}
+                title={audioButtonTitle}
+              >
+                {audioButtonLabel}
+              </button>
+            )}
             <button
               className={`nav-btn${showStepEditor ? ' active' : ''}`}
               onClick={() => setShowStepEditor((v) => !v)}
@@ -437,6 +565,11 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode, episodeId, series
                 <div><span style={{ color: 'color-mix(in srgb, var(--color-text-on-dark) 62%, transparent)' }}>卡片類型</span>　{step.layoutMode ?? '—'}</div>
                 <div><span style={{ color: 'color-mix(in srgb, var(--color-text-on-dark) 62%, transparent)' }}>duration</span>　{stepDurationInSeconds}s</div>
                 <div><span style={{ color: 'color-mix(in srgb, var(--color-text-on-dark) 62%, transparent)' }}>語音</span>　{audioExists === null ? '…' : audioExists ? '✓ 已生成' : '✗ 未生成'}</div>
+                <div><span style={{ color: 'color-mix(in srgb, var(--color-text-on-dark) 62%, transparent)' }}>audio capability</span>　{audioCapability.visible ? (audioCapability.enabled ? 'enabled' : 'disabled') : 'hidden'}</div>
+                {audioCapability.reason && (
+                  <div><span style={{ color: 'color-mix(in srgb, var(--color-text-on-dark) 62%, transparent)' }}>audio reason</span>　{audioCapability.reason}</div>
+                )}
+                <div><span style={{ color: 'color-mix(in srgb, var(--color-text-on-dark) 62%, transparent)' }}>audio job</span>　{audioJob.status}</div>
                 <div><span style={{ color: 'color-mix(in srgb, var(--color-text-on-dark) 62%, transparent)' }}>口播字數</span>　{step.narration ? `${step.narration.length} 字` : '—'}</div>
               </div>
             )}

@@ -11,7 +11,10 @@ import { defineConfig, type UserConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import fs from 'fs';
+import { spawn, type ChildProcess } from 'child_process';
+import { createRequire } from 'module';
 import { createReviewIntent } from '../review/review-intents';
+import { configExists, readArsConfig } from '../../cli/lib/ars-config';
 
 export interface StudioConfigOptions {
   /** Dev server port (each project should use a unique port) */
@@ -40,6 +43,11 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
   const arsPackageRoot = process.env.ARS_PACKAGE_ROOT
     ?? path.resolve(new URL(import.meta.url).pathname, '..', '..', '..');
   const arsModulesDir = path.join(arsPackageRoot, 'node_modules');
+  const require = createRequire(import.meta.url);
+  const tsxLoader = require.resolve('tsx');
+  const arsCliEntrypoint = path.join(arsPackageRoot, 'cli', 'index.ts');
+  let audioJobState: AudioJobState = { status: 'idle' };
+  let audioJobProcess: ChildProcess | null = null;
 
   return defineConfig({
     root: path.resolve(rootDir, 'src'),
@@ -194,6 +202,123 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
               return;
             }
 
+            if (url.pathname === '/__ars/audio-generate') {
+              if (req.method === 'GET') {
+                writeJson(res, 200, { ok: true, job: audioJobState });
+                return;
+              }
+
+              if (req.method !== 'POST') {
+                writeJson(res, 405, { ok: false, error: 'Method not allowed' });
+                return;
+              }
+
+              try {
+                const body = await readJsonBody(req);
+                const series = asRequiredString(body.series, 'series');
+                const epId = asRequiredString(body.epId, 'epId');
+                const target = `${series}/${epId}`;
+                const capability = resolveAudioCapability(rootDir, series);
+
+                if (audioJobState.status === 'running') {
+                  writeJson(res, 409, { ok: false, error: 'Audio generation already running.', job: audioJobState });
+                  return;
+                }
+
+                if (!capability.enabled) {
+                  writeJson(res, 400, {
+                    ok: false,
+                    error: capability.reason ?? 'Audio generation is not available.',
+                  });
+                  return;
+                }
+
+                audioJobState = {
+                  status: 'running',
+                  series,
+                  epId,
+                  startedAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                  outputTail: [],
+                };
+
+                const child = spawn(
+                  process.execPath,
+                  ['--import', tsxLoader, arsCliEntrypoint, 'audio', 'generate', target],
+                  {
+                    cwd: rootDir,
+                    env: process.env,
+                    stdio: ['ignore', 'pipe', 'pipe'],
+                  },
+                );
+
+                audioJobProcess = child;
+                const appendOutput = (chunk: string) => {
+                  const lines = chunk
+                    .split(/\r?\n/)
+                    .map((line) => line.trimEnd())
+                    .filter((line) => line.trim().length > 0);
+
+                  if (lines.length === 0) {
+                    return;
+                  }
+
+                  const nextTail = [...(audioJobState.outputTail ?? []), ...lines].slice(-12);
+                  audioJobState = {
+                    ...audioJobState,
+                    updatedAt: new Date().toISOString(),
+                    outputTail: nextTail,
+                  };
+                };
+
+                child.stdout.on('data', (chunk) => appendOutput(String(chunk)));
+                child.stderr.on('data', (chunk) => appendOutput(String(chunk)));
+                child.on('close', (code) => {
+                  audioJobState = {
+                    ...audioJobState,
+                    status: code === 0 ? 'succeeded' : 'failed',
+                    exitCode: code ?? null,
+                    finishedAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                  };
+                  audioJobProcess = null;
+                });
+                child.on('error', (error) => {
+                  audioJobState = {
+                    ...audioJobState,
+                    status: 'failed',
+                    finishedAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    outputTail: [...(audioJobState.outputTail ?? []), error.message].slice(-12),
+                  };
+                  audioJobProcess = null;
+                });
+
+                writeJson(res, 202, { ok: true, job: audioJobState });
+              } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                writeJson(res, 400, { ok: false, error: message });
+              }
+              return;
+            }
+
+            if (url.pathname === '/__ars/audio-capability') {
+              if (req.method !== 'GET') {
+                writeJson(res, 405, { ok: false, error: 'Method not allowed' });
+                return;
+              }
+
+              try {
+                const requestedSeries = url.searchParams.get('series')?.trim();
+                const capability = resolveAudioCapability(rootDir, requestedSeries || undefined);
+                writeJson(res, 200, { ok: true, capability });
+              } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                writeJson(res, 500, { ok: false, error: message });
+              }
+              return;
+            }
+
             next();
           });
         },
@@ -265,6 +390,23 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
 type FixAppliedEntry = {
   timestamp: string;
   stepIds: string[];
+};
+
+type AudioJobState = {
+  status: 'idle' | 'running' | 'succeeded' | 'failed';
+  series?: string;
+  epId?: string;
+  startedAt?: string;
+  finishedAt?: string;
+  updatedAt?: string;
+  exitCode?: number | null;
+  outputTail?: string[];
+};
+
+type AudioCapability = {
+  visible: boolean;
+  enabled: boolean;
+  reason?: string;
 };
 
 async function readJsonBody(req: NodeJS.ReadableStream): Promise<Record<string, unknown>> {
@@ -411,6 +553,66 @@ function asStepIds(value: unknown): string[] {
 
   const stepIds = value.map((entry) => asRequiredString(entry, 'stepIds[]'));
   return Array.from(new Set(stepIds));
+}
+
+function resolveAudioCapability(rootDir: string, series?: string): AudioCapability {
+  if (!configExists(rootDir)) {
+    return {
+      visible: false,
+      enabled: false,
+      reason: '尚未初始化 ARS 設定；先執行 ars init <series>。',
+    };
+  }
+
+  const config = readArsConfig(rootDir);
+  if (config.tts.provider === 'none') {
+    return {
+      visible: false,
+      enabled: false,
+      reason: '目前 config 未啟用音訊 provider。',
+    };
+  }
+
+  const hasApiKey = !!process.env.MINIMAX_API_KEY;
+  const hasGroupId = !!process.env.MINIMAX_GROUP_ID;
+  if (!hasApiKey || !hasGroupId) {
+    const missing = [
+      !hasApiKey && 'MINIMAX_API_KEY',
+      !hasGroupId && 'MINIMAX_GROUP_ID',
+    ].filter(Boolean).join(', ');
+    return {
+      visible: true,
+      enabled: false,
+      reason: `缺少 ${missing}。`,
+    };
+  }
+
+  const hasEnvVoiceId = !!process.env.MINIMAX_VOICE_ID || !!process.env.MINIMAX_CLONE_ID;
+  const seriesId = series || config.project.activeSeries;
+  const hasSeriesVoiceId = seriesId ? seriesConfigHasVoiceId(rootDir, seriesId) : false;
+  if (!hasEnvVoiceId && !hasSeriesVoiceId) {
+    return {
+      visible: true,
+      enabled: false,
+      reason: '缺少 voiceId；請設定 series-config.ts episodeDefaults.voiceId 或 MINIMAX_VOICE_ID。',
+    };
+  }
+
+  return { visible: true, enabled: true };
+}
+
+function seriesConfigHasVoiceId(rootDir: string, series: string): boolean {
+  const seriesConfigPath = path.join(rootDir, 'src', 'episodes', series, 'series-config.ts');
+  if (!fs.existsSync(seriesConfigPath)) {
+    return false;
+  }
+
+  try {
+    const content = fs.readFileSync(seriesConfigPath, 'utf-8');
+    return content.includes('voiceId');
+  } catch {
+    return false;
+  }
 }
 
 function writeJson(
