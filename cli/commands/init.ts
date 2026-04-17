@@ -146,6 +146,20 @@ export async function run(args: string[]) {
   copyDir(templateSrcDir, srcDir);
   // Rewrite path references in series-config.ts from "episodes/template/" → "episodes/<seriesName>/"
   rewriteSeriesConfig(srcDir, 'template', targetSeries);
+  // Apply layout choice from init prompt
+  if (result.shellLayout === 'shorts') {
+    rewriteShellLayout(srcDir, 'shorts');
+    if (!options.quiet) {
+      console.log(`✅ Set shell.layout = 'shorts' in series-config.ts`);
+    }
+  }
+  // Apply channel name if collected during init prompt
+  if (result.config.project?.channelName) {
+    rewriteChannelName(srcDir, result.config.project.channelName);
+    if (!options.quiet) {
+      console.log(`✅ Set channelName = '${result.config.project.channelName}' in series-config.ts`);
+    }
+  }
   if (!options.quiet) {
     console.log(`✅ Created: src/episodes/${targetSeries}/`);
   }
@@ -254,6 +268,22 @@ function rewriteSeriesConfig(seriesDir: string, fromSeries: string, toSeries: st
   if (updated !== content) {
     fs.writeFileSync(configPath, updated, 'utf-8');
   }
+}
+
+function rewriteShellLayout(seriesDir: string, layout: 'streaming' | 'shorts'): void {
+  const configPath = path.join(seriesDir, 'series-config.ts');
+  if (!fs.existsSync(configPath)) return;
+  const content = fs.readFileSync(configPath, 'utf-8');
+  const updated = content.replace(/layout:\s*'streaming'/, `layout: '${layout}'`);
+  if (updated !== content) fs.writeFileSync(configPath, updated, 'utf-8');
+}
+
+function rewriteChannelName(seriesDir: string, channelName: string): void {
+  const configPath = path.join(seriesDir, 'series-config.ts');
+  if (!fs.existsSync(configPath)) return;
+  const content = fs.readFileSync(configPath, 'utf-8');
+  const updated = content.replace(/channelName:\s*'Your Channel Name'/, `channelName: '${channelName.replace(/'/g, "\\'")}'`);
+  if (updated !== content) fs.writeFileSync(configPath, updated, 'utf-8');
 }
 
 const COPY_IGNORE = ['.bak', '.DS_Store'];

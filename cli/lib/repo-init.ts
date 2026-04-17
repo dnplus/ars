@@ -48,6 +48,7 @@ export interface RepoInitResult {
   versionPath: string;
   usedDefaults: boolean;
   npmInstalled: boolean;
+  shellLayout: 'streaming' | 'shorts';
 }
 
 export async function ensureRepoInitialized(options: RepoInitOptions): Promise<RepoInitResult> {
@@ -69,9 +70,14 @@ export async function ensureRepoInitialized(options: RepoInitOptions): Promise<R
     );
   }
 
+  let shellLayout: 'streaming' | 'shorts' = 'streaming';
   const config = overwriteConfig
     ? interactive
-      ? await promptForConfig()
+      ? await (async () => {
+          const result = await promptForConfig();
+          shellLayout = result.shellLayout;
+          return result.config;
+        })()
       : createDefaultConfig()
     : readArsConfig(root);
 
@@ -136,10 +142,11 @@ export async function ensureRepoInitialized(options: RepoInitOptions): Promise<R
     versionPath,
     usedDefaults: !interactive && overwriteConfig,
     npmInstalled,
+    shellLayout,
   };
 }
 
-async function promptForConfig(): Promise<ArsConfig> {
+async function promptForConfig(): Promise<{ config: ArsConfig; shellLayout: 'streaming' | 'shorts' }> {
   const defaults = createDefaultConfig();
   const rl = createInterface({ input, output });
 
@@ -155,8 +162,15 @@ async function promptForConfig(): Promise<ArsConfig> {
       'Enable YouTube publishing?',
       defaults.publish.youtube.enabled,
     );
+    const channelName = (await rl.question('Channel name (display name shown on episodes): ')).trim();
+    const shellLayout = await promptChoice(
+      rl,
+      'Layout',
+      ['streaming', 'shorts'] as const,
+      'streaming' as const,
+    );
 
-    return {
+    const config: ArsConfig = {
       version: CONFIG_SCHEMA_VERSION,
       tts: {
         provider: ttsProvider,
@@ -176,8 +190,11 @@ async function promptForConfig(): Promise<ArsConfig> {
       },
       project: {
         ...defaults.project,
+        ...(channelName ? { channelName } : {}),
       },
     };
+
+    return { config, shellLayout };
   } finally {
     rl.close();
   }
