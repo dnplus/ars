@@ -16,7 +16,7 @@ Argument parsing:
 - If the argument contains any other URL, fetch it with WebFetch.
 - If the argument is plain text or pasted content, use it directly as source material.
 - epId is always determined automatically: list `src/episodes/<active-series>/` to find the highest existing `ep\d+`, then use the next one (e.g. ep001 exists → use ep002). If no episodes exist, start at ep001.
-- If no argument is provided, ask the user: "這集要講什麼？可以貼 URL、筆記、文章片段，或直接描述題材都行。"
+- If no argument is provided, ask the user: "What's this episode about? You can paste a URL, notes, an article, or just describe the topic."
 
 Behavior:
 - Read `STYLING.md` at the repo root before doing anything else. Use it to inform tone, narration style, audience, and visual direction throughout the plan.
