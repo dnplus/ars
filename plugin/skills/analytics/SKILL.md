@@ -1,44 +1,62 @@
 ---
 name: ars:analytics
-description: Query YouTube analytics through ARS helpers and produce a concise channel report for Claude Code.
+description: Query YouTube analytics through npx ars analytics fetch and produce a concise channel report for Claude Code.
 argument-hint: "[--days N] [--fresh]"
 model: claude-sonnet-4-6
 effort: medium
 ---
 
-Use the existing YouTube helpers in `cli/lib/youtube-client.ts` as the source of truth for auth, cache, Analytics API queries, and Data API lookups.
+Run `npx ars analytics fetch` to pull a JSON snapshot, then turn it into a narrative report. Do NOT hand-roll fetch calls against the YouTube API — the CLI already handles auth, caching, and data-delay windowing.
 
-Behavior:
-- Treat this as a Claude Code workflow/reporting skill, not a public core CLI surface.
-- Require YouTube credentials (`YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, `YOUTUBE_REFRESH_TOKEN`) before attempting analytics queries.
-- Default to a 28-day lookback window when the user does not specify `--days`.
-- Respect `--fresh` by bypassing the local `.cache/youtube-analytics/` cache.
-- Produce a concise report that emphasizes decisions, not raw tables.
+## Command
 
-Recommended flow:
-1. Load credentials with `loadCredentials()`.
-2. Resolve the reporting window using `parseDaysFlag(args)` and `safeEndDate()`.
-3. Query channel-level summary data first.
-   - Use `getChannelInfo()` for channel title and top-level context.
-   - Use `queryAnalytics()` for recent views, watch time, subscribers gained/lost, and daily trends.
-4. If useful, enrich with `getVideoDetails()` for top-performing videos mentioned in the report.
-5. Summarize the findings into a human-readable report.
+```
+npx ars analytics fetch [--days N] [--fresh] [--top N]
+```
 
-Suggested report sections:
-- Window: exact date range covered
-- KPI snapshot: views, watch time, subscriber delta
-- Trend read: what moved up/down and whether the move looks meaningful
-- Top videos: 3-5 items with why they likely worked
-- Risks / anomalies: sudden drops, weak CTR proxies, overconcentration
-- Next actions: concrete content or packaging recommendations
+- Default window is 28 days. Pass `--days N` to change it.
+- Default `--top` is 10 video rows. Raise it only if the user asks.
+- Use `--fresh` only when the user explicitly wants to bypass the local 24h cache.
 
-Output:
-- Write the report to `.ars/analytics/<YYYY-MM-DD>-<days>d.md`
-- Also summarize the key findings in the Claude Code response
-- If the user wants to turn the findings into series-level defaults, suggest `/ars:reflect --days <same-window>`
+The command prints a single JSON object to stdout with this shape:
 
-Rules:
-- Prefer direct metric interpretation over dumping raw API rows
-- Keep the report concise and decision-oriented
-- If credentials are missing, stop and tell the user to configure them instead of guessing
-- If analytics data is unavailable, report the failure clearly and do not fabricate numbers
+```
+{
+  "window": { "days", "startDate", "endDate" },
+  "channel": { "channelId", "title", "subscriberCount", "videoCount", "viewCount" },
+  "summary": { "views", "estimatedMinutesWatched", "averageViewDuration", "subscribersGained", "subscribersLost", "likes", "comments", "shares" },
+  "daily":   [{ "day", "views", "estimatedMinutesWatched", "subscribersGained" }, ...],
+  "topVideos": [{ "videoId", "title?", "publishedAt?", "views", "estimatedMinutesWatched", "averageViewDuration", "averageViewPercentage" }, ...]
+}
+```
+
+## Behavior
+
+- Resolve the window from the user's request (default 28 days).
+- Run the command once and capture its stdout. If exit is non-zero, surface the error as-is and stop — do NOT fall back to hand-rolled API calls.
+- If the CLI reports missing credentials, tell the user to add `YOUTUBE_CLIENT_ID` / `YOUTUBE_CLIENT_SECRET` / `YOUTUBE_REFRESH_TOKEN` to `.env` and stop.
+- Parse the JSON snapshot. Interpret metrics into a concise, decision-oriented report.
+
+## Report shape
+
+Use these sections, grounded in the snapshot:
+
+- **Window** — exact date range from `window.startDate` → `window.endDate` plus the lookback length in days
+- **KPI snapshot** — views, watch time (convert `estimatedMinutesWatched` to human-readable), subscriber delta (`subscribersGained - subscribersLost`)
+- **Trend read** — call out what moved in `daily[]` (bumps, drops, cadence gaps). Quote specific dates.
+- **Top videos** — 3–5 rows from `topVideos[]` with `title`, views, avg view duration, and a one-line take on why it likely worked
+- **Risks / anomalies** — sudden drops, weak retention (low `averageViewPercentage`), overconcentration in a single video
+- **Next actions** — concrete content or packaging recommendations grounded in the above
+
+## Output
+
+- Write the report to `.ars/analytics/<YYYY-MM-DD>-<days>d.md` using today's date.
+- Summarize the key findings in the Claude Code response (one short paragraph + bullets).
+- If the user wants to turn findings into series-level defaults, suggest `/ars:reflect --days <same-window>`.
+
+## Rules
+
+- **Always use `npx ars analytics fetch`.** Do not curl YouTube endpoints directly, do not `node -e` your own fetch script, do not search the repo for helper modules — the CLI subcommand is the contract.
+- Prefer direct metric interpretation over dumping raw API rows.
+- Keep the report concise and decision-oriented.
+- If analytics data is unavailable or the snapshot is empty, report the failure clearly and do not fabricate numbers.

@@ -7,6 +7,7 @@ import { postinstallCommand } from './commands/postinstall';
 type CommandModule = { run: (args: string[]) => Promise<void> };
 
 const KNOWN_COMMANDS = new Set([
+  'analytics',
   'audio',
   'auth',
   'card',
@@ -52,6 +53,7 @@ Commands:
   export <subcommand> [...]        Export cover or subtitle artifacts
   upload <subcommand> [...]        Upload to YouTube
   workstate <subcommand> [...]     Read or write workstate stage
+  analytics <subcommand> [...]     Query YouTube analytics (JSON snapshot for tooling)
 
 Root options:
   -h, --help                       Show root help
@@ -60,6 +62,8 @@ Root options:
 
 async function loadCommandModule(command: string): Promise<CommandModule> {
   switch (command) {
+    case 'analytics':
+      return import('./commands/analytics');
     case 'audio':
       return import('./commands/audio');
     case 'auth':
