@@ -310,6 +310,15 @@ export function syncEngineFiles(options: SyncEngineOptions): string[] {
     copied,
   );
 
+  // Template episode public assets (VTuber images used by walkthrough + npx ars init <series>)
+  syncDirectoryIfNeeded(
+    path.join(options.sourceRoot, 'public', 'episodes', 'template', 'shared'),
+    path.join(options.root, 'public', 'episodes', 'template', 'shared'),
+    options.overwriteSupportFiles,
+    'public/episodes/template/shared/',
+    copied,
+  );
+
   // Bootstrap package.json if not present
   const consumerPkgPath = path.join(options.root, 'package.json');
   if (!fs.existsSync(consumerPkgPath)) {
