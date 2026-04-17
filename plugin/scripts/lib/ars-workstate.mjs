@@ -280,7 +280,7 @@ export function getPendingReviewCounts(root = process.cwd(), seriesId) {
 
 export function detectEpisodeProgress(root = process.cwd(), seriesId, episodeId) {
   const planDir = path.join(root, '.ars', 'episodes', episodeId);
-  const cardSpecsDir = path.join(planDir, 'card-specs');
+  const planFile = path.join(planDir, 'plan.md');
   const sourceFile = path.join(root, 'src', 'episodes', seriesId, `${episodeId}.ts`);
   const subtitlesFile = path.join(root, 'src', 'episodes', seriesId, `${episodeId}.subtitles.ts`);
   const audioDir = path.join(root, 'public', 'episodes', seriesId, episodeId, 'audio');
@@ -289,9 +289,7 @@ export function detectEpisodeProgress(root = process.cwd(), seriesId, episodeId)
   const coverFile = path.join(root, 'output', 'covers', seriesId, `${episodeId}.jpg`);
   const pendingReview = getPendingReviewCounts(root, seriesId).get(episodeId) ?? 0;
 
-  const hasPlan = fs.existsSync(path.join(planDir, 'plan.md'));
-  const cardSpecBriefs = listMatchingFiles(cardSpecsDir, (name) => name.endsWith('.md'));
-  const pendingCardSpec = cardSpecBriefs.length;
+  const hasPlan = fs.existsSync(planFile);
   const hasSource = fs.existsSync(sourceFile);
   const hasSubtitles = fs.existsSync(subtitlesFile);
   const audioFiles = listMatchingFiles(audioDir, (name) => name.endsWith('.mp3'));
@@ -303,25 +301,29 @@ export function detectEpisodeProgress(root = process.cwd(), seriesId, episodeId)
   const hasCover = fs.existsSync(coverFile);
 
   // Read persisted stage from workstate (written by review close, audio generate, etc.)
-  // Only use it when there are no overriding real-time signals (pending intents/card-specs).
-  const persistedWorkState = pendingReview === 0 && pendingCardSpec === 0
+  // Only use it when there are no overriding real-time review signals.
+  const persistedWorkState = pendingReview === 0
     ? readWorkState(root)
     : null;
   const persistedStage = persistedWorkState?.seriesId === seriesId && persistedWorkState?.episodeId === episodeId
     ? persistedWorkState.stage
     : null;
 
+  // Late-stage artifacts (audio, prepare, render, cover) only count when the
+  // episode has a plan AND source. Otherwise they are stale outputs from a
+  // previous run reusing this epId — treat the episode as fresh.
+  const hasFoundation = hasPlan && hasSource;
+  const lateStageValid = hasFoundation;
+
   const stage = pendingReview > 0
     ? 'review'
-    : pendingCardSpec > 0
-      ? 'card-spec'
-    : hasPrepareYoutube
+    : lateStageValid && hasPrepareYoutube
       ? 'prepare-youtube'
-      : hasRender || hasCover
+      : lateStageValid && (hasRender || hasCover)
         ? 'package'
-        : hasSubtitles || hasAudio
+        : lateStageValid && (hasSubtitles || hasAudio)
           ? 'audio'
-          : persistedStage === 'audio'
+          : lateStageValid && persistedStage === 'audio'
             ? 'audio'
           : hasSource && hasPlan
           ? 'review'
@@ -333,15 +335,13 @@ export function detectEpisodeProgress(root = process.cwd(), seriesId, episodeId)
 
   const nextAction = pendingReview > 0
     ? '/ars:apply-review latest'
-    : pendingCardSpec > 0
-      ? '/ars:new-card <type>'
-    : hasPrepareYoutube
+    : lateStageValid && hasPrepareYoutube
       ? `/ars:publish-youtube ${episodeId}`
-      : hasRender || hasCover
+      : lateStageValid && (hasRender || hasCover)
         ? `npx ars prepare youtube ${episodeId}`
-        : hasSubtitles || hasAudio
+        : lateStageValid && (hasSubtitles || hasAudio)
           ? `npx ars prepare youtube ${episodeId}`
-          : persistedStage === 'audio'
+          : lateStageValid && persistedStage === 'audio'
             ? `npx ars audio generate ${episodeId}`
           : hasSource && hasPlan
           ? `/ars:review ${episodeId}`
@@ -368,7 +368,6 @@ export function detectEpisodeProgress(root = process.cwd(), seriesId, episodeId)
     nextAction,
     pendingReview,
     hasPlan,
-    pendingCardSpec,
     hasSource,
     hasSubtitles,
     audioCount: audioFiles.length,
@@ -437,9 +436,6 @@ export function formatProgressLine(progress) {
   if (progress.pendingReview > 0) {
     parts.push(`review=${progress.pendingReview}`);
   }
-  if (progress.pendingCardSpec > 0) {
-    parts.push(`card-spec=${progress.pendingCardSpec}`);
-  }
   if (progress.hasPlan) {
     parts.push('plan');
   }
@@ -479,10 +475,6 @@ export function formatChecklistLine(progress) {
   if (progress.pendingReview > 0) {
     checklist.push(`review:${progress.pendingReview}`);
   }
-  if (progress.pendingCardSpec > 0) {
-    checklist.push(`card-spec:${progress.pendingCardSpec}`);
-  }
-
   return checklist.join(', ');
 }
 
@@ -604,7 +596,6 @@ export function updateWorkStateFromCommand(root = process.cwd(), sessionId, comm
     derivedStage: progress.stage,
     lastAction: parsed.lastAction,
     pendingReview: progress.pendingReview,
-    pendingCardSpec: progress.pendingCardSpec,
     audioCount: progress.audioCount,
     subtitleReady: progress.hasSubtitles,
     prepareYoutubeReady: progress.hasPrepareYoutube,
@@ -627,7 +618,7 @@ function stageToStep(stage) {
   if (!stage) return -1;
   if (stage === 'idle' || stage === 'draft' || stage === 'plan') return 0;
   if (stage === 'build') return 1;
-  if (stage === 'card-spec' || stage === 'review') return 2;
+  if (stage === 'review') return 2;
   if (stage === 'audio') return 3;
   if (stage === 'prepare-youtube' || stage === 'package') return 4;
   if (stage === 'publish-youtube') return 5;
@@ -677,16 +668,18 @@ export function renderStatusLine(root = process.cwd(), sessionId, version = '') 
 
   const rawStage = workState?.stage ?? progress?.stage ?? '';
 
-  // Show onboard pipeline when:
-  // - workstate has an onboard stage (active onboard), OR
-  // - channelName is unset (onboard never completed)
-  const channelName = config?.project?.channelName;
-  const onboardNeeded = !channelName && activeSeries && !rawStage.startsWith('onboard-');
-
-  if (rawStage.startsWith('onboard-') || onboardNeeded) {
+  // SSOT for "has onboard been completed": config.project.onboardedAt
+  // Set by `npx ars workstate clear --onboarded` when onboard Phase 3 finishes.
+  const onboardedAt = config?.project?.onboardedAt;
+  if (!onboardedAt && activeSeries) {
     const onboardStep = onboardStageToStep(rawStage);
-    const pipeline = renderOnboardPipeline(onboardStep >= 0 ? onboardStep : 0);
-    const seriesLabel = activeSeries ? `${BOLD}${activeSeries}${RESET}` : `${DIM}series:(unset)${RESET}`;
+    const seriesLabel = `${BOLD}${activeSeries}${RESET}`;
+    if (onboardStep < 0) {
+      // Onboard never started — prompt user to run it
+      return `${versionTag} ${seriesLabel}  ${DIM}onboard needed — run${RESET} ${CYAN}/ars:onboard${RESET}`;
+    }
+    // Onboard in progress — show pipeline with current step highlighted
+    const pipeline = renderOnboardPipeline(onboardStep);
     return `${versionTag} ${seriesLabel}  ${pipeline}`;
   }
 

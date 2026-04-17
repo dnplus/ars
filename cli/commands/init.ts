@@ -67,6 +67,11 @@ export async function run(args: string[]) {
       if (result.npmInstalled) {
         console.log('✅ Ran npm install');
       }
+      if (result.remotionSkillInstalled) {
+        console.log('✅ Installed project-scoped Remotion skill for Claude Code');
+      } else {
+        console.log('⚠️  Failed to install project-scoped Remotion skill for Claude Code');
+      }
       console.log('ℹ️  Skipped series initialization (--skip-series).');
     }
     return;
@@ -138,6 +143,11 @@ export async function run(args: string[]) {
     }
     if (result.npmInstalled) {
       console.log('✅ Ran npm install');
+    }
+    if (result.remotionSkillInstalled) {
+      console.log('✅ Installed project-scoped Remotion skill for Claude Code');
+    } else {
+      console.log('⚠️  Failed to install project-scoped Remotion skill for Claude Code');
     }
     console.log(`🚀 Initializing series "${targetSeries}" from template...`);
   }

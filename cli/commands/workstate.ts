@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { getRepoRoot } from '../lib/ars-config';
+import { getRepoRoot, readArsConfig, writeArsConfig, configExists } from '../lib/ars-config';
 
 const WORKSTATE_VERSION = 1;
 
@@ -11,6 +11,7 @@ Subcommands:
   get              Print current workstate as JSON
   set --stage <s>  Write workstate with given stage
   clear            Write workstate with active:false, stage:idle
+  clear --onboarded  Same as clear, but also stamp onboardedAt
 
 Options:
   -h, --help       Show this help
@@ -37,7 +38,7 @@ export async function run(args: string[]): Promise<void> {
   }
 
   if (subcommand === 'clear') {
-    return runClear();
+    return runClear(rest.includes('--onboarded'));
   }
 
   console.error(`Unknown workstate subcommand: ${subcommand}`);
@@ -84,7 +85,7 @@ function runSet(args: string[]): void {
   console.log(`✅ workstate stage = ${stage}`);
 }
 
-function runClear(): void {
+function runClear(onboarded: boolean): void {
   const workstatePath = getWorkstatePath();
   fs.mkdirSync(path.dirname(workstatePath), { recursive: true });
 
@@ -97,4 +98,11 @@ function runClear(): void {
 
   fs.writeFileSync(workstatePath, `${JSON.stringify(workstate, null, 2)}\n`, 'utf-8');
   console.log('✅ workstate cleared');
+
+  if (onboarded && configExists()) {
+    const config = readArsConfig();
+    config.project.onboardedAt = new Date().toISOString();
+    writeArsConfig(config);
+    console.log(`✅ onboardedAt = ${config.project.onboardedAt}`);
+  }
 }

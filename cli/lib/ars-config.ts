@@ -36,6 +36,7 @@ export interface ArsConfig {
     visualDirection?: string;
     tone?: string;
     mascot?: string;
+    onboardedAt?: string;
     visualDensity: VisualDensityId;
     layoutBias: LayoutBiasId;
   };
@@ -82,6 +83,7 @@ export function createDefaultConfig(): ArsConfig {
       visualDirection: undefined,
       tone: undefined,
       mascot: undefined,
+      onboardedAt: undefined,
       visualDensity: 'balanced',
       layoutBias: 'mixed',
     },
@@ -173,6 +175,9 @@ export function parseArsConfig(input: unknown): ArsConfig {
       mascot:
         expectOptionalString(project.mascot, 'project.mascot') ??
         defaults.project.mascot,
+      onboardedAt:
+        expectOptionalString(project.onboardedAt, 'project.onboardedAt') ??
+        defaults.project.onboardedAt,
       visualDensity:
         expectOptionalOneOf(
           project.visualDensity,

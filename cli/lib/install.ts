@@ -21,20 +21,32 @@ const ARS_COMMANDS_BLOCK = `${ARS_MARKER_BEGIN}
 **重要**：ARS hooks（stage tracking、workstate）需要透過 \`ars\` launcher 啟動 Claude Code 才能生效。
 在此 repo 目錄下執行 \`ars\` 啟動，不要直接用 \`claude\`。
 
-## ARS Commands
-- \`/ars:onboard\`：ARS 的正式首次入口；先訪談頻道風格，再確認 repo 已完成 \`npx ars init <series>\`、初始化主題與品牌預設
-- \`/ars:doctor\`：檢查 ARS 設定、engine 安裝狀態與 provider 憑證
-- \`/ars:plan\`：討論主題、建立 episode 計畫，並寫入 \`.ars/episodes/<epId>/\` artifacts
-- \`/ars:build\`：依 \`plan.md\` 實作 episode source
-- \`/ars:episode-create\`：低階 episode scaffold primitive，通常由 \`/ars:plan\` 自動觸發
-- \`/ars:review\`：開啟 review surface，針對目前 repo 的 episode 審稿，並進入 intent polling loop
-- \`/ars:apply-review\`：根據 review intents 將修正套回 episode source
-- \`/ars:polish\`：只做後段 refinement，不重寫整集結構
-- \`/ars:prepare-youtube\`：整理 YouTube metadata 與發布前檢查
-- \`/ars:publish-youtube\`：在人工確認後執行 YouTube 發布流程
-- \`/ars:new-card\`：為指定 series 建立新的 custom card，scaffold spec.ts + component.tsx
-- \`/ars:theme\`：為指定 series 產生或調整視覺主題
-- \`/ars:analytics\`：查詢 YouTube analytics 並產出頻道摘要報告
+## ARS Agent Role
+- This repo uses ARS: an agent-driven workflow for turning source material into publishable Remotion video episodes.
+- Your primary job in this repo is to help create and iterate on video episodes, not to treat this like a generic app repo.
+
+## ARS Operating Principles
+- Prefer episode artifacts and series structure over ad-hoc workflows.
+- Keep planning, implementation, and review as separate passes.
+- Reuse existing series-scoped assets before adding new ones.
+- Preserve series continuity unless the user explicitly wants to change it.
+- When implementing Remotion code, use the installed \`remotion-best-practices\` skill.
+
+## Important Paths
+- \`SERIES_GUIDE.md\` — series-level background knowledge and defaults for audience, tone, pacing, CTA, and visual direction
+- \`.ars/episodes/<epId>/\` — planning and workflow artifacts for each episode
+- \`.ars/episodes/<epId>/plan.md\` — canonical episode handoff for planning and build
+- \`src/episodes/<series>/\` — series source, episode files, series config, and series-scoped cards
+- \`src/episodes/<series>/series-config.ts\` — series theme, shell layout, and episode defaults
+- \`src/episodes/<series>/cards/\` — series-scoped extension point for adding or overriding cards
+- \`src/engine/\` — shared Remotion engine and built-in cards/layouts
+
+## ARS Repo Notes
+- One repo maps to one active series.
+- Treat \`.ars/episodes/<epId>/plan.md\` as the canonical episode intent handoff.
+- \`shell.layout\` may use a built-in key or a series custom layout component.
+- \`src/episodes/<series>/cards/\` is the series-scoped extension point for adding or overriding cards.
+- Series-scoped cards may add new card types or override built-in cards by reusing the same \`type\`.
 ${ARS_MARKER_END}`;
 
 interface PackageJsonLike {
@@ -503,15 +515,17 @@ export function syncSkills(options: {
   const installed: string[] = [];
 
   for (const name of fs.readdirSync(sourceSkillsDir)) {
-    const sourceSkillMd = path.join(sourceSkillsDir, name, 'SKILL.md');
+    const sourceSkillDir = path.join(sourceSkillsDir, name);
+    const sourceSkillMd = path.join(sourceSkillDir, 'SKILL.md');
     if (!fs.existsSync(sourceSkillMd)) continue;
 
     // Skill name becomes "ars:<name>" so it's invoked as /ars:<name>
-    const targetSkillMd = path.join(targetSkillsBaseDir, `ars:${name}`, 'SKILL.md');
+    const targetSkillDir = path.join(targetSkillsBaseDir, `ars:${name}`);
+    const targetSkillMd = path.join(targetSkillDir, 'SKILL.md');
     if (fs.existsSync(targetSkillMd) && !overwrite) continue;
 
-    fs.mkdirSync(path.dirname(targetSkillMd), { recursive: true });
-    fs.copyFileSync(sourceSkillMd, targetSkillMd);
+    // Copy the whole skill directory (SKILL.md + references/, scripts/, etc.)
+    copyDirectory(sourceSkillDir, targetSkillDir, { overwrite });
     installed.push(name);
   }
 

@@ -48,6 +48,7 @@ export interface RepoInitResult {
   versionPath: string;
   usedDefaults: boolean;
   npmInstalled: boolean;
+  remotionSkillInstalled: boolean;
   shellLayout: 'streaming' | 'shorts';
 }
 
@@ -132,6 +133,8 @@ export async function ensureRepoInitialized(options: RepoInitOptions): Promise<R
     }
   }
 
+  const remotionSkillInstalled = ensureRemotionSkillInstalled(root);
+
   return {
     root,
     config,
@@ -142,8 +145,41 @@ export async function ensureRepoInitialized(options: RepoInitOptions): Promise<R
     versionPath,
     usedDefaults: !interactive && overwriteConfig,
     npmInstalled,
+    remotionSkillInstalled,
     shellLayout,
   };
+}
+
+function ensureRemotionSkillInstalled(root: string): boolean {
+  if (hasRemotionSkill(root)) {
+    return true;
+  }
+
+  const result = spawnSync(
+    'npx',
+    ['skills', 'add', 'remotion-dev/skills', '-a', 'claude-code', '-y'],
+    {
+      cwd: root,
+      stdio: 'inherit',
+      shell: false,
+    },
+  );
+
+  if (result.status !== 0) {
+    console.warn('[ars] failed to install remotion-dev/skills into project-scoped Claude Code skills');
+    return false;
+  }
+
+  return hasRemotionSkill(root);
+}
+
+function hasRemotionSkill(root: string): boolean {
+  const skillsDir = path.join(root, '.claude', 'skills');
+  if (!fs.existsSync(skillsDir)) {
+    return false;
+  }
+
+  return fs.readdirSync(skillsDir).some((entry) => entry.includes('remotion'));
 }
 
 async function promptForConfig(): Promise<{ config: ArsConfig; shellLayout: 'streaming' | 'shorts' }> {
