@@ -81,6 +81,7 @@ const theme = {
 
 const vtuber = {
   ...DEFAULT_VTUBER_CONFIG,
+  enabled: true, // Set to false if this series should render without a VTuber
   closedImg: 'episodes/<series>/shared/vtuber/closed.png',
   openImg: 'episodes/<series>/shared/vtuber/open.png',
 } as const;
@@ -114,5 +115,6 @@ export const SERIES_CONFIG: SeriesConfig = {
 | `voiceId` | `episodeDefaults` | MiniMax voice ID or clone ID |
 | `theme.colors.primary` | `theme.colors` | Brand primary hex color |
 | `fontFamily` | top of file | Google Font name or system font |
+| `vtuber.enabled` | `vtuber` | `false` when the series should render without a VTuber avatar |
 | `vtuber.closedImg` / `openImg` | `vtuber` | Path relative to `public/` |
 | `shell.layout` | `shell` | Usually `'streaming'` (16:9, default) or `'shorts'` (9:16 vertical); advanced series may also pass a custom layout component |

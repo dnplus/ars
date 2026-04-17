@@ -9,8 +9,8 @@ If the user gives sparse answers, do not block onboarding. Use the minimal defau
 This is the single biggest failure mode for this step. Follow these rules:
 
 - Every field in `SERIES_GUIDE.md` must come from one of three sources: (a) an answer the user gave in the interview, (b) a value already present in `series-config.ts` or `.ars/config.json`, or (c) the minimal defaults verbatim from the section below.
-- **Do not infer audience, mission, or takeaway from the channel name.** "人蔘Try Catch" does not imply "對 AI、軟體工程、技術管理有興趣的中文觀眾" — that is invention.
-- If the user answered "沿用" / "same" / "default" / "skip" for an interview question, use the minimal default for that field and **say so in chat** ("Audience 沿用預設：XXX — 之後可以在 `/ars:reflect` 修正").
+- **Do not infer audience, mission, or takeaway from the channel name.** "Ginseng Try Catch" does not imply "Chinese-speaking viewers interested in AI, software engineering, and technical management" — that is invention.
+- If the user answered "reuse defaults" / "same" / "default" / "skip" for an interview question, use the minimal default for that field and **say so in chat** ("Audience reused the default: XXX — this can be refined later in `/ars:reflect`").
 - If a required field was never asked (interview cut short, skill bug, etc.), STOP and ask the user before writing that field. Do not guess.
 - It is better to write `<TBD — fill in after first episode>` in a field than to invent plausible-sounding content.
 
