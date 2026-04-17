@@ -29,7 +29,7 @@ For each `card-specs/<card-name>.md` brief:
 
 1. **Read the brief** to understand the card's purpose and visual intent.
 2. **Read series theme**: Check `src/episodes/<series>/series-config.ts` for theme seed / channel name.
-3. **Check for reuse**: Run `npx ars card list` first. If an existing card already covers the need, skip creation and update the plan reference.
+3. **Check for reuse**: Run `npx ars card list` first. If an existing card already covers the need, skip creation and update the plan reference. If creating, verify the differentiation check in the brief — see `references/custom-card-guide.md` for the agentHints quality bar.
 4. **Choose the right primitive**:
    - `BaseSlide` — fullscreen content, no chrome (default for most cards)
    - `WindowSlide` — content inside a mac/terminal/browser window frame
