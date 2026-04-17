@@ -51,18 +51,19 @@ pkill -f "ars review open" 2>/dev/null || true
 Stage name: `onboard-bootstrap`
 
 1. Write workstate with stage `onboard-bootstrap`
-2. Collect:
-- series name (channel slug, kebab-case)
-- TTS provider (`minimax` / `none`)
-- YouTube publishing (`enabled` / `disabled`)
-- Layout — `streaming` (16:9 horizontal, standard YouTube — default) or `shorts` (9:16 vertical, YouTube Shorts). Note: the walkthrough they just saw uses `streaming` layout.
-3. If `.ars/config.json` is missing, run:
+2. Read `.ars/config.json` if it exists. Note `project.activeSeries` — if already set, skip asking for series name.
+3. Collect (ask all in one message):
+   - Series name (channel slug, kebab-case) — **skip if `project.activeSeries` is already set**
+   - TTS provider (`minimax` / `none`)
+   - YouTube publishing (`enabled` / `disabled`)
+   - Layout — `streaming` (16:9 horizontal, standard YouTube — default) or `shorts` (9:16 vertical, YouTube Shorts). Note: the walkthrough they just saw uses `streaming` layout.
+4. If `.ars/config.json` is missing, run:
 
 ```bash
 npx ars init --skip-series -y
 ```
 
-4. Write the collected settings using:
+5. Write the collected settings:
 
 ```bash
 npx ars config set tts.provider <minimax|none>
@@ -70,10 +71,9 @@ npx ars config set publish.youtube.enabled <true|false>
 npx ars config set project.channelName "<channel name>"
 ```
 
-5. If the user chose `shorts`, update `shell.layout` in `series-config.ts` from `'streaming'` to `'shorts'`. Skip this step if they chose `streaming` (already the template default).
-
-6. Do NOT copy the template series
-7. Do NOT ask about theme, tone, or VTuber here
+6. If the user chose `shorts`, update `shell.layout` in `series-config.ts` from `'streaming'` to `'shorts'`. Skip if `streaming` (already the template default).
+7. Do NOT copy the template series
+8. Do NOT ask about theme, tone, or VTuber here
 
 ## Phase 3 — customize
 
