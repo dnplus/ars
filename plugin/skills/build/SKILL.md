@@ -8,6 +8,10 @@ effort: high
 
 Use `.ars/episodes/<epId>/plan.md` as the implementation contract.
 
+References:
+- See `references/episode-step-properties.md` for all `contentType` step fields and the card selection guide.
+- See `references/card-primitives.md` for `BaseSlide`, `WindowSlide`, and `ScrollSlide` props API.
+
 Behavior:
 - Read `STYLING.md` at the repo root before doing anything else. Use it to inform narration copy, tone, and visual choices throughout the episode.
 - Resolve the active series from repo state. One repo maps to one series, so `/ars:build` should operate on `<epId>` within that active series.

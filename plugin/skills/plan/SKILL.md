@@ -29,17 +29,18 @@ Behavior:
 - Add `card-specs/<card-name>.md` briefs only when neither built-in cards nor existing series-scoped custom cards are sufficient.
 - If a custom card is required, create `.ars/episodes/<epId>/card-specs/<card-name>.md` with the card brief.
 - After producing plan.md, use TodoWrite to create session todos for the full pipeline so the user can track progress:
-  - `/ars:build <epId>` — 建卡片 + 寫 ep.ts（含所有 card-specs）
-  - `/ars:review <epId>` — 審閱畫面
-  - `/ars:audio <epId>` — 生成語音
-  - `/ars:prepare <epId>` — 準備上架素材
-  - `npx ars publish <epId>` — 發布
+  - `/ars:build <epId>` — build custom cards + write ep.ts (including all card-specs)
+  - `/ars:review <epId>` — review rendered frames
+  - `/ars:audio <epId>` — generate TTS audio
+  - `/ars:prepare <epId>` — prepare publishing assets
+  - `npx ars publish <epId>` — publish
 - Do not create a repo-level `todo.json`.
 
 Required outputs:
 - `plan.md` (with `## Topic` section at the top)
 
 Plan contract:
+- See `references/plan-contract.md` for the required `plan.md` structure, invariants, and card-spec brief format.
 - `plan.md` should capture audience, thesis, section flow, per-step goals, preferred cards/layouts, continuity rules, banned moves, and dependencies.
 - For every special visual beat, `plan.md` should explicitly record whether it uses a built-in card, an existing series-scoped custom card, or a new custom card.
 

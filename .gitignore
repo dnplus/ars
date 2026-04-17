@@ -9,4 +9,8 @@ dist/
 .omc/
 .playwright-mcp/
 build/
+!plugin/
+!plugin/skills/
+!plugin/skills/build/
+!plugin/skills/build/**
 .claude/

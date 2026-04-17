@@ -20,6 +20,9 @@ Cards in ARS are self-contained modules (CardSpec<TData>) consisting of:
 
 Output path: `src/episodes/<series>/cards/<card-name>/`
 
+References:
+- See `references/card-primitives.md` for `BaseSlide`, `WindowSlide`, and `ScrollSlide` props API.
+
 ## Steps
 
 1. **Parse arguments**: Extract `<series>`, `<card-name>`, and optional `<description>` from args.
