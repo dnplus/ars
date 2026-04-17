@@ -19,7 +19,7 @@ ARS is a Claude Code plugin-first workflow for building Remotion-based video epi
 - Opens a local review surface that writes review intents into `.ars/review-intents/`
 - Prepares YouTube metadata artifacts for human review
 - Packages and uploads finished episodes to YouTube
-- Lets Claude Code generate optional YouTube analytics reports from the existing API helpers
+- Lets Claude Code generate optional YouTube analytics reports and reflect them back into the series guide
 
 ## Requirements
 
@@ -88,7 +88,7 @@ Inside Claude Code:
 /ars:build ep001
 ```
 
-If the plan emitted `card-spec` todos, run `/ars:new-card` first and then come back to `/ars:build`.
+`/ars:build` will handle any custom-card work recorded in the plan.
 
 ### 7. Open review
 
@@ -129,15 +129,17 @@ npx ars prepare youtube ep001
 npx ars publish youtube ep001 --privacy private
 ```
 
-### 10. Optional analytics report
+### 10. Optional analytics and reflection
 
 Inside Claude Code:
 
 ```text
 /ars:analytics --days 28
+/ars:reflect --days 28
 ```
 
-This skill uses the existing YouTube analytics helpers to produce a concise report under `.ars/analytics/`.
+`/ars:analytics` uses the existing YouTube analytics helpers to produce a concise report under `.ars/analytics/`.
+`/ars:reflect` reads recent episodes plus analytics findings, writes a reflection memo under `.ars/reflect/`, and tightens `SERIES_GUIDE.md` when the evidence is strong enough.
 
 ## Core skills
 
@@ -148,6 +150,7 @@ This skill uses the existing YouTube analytics helpers to produce a concise repo
 - `/ars:review`: launch the review surface
 - `/ars:apply-review`: apply review intents back into the episode source
 - `/ars:polish`: late-stage tier B refinement
+- `/ars:reflect`: turn recent episodes + analytics into series-level guide updates
 - `/ars:prepare-youtube`: fill the prepare artifact with title, description, and tags
 - `/ars:publish-youtube`: confirmed YouTube publish flow
 - `/ars:analytics`: optional Claude Code report for recent YouTube channel performance

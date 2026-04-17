@@ -17,6 +17,7 @@ describe('plugin skill surface', () => {
       'build',
       'apply-review',
       'polish',
+      'reflect',
       'review',
       'new-card',
       'prepare-youtube',
@@ -59,5 +60,21 @@ describe('plugin skill surface', () => {
     });
 
     expect(output.trim()).toBe('');
+  });
+
+  it('keyword detector recommends reflect for analytics-driven retrospectives', () => {
+    const scriptPath = path.join(repoRoot, 'plugin', 'scripts', 'keyword-detector.mjs');
+    const payload = JSON.stringify({
+      prompt: '根據最近 analytics 跟幾支 episodes 的表現，幫我復盤一下然後更新 guide',
+    });
+
+    const output = execFileSync('node', [scriptPath], {
+      cwd: repoRoot,
+      input: payload,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    expect(output).toContain('/ars:reflect');
   });
 });

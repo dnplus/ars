@@ -85,6 +85,19 @@ const TRIGGER_RULES = [
   },
   {
     patterns: [
+      /\bars:reflect\b/,
+      /\breflect\b.*\b(analytics|episodes?|series|guide)\b/,
+      /\bretro\b.*\b(episodes?|series|channel)\b/,
+      /復盤/,
+      /回顧.*(數據|analytics|表現)/,
+      /根據.*(analytics|數據).*(調整|修改|更新|優化)/,
+      /根據.*episodes?.*(調整|修改|更新|優化)/,
+    ],
+    suggestion:
+      'ARS: Detected reflection intent. Use /ars:reflect to synthesize recent episodes + analytics into a reflection memo and high-confidence SERIES_GUIDE.md updates.',
+  },
+  {
+    patterns: [
       /\bars:publish-youtube\b/,
       /\bpublish youtube\b/,
       /\bprepare youtube\b/,

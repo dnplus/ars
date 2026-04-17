@@ -35,6 +35,7 @@ Suggested report sections:
 Output:
 - Write the report to `.ars/analytics/<YYYY-MM-DD>-<days>d.md`
 - Also summarize the key findings in the Claude Code response
+- If the user wants to turn the findings into series-level defaults, suggest `/ars:reflect --days <same-window>`
 
 Rules:
 - Prefer direct metric interpretation over dumping raw API rows
