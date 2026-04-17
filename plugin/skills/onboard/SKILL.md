@@ -7,13 +7,13 @@ effort: medium
 
 `/ars:onboard` follows a strict 4-phase onboarding flow.
 
-Write workstate directly to `.ars/state/workstate.json` at each phase transition. Use this JSON shape:
+At each phase transition, advance the workstate stage using:
 
-```json
-{ "version": 1, "active": true, "stage": "onboard-walkthrough", "updatedAt": "2026-01-01T00:00:00.000Z" }
+```bash
+npx ars workstate set --stage <stage-name>
 ```
 
-Always update `updatedAt` with the current ISO timestamp.
+This ensures the correct schema version and timestamp.
 
 ## Re-run detection
 
@@ -54,7 +54,13 @@ Stage name: `onboard-bootstrap`
 npx ars init --skip-series -y
 ```
 
-4. Write the collected settings to `.ars/config.json`
+4. Write the collected settings using:
+
+```bash
+npx ars config set tts.provider <minimax|none>
+npx ars config set publish.youtube.enabled <true|false>
+```
+
 5. Do NOT copy the template series
 6. Do NOT ask about theme, tone, or VTuber here
 
@@ -114,7 +120,7 @@ npx ars doctor
 4. Especially flag:
 - YouTube enabled but no auth
 - MiniMax selected but no API key
-5. If all checks pass, write workstate with stage `idle`
+5. If all checks pass, run `npx ars workstate clear` to reset stage to idle
 6. Output next-step suggestions:
 - `/ars:plan <topic>`
 - `/ars:build <epId>`

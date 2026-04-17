@@ -20,7 +20,9 @@ const KNOWN_COMMANDS = new Set([
   'publish',
   'review',
   'update',
+  'config',
   'upload',
+  'workstate',
 ]);
 
 const HELP = `
@@ -37,6 +39,7 @@ Launch behavior:
 Commands:
   launch [claude-args...]          Launch Claude with the ARS plugin attached
   auth <subcommand> [...]          Authorize external service credentials (e.g. YouTube OAuth)
+  config <subcommand> [...]        Read or write .ars/config.json fields
   init <series-name> [options]     Bootstrap a new ARS repo and set its only active series
   update [options]                 Backup and refresh the installed ARS engine
   doctor [options]                 Validate config, engine install, plugin assets, and providers
@@ -48,6 +51,7 @@ Commands:
   review <subcommand> [...]        Review surface + review intent workflows
   export <subcommand> [...]        Export cover or subtitle artifacts
   upload <subcommand> [...]        Upload to YouTube
+  workstate <subcommand> [...]     Read or write workstate stage
 
 Root options:
   -h, --help                       Show root help
@@ -60,6 +64,8 @@ async function loadCommandModule(command: string): Promise<CommandModule> {
       return import('./commands/audio');
     case 'auth':
       return import('./commands/auth');
+    case 'config':
+      return import('./commands/config');
     case 'card':
       return import('./commands/card');
     case 'doctor':
@@ -80,6 +86,8 @@ async function loadCommandModule(command: string): Promise<CommandModule> {
       return import('./commands/update');
     case 'upload':
       return import('./commands/upload');
+    case 'workstate':
+      return import('./commands/workstate');
     default:
       throw new Error(`Unknown command module: ${command}`);
   }
