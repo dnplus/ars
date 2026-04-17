@@ -60,12 +60,13 @@ npx ars init --skip-series -y
 ```bash
 npx ars config set tts.provider <minimax|none>
 npx ars config set publish.youtube.enabled <true|false>
+npx ars config set project.channelName "<channel name>"
 ```
 
 5. If the user chose `shorts`, update `shell.layout` in `series-config.ts` from `'streaming'` to `'shorts'`. Skip this step if they chose `streaming` (already the template default).
 
-5. Do NOT copy the template series
-6. Do NOT ask about theme, tone, or VTuber here
+6. Do NOT copy the template series
+7. Do NOT ask about theme, tone, or VTuber here
 
 ## Phase 3 — customize
 

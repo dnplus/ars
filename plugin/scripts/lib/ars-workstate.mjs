@@ -676,17 +676,24 @@ export function renderStatusLine(root = process.cwd(), sessionId, version = '') 
 
   const versionTag = version ? `${DIM}ARS#${version}${RESET}` : `${DIM}ARS${RESET}`;
 
+  const rawStage = workState?.stage ?? progress?.stage ?? '';
+
+  // Show onboard pipeline when:
+  // - workstate has an onboard stage (active onboard), OR
+  // - channelName is unset (onboard never completed)
+  const channelName = config?.project?.channelName;
+  const onboardNeeded = !channelName && activeSeries && !rawStage.startsWith('onboard-');
+
+  if (rawStage.startsWith('onboard-') || onboardNeeded) {
+    const onboardStep = onboardStageToStep(rawStage);
+    const pipeline = renderOnboardPipeline(onboardStep >= 0 ? onboardStep : 0);
+    const seriesLabel = activeSeries ? `${BOLD}${activeSeries}${RESET}` : `${DIM}series:(unset)${RESET}`;
+    return `${versionTag} ${seriesLabel}  ${pipeline}`;
+  }
+
   if (!progress || !activeSeries) {
     const series = activeSeries ?? 'series:(unset)';
     return `${versionTag} ${series}`;
-  }
-
-  const rawStage = workState?.stage ?? progress.stage ?? '';
-
-  if (rawStage.startsWith('onboard-')) {
-    const onboardStep = onboardStageToStep(rawStage);
-    const pipeline = renderOnboardPipeline(onboardStep >= 0 ? onboardStep : 0);
-    return `${versionTag} ${BOLD}${activeSeries}${RESET}  ${pipeline}`;
   }
 
   const currentStep = stageToStep(rawStage);
