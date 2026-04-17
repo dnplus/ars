@@ -38,8 +38,13 @@ npx ars review open ep-demo --series template
 ```
 
 4. Immediately after launching, tell the user:
-   - The studio is starting at http://localhost:5173 (or the port shown in output)
+   - Watch the output for the localhost URL (e.g. `http://localhost:5173`) and share it
    - Browse the demo, then say **`next`** to continue to Phase 2, or **`skip`** to skip the walkthrough
+   - When they say `next` or `skip`, kill the review server before proceeding:
+
+```bash
+pkill -f "ars review open" 2>/dev/null || true
+```
 
 ## Phase 2 — bootstrap
 
