@@ -48,6 +48,7 @@ Stage name: `onboard-bootstrap`
 - series name (channel slug, kebab-case)
 - TTS provider (`minimax` / `none`)
 - YouTube publishing (`enabled` / `disabled`)
+- Layout — `streaming` (16:9 horizontal, standard YouTube — default) or `shorts` (9:16 vertical, YouTube Shorts). Note: the walkthrough they just saw uses `streaming` layout.
 3. If `.ars/config.json` is missing, run:
 
 ```bash
@@ -60,6 +61,8 @@ npx ars init --skip-series -y
 npx ars config set tts.provider <minimax|none>
 npx ars config set publish.youtube.enabled <true|false>
 ```
+
+5. If the user chose `shorts`, update `shell.layout` in `series-config.ts` from `'streaming'` to `'shorts'`. Skip this step if they chose `streaming` (already the template default).
 
 5. Do NOT copy the template series
 6. Do NOT ask about theme, tone, or VTuber here
@@ -85,6 +88,7 @@ If the user chooses customize now:
 - run a brand interview — see `references/branding-guide.md` for questions and color derivation rules
 - update `series-config.ts` — see `references/series-structure.md` for the full file structure and key fields
 - write `STYLING.md` at repo root — use `references/styling-template.md` as the template, fill in values from the interview
+- proactively mention that `shell.layout` can be changed to `'shorts'` if they want 9:16 vertical output — most channels stay on `'streaming'` but it's worth flagging
 - add optional custom skills if the user wants them
 
 If the user chooses do it later:

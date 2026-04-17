@@ -110,3 +110,4 @@ export const SERIES_CONFIG: SeriesConfig = {
 | `theme.colors.primary` | `theme.colors` | Brand primary hex color |
 | `fontFamily` | top of file | Google Font name or system font |
 | `vtuber.closedImg` / `openImg` | `vtuber` | Path relative to `public/` |
+| `shell.layout` | `shell` | `'streaming'` (16:9, default) or `'shorts'` (9:16 vertical) |

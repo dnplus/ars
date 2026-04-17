@@ -13,6 +13,7 @@ Ask these in order. Stop as soon as the user says "do it later."
 5. **Font** — Any preferred font? (defaults to Noto Sans TC for CJK, Inter for Latin)
 6. **VTuber** — Do you have a VTuber character? If yes, ask them to drop the images in `public/episodes/<series>/shared/vtuber/`
 7. **Voice** — MiniMax voice ID or leave as default `female-shaonv`?
+8. **Layout** — `streaming` (16:9 horizontal, standard YouTube) or `shorts` (9:16 vertical, YouTube Shorts)? The walkthrough demo uses `streaming`. Default: `streaming`.
 
 ## Color Derivation Rules
 
@@ -56,5 +57,6 @@ After the interview, update `series-config.ts`:
 - Set `fontFamily` to chosen font (use Google Fonts via `@remotion/google-fonts/<FontName>` if available)
 - Update `episodeDefaults.channelName` and `episodeDefaults.brandTag`
 - Update `vtuber.closedImg` / `openImg` paths if user provided images
+- If user chose `shorts`, change `shell.layout` from `'streaming'` to `'shorts'`
 
 Then write `STYLING.md` — see `references/styling-template.md`.

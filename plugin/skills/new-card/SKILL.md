@@ -104,3 +104,4 @@ References:
 - **Series-scoped**: Cards go in `src/episodes/<series>/cards/`, not in the engine
 - **No manual registry**: The glob auto-registers — just create the files
 - **SVG text stability**: For charts or diagrams with SVG `<text>`, do not leave `x` / `y` on fractional pixels. Snap them to integers to avoid encoded-video shimmer, especially for centered labels and tick legends.
+- **Override rule**: A series card with the same `type` as a built-in engine card will **silently replace** it in the registry for that series. Use this to fully swap an engine card's implementation — all episode steps using that `contentType` will automatically use the series version. See `references/card-primitives.md` for the primitive API.

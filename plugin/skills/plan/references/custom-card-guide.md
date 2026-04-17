@@ -70,6 +70,20 @@ The test: could another agent misuse this card based only on `whenToUse`? If yes
 
 ---
 
+## Overriding a built-in engine card
+
+A series-scoped card can fully replace a built-in engine card by using the **same `type` string**. The registry will use the series card instead for all steps in that series.
+
+When to use this:
+- The built-in card's visual style doesn't match the series brand and a wrapper isn't enough
+- You want to swap the implementation without changing any `contentType` values in episode files
+
+Example: create `src/episodes/<series>/cards/markdown/` with `cardSpec.type = "markdown"` — all `markdown` steps in that series render your version instead of the engine default.
+
+This is an advanced pattern. Don't override unless the built-in genuinely can't be styled to match — prefer `theme.colors` customization first.
+
+---
+
 ## Card naming
 
 - Use a descriptive noun phrase, kebab-case: `ranked-diff`, `gauge-cluster`, `stack-trace-viewer`

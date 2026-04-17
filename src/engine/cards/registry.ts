@@ -90,20 +90,26 @@ const collect = (): Map<string, CardSpec<unknown>> => {
     }),
   );
   const registry = new Map<string, CardSpec<unknown>>();
+  const engineTypes = new Set<string>();
 
-  for (const [source, mod] of Object.entries({ ...engineSpecs, ...filteredEpisodeSpecs })) {
+  for (const [, mod] of Object.entries(engineSpecs)) {
     const spec = mod.cardSpec;
+    if (!spec) continue;
+    registry.set(spec.type, spec);
+    engineTypes.add(spec.type);
+  }
 
-    if (!spec) {
-      continue;
-    }
+  for (const [source, mod] of Object.entries(filteredEpisodeSpecs)) {
+    const spec = mod.cardSpec;
+    if (!spec) continue;
 
-    if (registry.has(spec.type)) {
+    if (registry.has(spec.type) && !engineTypes.has(spec.type)) {
       throw new Error(
         `[card-registry] Duplicate card type "${spec.type}" from ${source}.`,
       );
     }
 
+    // Series-scoped card overrides engine card when types match (silent replace).
     registry.set(spec.type, spec);
   }
 
