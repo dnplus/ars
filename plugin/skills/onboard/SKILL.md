@@ -31,13 +31,15 @@ Stage name: `onboard-walkthrough`
 
 1. Write workstate with stage `onboard-walkthrough`
 2. Give a 2-3 sentence intro to ARS
-3. Open the review studio:
+3. Open the review studio **in the background** (use `run_in_background: true` on the Bash tool — do NOT wait for it to finish):
 
 ```bash
 npx ars review open ep-demo --series template
 ```
 
-4. Tell the user to browse the demo, then say `next` or `skip` to continue
+4. Immediately after launching, tell the user:
+   - The studio is starting at http://localhost:5173 (or the port shown in output)
+   - Browse the demo, then say **`next`** to continue to Phase 2, or **`skip`** to skip the walkthrough
 
 ## Phase 2 — bootstrap
 
