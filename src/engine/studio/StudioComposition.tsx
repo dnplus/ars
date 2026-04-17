@@ -2,6 +2,7 @@ import React from 'react';
 import { AbsoluteFill } from 'remotion';
 import { ThemeProvider } from '../shared/ThemeContext';
 import type { Episode, Step, LayoutMode } from '../shared/types';
+import type { SubtitlePhrase } from '../shared/subtitle';
 import { StepRenderer, type EpisodeInfo } from '../renderers/StepRenderer';
 
 export type StudioCompositionProps = {
@@ -10,6 +11,7 @@ export type StudioCompositionProps = {
   episode: Episode;
   episodeInfo: EpisodeInfo;
   audioSrc?: string;
+  subtitles?: SubtitlePhrase[];
 };
 
 export const StudioComposition: React.FC<StudioCompositionProps> = ({
@@ -18,6 +20,7 @@ export const StudioComposition: React.FC<StudioCompositionProps> = ({
   episode,
   episodeInfo,
   audioSrc,
+  subtitles,
 }) => {
   const shell = episode.shell!;
   const theme = shell.theme!;
@@ -31,6 +34,7 @@ export const StudioComposition: React.FC<StudioCompositionProps> = ({
           episodeInfo={episodeInfo}
           prevLayoutMode={prevLayoutMode}
           audioSrc={audioSrc}
+          subtitles={subtitles}
           disableSubtitles
           silentAudioFallback="shared/silence.mp3"
         />

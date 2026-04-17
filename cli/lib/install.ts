@@ -364,15 +364,36 @@ export function backupEngine(root = getTargetRepoRoot()): string {
     throw new Error(`Missing ${targetEngineDir}. Run "npx ars init <series>" first.`);
   }
 
+  const backupsRoot = path.join(getArsDir(root), 'backups');
   const backupTimestamp = new Date().toISOString().replace(/:/g, '-');
   const backupEngineDir = path.join(
-    getArsDir(root),
-    'backups',
+    backupsRoot,
     backupTimestamp,
     'engine',
   );
   copyDirectory(targetEngineDir, backupEngineDir, { overwrite: false });
+  pruneOldEngineBackups(backupsRoot);
   return backupEngineDir;
+}
+
+const ENGINE_BACKUP_RETENTION_COUNT = 3;
+
+function pruneOldEngineBackups(backupsRoot: string): void {
+  if (!fs.existsSync(backupsRoot)) {
+    return;
+  }
+
+  const timestampDirs = fs.readdirSync(backupsRoot)
+    .map((name) => ({
+      name,
+      fullPath: path.join(backupsRoot, name),
+    }))
+    .filter((entry) => fs.statSync(entry.fullPath).isDirectory())
+    .sort((a, b) => b.name.localeCompare(a.name));
+
+  for (const entry of timestampDirs.slice(ENGINE_BACKUP_RETENTION_COUNT)) {
+    fs.rmSync(entry.fullPath, { recursive: true, force: true });
+  }
 }
 
 export function writeVersionMetadata(options: {

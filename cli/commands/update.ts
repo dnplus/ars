@@ -19,7 +19,7 @@ import { getRuntimePackageInfo } from '../lib/runtime-package';
 const HELP = `
 Usage: npx ars update [options]
 
-Backs up src/engine into .ars/backups/<timestamp>/engine and refreshes it from the installed ARS package.
+Backs up src/engine into .ars/backups/<timestamp>/engine, keeps the latest 3 backups, and refreshes it from the installed ARS package.
 
 Options:
   --force            Refresh engine, CLAUDE.md, and version metadata

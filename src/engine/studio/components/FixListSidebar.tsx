@@ -16,10 +16,10 @@ type ReviewIntentsResponse = {
 };
 
 const KIND_BADGE_COLORS: Record<string, string> = {
-  visual: '#7c6af5',
-  content: '#3aa76d',
-  other: '#888',
-  timing: '#d98c2a',
+  visual: 'var(--color-highlight)',
+  content: 'var(--color-positive)',
+  other: 'var(--color-secondary)',
+  timing: 'var(--color-warning)',
 };
 
 const truncate = (str: string, max: number): string =>
@@ -62,13 +62,13 @@ export const FixListSidebar: React.FC<FixListSidebarProps> = ({ onClose }) => {
       style={{
         width: 320,
         flexShrink: 0,
-        background: '#1a1a2e',
-        borderLeft: '1px solid var(--color-border, #333)',
+        background: 'var(--color-bg-dark)',
+        borderLeft: '1px solid var(--color-border-light)',
         display: 'flex',
         flexDirection: 'column',
         zIndex: 100,
         fontFamily: 'var(--font-main, sans-serif)',
-        color: '#e0e0e0',
+        color: 'var(--color-text-on-dark)',
       }}
     >
       {/* Header */}
@@ -78,8 +78,8 @@ export const FixListSidebar: React.FC<FixListSidebarProps> = ({ onClose }) => {
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '10px 12px',
-          borderBottom: '1px solid var(--color-border, #333)',
-          background: '#16213e',
+          borderBottom: '1px solid var(--color-border-light)',
+          background: 'var(--color-overlay-bg)',
           flexShrink: 0,
         }}
       >
@@ -93,7 +93,7 @@ export const FixListSidebar: React.FC<FixListSidebarProps> = ({ onClose }) => {
           style={{
             background: 'none',
             border: 'none',
-            color: '#aaa',
+            color: 'color-mix(in srgb, var(--color-text-on-dark) 65%, transparent)',
             cursor: 'pointer',
             fontSize: 16,
             lineHeight: 1,
@@ -116,7 +116,7 @@ export const FixListSidebar: React.FC<FixListSidebarProps> = ({ onClose }) => {
           <div
             style={{
               padding: '24px 16px',
-              color: '#666',
+              color: 'color-mix(in srgb, var(--color-text-on-dark) 45%, transparent)',
               fontSize: 13,
               textAlign: 'center',
             }}
@@ -129,7 +129,7 @@ export const FixListSidebar: React.FC<FixListSidebarProps> = ({ onClose }) => {
               key={intent.id}
               style={{
                 padding: '10px 12px',
-                borderBottom: '1px solid #222',
+                borderBottom: '1px solid var(--color-border-light)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 4,
@@ -143,7 +143,7 @@ export const FixListSidebar: React.FC<FixListSidebarProps> = ({ onClose }) => {
                     fontWeight: 700,
                     textTransform: 'uppercase',
                     background: KIND_BADGE_COLORS[intent.feedback.kind] ?? '#555',
-                    color: '#fff',
+                    color: 'var(--color-bg-dark)',
                     borderRadius: 3,
                     padding: '1px 5px',
                     letterSpacing: '0.05em',
@@ -158,8 +158,8 @@ export const FixListSidebar: React.FC<FixListSidebarProps> = ({ onClose }) => {
                       fontSize: 10,
                       fontWeight: 700,
                       textTransform: 'uppercase',
-                      background: 'rgba(91, 126, 158, 0.9)',
-                      color: '#fff',
+                      background: 'var(--color-info)',
+                      color: 'var(--color-bg-dark)',
                       borderRadius: 3,
                       padding: '1px 5px',
                       letterSpacing: '0.05em',
@@ -173,7 +173,7 @@ export const FixListSidebar: React.FC<FixListSidebarProps> = ({ onClose }) => {
                 <span
                   style={{
                     fontSize: 11,
-                    color: '#aaa',
+                    color: 'color-mix(in srgb, var(--color-text-on-dark) 65%, transparent)',
                     fontFamily: 'var(--font-code, monospace)',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
@@ -184,9 +184,9 @@ export const FixListSidebar: React.FC<FixListSidebarProps> = ({ onClose }) => {
                   {intent.target.stepId === EPISODE_SCOPE_ID ? '整集' : intent.target.stepId}
                 </span>
                 {intent.processedAt ? (
-                  <span style={{ fontSize: 11, color: '#777', flexShrink: 0 }}>✓ 已修正</span>
+                  <span style={{ fontSize: 11, color: 'color-mix(in srgb, var(--color-text-on-dark) 50%, transparent)', flexShrink: 0 }}>✓ 已修正</span>
                 ) : (
-                  <span style={{ fontSize: 11, color: '#d4a017', flexShrink: 0 }}>待處理</span>
+                  <span style={{ fontSize: 11, color: 'var(--color-warning)', flexShrink: 0 }}>待處理</span>
                 )}
               </div>
 
@@ -194,7 +194,7 @@ export const FixListSidebar: React.FC<FixListSidebarProps> = ({ onClose }) => {
               <div
                 style={{
                   fontSize: 12,
-                  color: '#ccc',
+                  color: 'color-mix(in srgb, var(--color-text-on-dark) 82%, transparent)',
                   lineHeight: 1.4,
                 }}
               >
@@ -204,7 +204,7 @@ export const FixListSidebar: React.FC<FixListSidebarProps> = ({ onClose }) => {
                 <div
                   style={{
                     fontSize: 11,
-                    color: '#8ea6c1',
+                    color: 'var(--color-info)',
                     lineHeight: 1.4,
                   }}
                 >

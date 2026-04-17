@@ -4,6 +4,7 @@
  */
 
 import { Episode, Step } from '../../shared/types';
+import type { SubtitlePhrase } from '../../shared/subtitle';
 import { StudioStepEntry } from '../types';
 
 /**
@@ -22,6 +23,7 @@ export function episodeToStudioSteps(
   episodeId: string,
 ): StudioStepEntry[] {
   const audioBase = `${activeSeries}/${episodeId}`;
+  const subtitlesByStep = episode.subtitles as Record<string, SubtitlePhrase[]> | undefined;
   return episode.steps.map((step, index) => {
     const processedStep: Step = { ...step };
 
@@ -43,6 +45,7 @@ export function episodeToStudioSteps(
       index,
       step: processedStep,
       audioSrc: getAudioSrc(audioBase, step.id),
+      subtitles: subtitlesByStep?.[step.id],
     };
   });
 }

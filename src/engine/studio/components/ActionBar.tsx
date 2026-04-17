@@ -168,10 +168,10 @@ export const ActionBar: React.FC<ActionBarProps> = ({ stepId, series, epId, kind
         onClick={() => setIsOpen((v) => !v)}
         title="標記修正"
         style={{
-          background: isOpen ? 'rgba(255,200,0,0.22)' : 'rgba(0,0,0,0.75)',
-          border: `1px solid ${isOpen ? 'rgba(255,200,0,0.6)' : 'rgba(255,255,255,0.2)'}`,
+          background: isOpen ? 'color-mix(in srgb, var(--color-warning) 22%, var(--color-overlay-bg))' : 'var(--color-overlay-bg)',
+          border: `1px solid ${isOpen ? 'var(--color-warning)' : 'var(--color-border-light)'}`,
           borderRadius: 8,
-          color: '#fff',
+          color: 'var(--color-text-on-dark)',
           fontSize: 18,
           width: 40,
           height: 40,
@@ -190,8 +190,8 @@ export const ActionBar: React.FC<ActionBarProps> = ({ stepId, series, epId, kind
           top: popupPos.top,
           left: popupPos.left,
           width: 300,
-          background: 'rgba(8,15,29,0.96)',
-          border: '1px solid rgba(255,255,255,0.14)',
+          background: 'var(--color-overlay-bg)',
+          border: '1px solid var(--color-border-light)',
           borderRadius: 14,
           padding: 14,
           display: 'flex',
@@ -214,9 +214,9 @@ export const ActionBar: React.FC<ActionBarProps> = ({ stepId, series, epId, kind
               resize: 'vertical',
               padding: '8px 10px',
               borderRadius: 8,
-              border: '1px solid rgba(255,255,255,0.14)',
-              background: 'rgba(255,255,255,0.05)',
-              color: '#fff',
+              border: '1px solid var(--color-border-light)',
+              background: 'color-mix(in srgb, var(--color-text-on-dark) 5%, transparent)',
+              color: 'var(--color-text-on-dark)',
               fontSize: 13,
               fontFamily: 'inherit',
               lineHeight: 1.5,
@@ -227,8 +227,8 @@ export const ActionBar: React.FC<ActionBarProps> = ({ stepId, series, epId, kind
             <div
               style={{
                 borderRadius: 10,
-                border: '1px solid rgba(255,255,255,0.14)',
-                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid var(--color-border-light)',
+                background: 'color-mix(in srgb, var(--color-text-on-dark) 4%, transparent)',
                 padding: 10,
                 display: 'flex',
                 gap: 10,
@@ -243,7 +243,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({ stepId, series, epId, kind
                   height: 54,
                   objectFit: 'cover',
                   borderRadius: 8,
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  border: '1px solid var(--color-border-light)',
                   flexShrink: 0,
                 }}
               />
@@ -251,7 +251,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({ stepId, series, epId, kind
                 <div
                   style={{
                     fontSize: 12,
-                    color: '#fff',
+                    color: 'var(--color-text-on-dark)',
                     fontWeight: 600,
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
@@ -263,7 +263,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({ stepId, series, epId, kind
                 <div
                   style={{
                     fontSize: 11,
-                    color: '#9aa4b2',
+                    color: 'color-mix(in srgb, var(--color-text-on-dark) 62%, transparent)',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
@@ -278,9 +278,9 @@ export const ActionBar: React.FC<ActionBarProps> = ({ stepId, series, epId, kind
                 style={{
                   padding: '6px 10px',
                   borderRadius: 8,
-                  border: '1px solid rgba(255,255,255,0.14)',
+                  border: '1px solid var(--color-border-light)',
                   background: 'transparent',
-                  color: '#aaa',
+                  color: 'color-mix(in srgb, var(--color-text-on-dark) 62%, transparent)',
                   cursor: 'pointer',
                   fontSize: 12,
                 }}
@@ -292,7 +292,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({ stepId, series, epId, kind
             <div
               style={{
                 fontSize: 11,
-                color: '#8b93a7',
+                color: 'color-mix(in srgb, var(--color-text-on-dark) 58%, transparent)',
                 lineHeight: 1.5,
               }}
             >
@@ -302,14 +302,14 @@ export const ActionBar: React.FC<ActionBarProps> = ({ stepId, series, epId, kind
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
             <button
               onClick={() => setIsOpen(false)}
-              style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.14)', background: 'transparent', color: '#aaa', cursor: 'pointer', fontSize: 12 }}
+              style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--color-border-light)', background: 'transparent', color: 'color-mix(in srgb, var(--color-text-on-dark) 62%, transparent)', cursor: 'pointer', fontSize: 12 }}
             >
               取消
             </button>
             <button
               onClick={handleSubmit}
               disabled={isSubmitting || !message.trim()}
-              style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'var(--color-primary, #c4a77d)', color: '#000', fontWeight: 700, cursor: 'pointer', fontSize: 12, opacity: isSubmitting || !message.trim() ? 0.5 : 1 }}
+              style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'var(--color-primary, #c4a77d)', color: 'var(--color-bg-dark)', fontWeight: 700, cursor: 'pointer', fontSize: 12, opacity: isSubmitting || !message.trim() ? 0.5 : 1 }}
             >
               {isSubmitting ? '…' : '送出'}
             </button>
@@ -326,8 +326,10 @@ export const ActionBar: React.FC<ActionBarProps> = ({ stepId, series, epId, kind
           padding: '10px 14px',
           borderRadius: 10,
           fontSize: 12,
-          color: '#fff',
-          background: toast.tone === 'success' ? 'rgba(13,103,62,0.96)' : 'rgba(145,32,52,0.96)',
+          color: 'var(--color-text-on-dark)',
+          background: toast.tone === 'success'
+            ? 'color-mix(in srgb, var(--color-positive) 36%, var(--color-overlay-bg))'
+            : 'color-mix(in srgb, var(--color-negative) 36%, var(--color-overlay-bg))',
           zIndex: 9001,
         }} role="status">
           {toast.message}

@@ -69,12 +69,23 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode, episodeId, series
   // CSS variables from theme
   const themeStyles = useMemo(() => ({
     '--color-primary': theme.colors.primary,
+    '--color-secondary': theme.colors.secondary,
+    '--color-accent': theme.colors.accent,
     '--color-bg-dark': theme.colors.surfaceDark,
+    '--color-overlay-bg': theme.colors.surfaceOverlay,
     '--color-text-inverse': theme.colors.onPrimary,
+    '--color-text-on-dark': theme.colors.onDark,
+    '--color-text-card': theme.colors.onCard,
     '--color-text-muted': theme.colors.onCardMuted,
     '--color-border': theme.colors.border,
+    '--color-border-light': theme.colors.borderLight,
     '--color-card-bg': theme.colors.surfaceCard,
     '--color-card-header-bg': theme.colors.surfaceCardHeader,
+    '--color-positive': theme.colors.positive,
+    '--color-negative': theme.colors.negative,
+    '--color-info': theme.colors.info,
+    '--color-warning': theme.colors.warning,
+    '--color-highlight': theme.colors.highlight,
     '--font-main': theme.fonts.main,
     '--font-code': theme.fonts.code,
   } as CSSProperties), [theme]);
@@ -126,10 +137,10 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode, episodeId, series
 
   const currentStudioStep = studioSteps[currentIndex];
   const prevStudioStep = currentIndex > 0 ? studioSteps[currentIndex - 1] : null;
-  const durationInFrames = Math.max(
-    1,
-    Math.round((currentStudioStep?.step.durationInSeconds ?? 5) * fps),
-  );
+  const stepDurationInSeconds = currentStudioStep?.subtitles?.length
+    ? Math.ceil(currentStudioStep.subtitles[currentStudioStep.subtitles.length - 1].endTime)
+    : (currentStudioStep?.step.durationInSeconds ?? 5);
+  const durationInFrames = Math.max(1, Math.round(stepDurationInSeconds * fps));
 
   const applyDraftStep = useCallback((nextStep: Step) => {
     setDraftEpisode((current) => ({
@@ -278,6 +289,7 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode, episodeId, series
                     episode: draftEpisode,
                     episodeInfo,
                     audioSrc: currentStudioStep.audioSrc,
+                    subtitles: currentStudioStep.subtitles,
                   } satisfies StudioCompositionProps}
                   durationInFrames={durationInFrames}
                   compositionWidth={compositionWidth}
@@ -309,15 +321,15 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode, episodeId, series
             <div style={{
               display: 'flex', alignItems: 'center', gap: 8,
               padding: '8px 16px',
-              background: 'rgba(16,24,40,0.92)',
-              borderTop: '1px solid rgba(255,255,255,0.08)',
-              borderBottom: '1px solid rgba(255,255,255,0.12)',
+              background: 'var(--color-overlay-bg)',
+              borderTop: '1px solid var(--color-border-light)',
+              borderBottom: '1px solid var(--color-border-light)',
               flexShrink: 0,
             }}>
               <ActionBar stepId={step.id} series={fallbackSeries} epId={fallbackEpId} kind="content" />
               <div style={{
                 flex: 1,
-                color: '#ddd',
+                color: 'var(--color-text-on-dark)',
                 fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap',
                 maxHeight: 80, overflowY: 'auto',
               }}>
@@ -407,25 +419,25 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode, episodeId, series
                 bottom: 'calc(100% + 8px)',
                 right: 0,
                 width: 240,
-                background: 'rgba(8,15,29,0.92)',
-                border: '1px solid rgba(255,255,255,0.12)',
+                background: 'var(--color-overlay-bg)',
+                border: '1px solid var(--color-border-light)',
                 borderRadius: 12,
                 padding: '12px 14px',
                 backdropFilter: 'blur(16px)',
                 zIndex: 300,
                 fontSize: 12,
-                color: '#ccc',
+                color: 'var(--color-text-on-dark)',
                 lineHeight: 1.8,
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 2,
               }}>
-                <div><span style={{ color: '#888' }}>series / ep</span>　{fallbackSeries} / {fallbackEpId}</div>
-                <div><span style={{ color: '#888' }}>step</span>　{step.id}</div>
-                <div><span style={{ color: '#888' }}>卡片類型</span>　{step.layoutMode ?? '—'}</div>
-                <div><span style={{ color: '#888' }}>duration</span>　{step.durationInSeconds ?? 5}s</div>
-                <div><span style={{ color: '#888' }}>語音</span>　{audioExists === null ? '…' : audioExists ? '✓ 已生成' : '✗ 未生成'}</div>
-                <div><span style={{ color: '#888' }}>口播字數</span>　{step.narration ? `${step.narration.length} 字` : '—'}</div>
+                <div><span style={{ color: 'color-mix(in srgb, var(--color-text-on-dark) 62%, transparent)' }}>series / ep</span>　{fallbackSeries} / {fallbackEpId}</div>
+                <div><span style={{ color: 'color-mix(in srgb, var(--color-text-on-dark) 62%, transparent)' }}>step</span>　{step.id}</div>
+                <div><span style={{ color: 'color-mix(in srgb, var(--color-text-on-dark) 62%, transparent)' }}>卡片類型</span>　{step.layoutMode ?? '—'}</div>
+                <div><span style={{ color: 'color-mix(in srgb, var(--color-text-on-dark) 62%, transparent)' }}>duration</span>　{stepDurationInSeconds}s</div>
+                <div><span style={{ color: 'color-mix(in srgb, var(--color-text-on-dark) 62%, transparent)' }}>語音</span>　{audioExists === null ? '…' : audioExists ? '✓ 已生成' : '✗ 未生成'}</div>
+                <div><span style={{ color: 'color-mix(in srgb, var(--color-text-on-dark) 62%, transparent)' }}>口播字數</span>　{step.narration ? `${step.narration.length} 字` : '—'}</div>
               </div>
             )}
           </div>

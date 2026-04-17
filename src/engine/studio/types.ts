@@ -4,12 +4,14 @@
  */
 
 import { Step } from '../shared/types';
+import type { SubtitlePhrase } from '../shared/subtitle';
 
 export type StudioStepEntry = {
   id: string;
   index: number;
   step: Step;
   audioSrc?: string;
+  subtitles?: SubtitlePhrase[];
 };
 
 // ========================================

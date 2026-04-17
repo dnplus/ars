@@ -101,8 +101,8 @@ export const BackgroundLayer: React.FC<BackgroundLayerProps> = ({ preset = 'defa
           <div style={{
             ...baseStyle,
             background: `
-              radial-gradient(ellipse at ${spotX}% ${spotY}%, rgba(196, 167, 125, 0.15) 0%, transparent ${glowSize}%),
-              radial-gradient(ellipse at 50% 50%, ${theme.colors.surfaceDark} 40%, #0a0908 100%),
+              radial-gradient(ellipse at ${spotX}% ${spotY}%, color-mix(in srgb, ${theme.colors.primary} 15%, transparent) 0%, transparent ${glowSize}%),
+              radial-gradient(ellipse at 50% 50%, ${theme.colors.surfaceDark} 40%, color-mix(in srgb, ${theme.colors.surfaceDark} 65%, black) 100%),
               ${theme.colors.surfaceDark}
             `,
           }} />
@@ -121,8 +121,8 @@ export const BackgroundLayer: React.FC<BackgroundLayerProps> = ({ preset = 'defa
                 0deg,
                 transparent,
                 transparent 2px,
-                rgba(255, 255, 255, 0.008) 2px,
-                rgba(255, 255, 255, 0.008) 4px
+                color-mix(in srgb, ${theme.colors.onDark} 1%, transparent) 2px,
+                color-mix(in srgb, ${theme.colors.onDark} 1%, transparent) 4px
               ),
               ${theme.colors.surfaceDark}
             `,
