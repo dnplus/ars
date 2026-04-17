@@ -8,9 +8,8 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { StudioApp } from './engine/studio/StudioApp';
+import { isHiddenTemplateSeries, TEMPLATE_SERIES_ID } from './engine/shared/constants';
 import { Episode, SeriesConfig } from './engine/shared/types';
-
-const TEMPLATE_SERIES_ID = 'template';
 
 // ── 載入 series-config.ts ──
 const rawSeriesConfigs = import.meta.glob(
@@ -84,9 +83,9 @@ for (const filePath in rawModules) {
   }
 }
 
-const hasUserSeries = Object.keys(seriesMap).some((series) => series !== TEMPLATE_SERIES_ID);
-const visibleSeriesKeys = Object.keys(seriesMap)
-  .filter((series) => !(hasUserSeries && series === TEMPLATE_SERIES_ID))
+const allSeriesIds = Object.keys(seriesMap);
+const visibleSeriesKeys = allSeriesIds
+  .filter((series) => !isHiddenTemplateSeries(series, allSeriesIds))
   .sort();
 
 // URL: ?series=my-series&ep=ep-demo

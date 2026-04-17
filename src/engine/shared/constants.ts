@@ -22,3 +22,14 @@ export const CARD_SPACING = {
 } as const;
 
 export type CardSpacing = keyof typeof CARD_SPACING;
+
+export const TEMPLATE_SERIES_ID = "template";
+
+// Hide the bundled template series once the repo has at least one user series.
+export const isHiddenTemplateSeries = (
+  seriesId: string,
+  allSeriesIds: readonly string[],
+): boolean => {
+  if (seriesId !== TEMPLATE_SERIES_ID) return false;
+  return allSeriesIds.some((id) => id !== TEMPLATE_SERIES_ID);
+};

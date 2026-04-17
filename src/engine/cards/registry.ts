@@ -1,3 +1,4 @@
+import { isHiddenTemplateSeries } from "../shared/constants";
 import type { CardSpec } from "./types";
 import { cardSpec as codeSpec } from "./code/spec";
 import { cardSpec as coverSpec } from "./cover/spec";
@@ -21,8 +22,6 @@ const ENGINE_STATIC_SPECS: Record<string, { cardSpec: CardSpec<unknown> }> = {
 type GlobCardModule = {
   cardSpec: CardSpec<unknown>;
 };
-
-const TEMPLATE_SERIES_ID = "template";
 
 const extractSeriesIdFromSpecSource = (source: string): string | null => {
   const normalized = source.replace(/\\/g, "/");
@@ -81,17 +80,15 @@ const collect = (): Map<string, CardSpec<unknown>> => {
     engineSpecs = ENGINE_STATIC_SPECS;
     episodeSpecs = loadEpisodeSpecsWithWebpackContext();
   }
-  const hasUserSeriesSpecs = Object.keys(episodeSpecs).some((source) => {
-    const seriesId = extractSeriesIdFromSpecSource(source);
-    return seriesId !== null && seriesId !== TEMPLATE_SERIES_ID;
-  });
-  const filteredEpisodeSpecs = hasUserSeriesSpecs
-    ? Object.fromEntries(
-        Object.entries(episodeSpecs).filter(
-          ([source]) => extractSeriesIdFromSpecSource(source) !== TEMPLATE_SERIES_ID,
-        ),
-      )
-    : episodeSpecs;
+  const allSeriesIds = Object.keys(episodeSpecs)
+    .map(extractSeriesIdFromSpecSource)
+    .filter((id): id is string => id !== null);
+  const filteredEpisodeSpecs = Object.fromEntries(
+    Object.entries(episodeSpecs).filter(([source]) => {
+      const seriesId = extractSeriesIdFromSpecSource(source);
+      return seriesId === null || !isHiddenTemplateSeries(seriesId, allSeriesIds);
+    }),
+  );
   const registry = new Map<string, CardSpec<unknown>>();
 
   for (const [source, mod] of Object.entries({ ...engineSpecs, ...filteredEpisodeSpecs })) {

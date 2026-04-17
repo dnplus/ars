@@ -20,6 +20,7 @@ import { ThumbnailCard } from "./engine/components/cards/ThumbnailCard";
 import { getLayoutKey } from "./engine/layouts";
 import { ThemePreviewCard } from "./engine/components/ThemePreviewCard";
 import { FALLBACK_THEME, ThemeProvider } from "./engine/shared/ThemeContext";
+import { isHiddenTemplateSeries } from "./engine/shared/constants";
 import { Episode, SeriesConfig } from "./engine/shared/types";
 
 // 跨目錄掃描所有 series 下的 .ts 檔案
@@ -72,7 +73,6 @@ allLegacyConfigModules.keys().forEach((filePath: string) => {
 
 // 全局 fallback（當 series config 也沒有時）
 const GLOBAL_FALLBACK = { width: 1920, height: 1080, fps: 30 } as const;
-const TEMPLATE_SERIES_ID = 'template';
 
 // 建立 seriesMap: Record<series, Record<epId, Episode>>
 const seriesMap: Record<string, Record<string, Episode>> = {};
@@ -97,12 +97,12 @@ allEpisodeModules.keys().forEach((filePath: string) => {
   }
 });
 
-const hasUserSeries = Object.keys(seriesMap).some((series) => series !== TEMPLATE_SERIES_ID);
+const allSeriesIds = Object.keys(seriesMap);
 const visibleSeriesEntries = Object.entries(seriesMap)
-  .filter(([series]) => !(hasUserSeries && series === TEMPLATE_SERIES_ID))
+  .filter(([series]) => !isHiddenTemplateSeries(series, allSeriesIds))
   .sort(([left], [right]) => left.localeCompare(right));
 const visibleSeriesConfigEntries = Object.entries(seriesConfigs)
-  .filter(([series]) => !(hasUserSeries && series === TEMPLATE_SERIES_ID))
+  .filter(([series]) => !isHiddenTemplateSeries(series, allSeriesIds))
   .sort(([left], [right]) => left.localeCompare(right));
 
 export const RemotionRoot: React.FC = () => (

@@ -15,7 +15,7 @@ Key paths:
 - `src/engine/shared/types.ts` — Source of truth for `Episode`, `Step`, `ShellConfig`, `SeriesConfig`
 - `src/episodes/template/` — Template series used for smoke testing
 - `cli/` — Node.js CLI (`npx ars <command>`)
-- `.claude/commands/` — Claude Code slash commands (project-scoped)
+- `plugin/skills/` — Claude Code slash commands (shared via the ARS plugin)
 
 ---
 
