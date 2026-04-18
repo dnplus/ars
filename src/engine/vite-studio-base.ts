@@ -14,7 +14,10 @@ import fs from 'fs';
 import { spawn, type ChildProcess } from 'child_process';
 import { createRequire } from 'module';
 import { getTTSProviderCapabilities } from '../adapters/tts/registry';
-import { createReviewIntent } from '../review/review-intents';
+import { createStudioIntent, getStudioIntentsDir } from '../studio/studio-intents';
+import { migrateReviewIntents } from '../studio/migrate-review-intents';
+import type { StudioIntentAnchorType, StudioIntentTarget } from '../types/studio-intent';
+import { extractSections } from './shared/markdown-anchor';
 import type { SpeechProviderId } from './shared/types';
 
 export interface StudioConfigOptions {
@@ -28,6 +31,17 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
   const rootDir = process.env.ARS_REPO_ROOT ?? process.cwd();
   const fixAppliedEntries = new Map<string, FixAppliedEntry>();
   let latestFixApplied: FixAppliedEntry | null = null;
+
+  try {
+    const result = migrateReviewIntents(rootDir);
+    if (!result.skipped && (result.intentsMigrated > 0 || result.assetsMigrated > 0)) {
+      console.log(
+        `[ars] migrated ${result.intentsMigrated} review-intent(s) and ${result.assetsMigrated} asset(s) to .ars/studio-intents/ and .ars/studio-assets/`,
+      );
+    }
+  } catch (error) {
+    console.warn('[ars] review-intent migration failed:', error instanceof Error ? error.message : error);
+  }
 
   // SERIES/EP 由 CLI review.ts 傳入，用於自動開啟 URL
   const series = process.env.SERIES || 'template';
@@ -58,13 +72,17 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
     plugins: [
       react(),
       {
-        name: 'review-intent-api',
+        name: 'studio-intent-api',
         configureServer(server: any) {
           server.middlewares.use(async (req: any, res: any, next: any) => {
             const url = new URL(req.url, 'http://localhost');
-            if (url.pathname !== '/__ars/review-intent') {
+            const isLegacy = url.pathname === '/__ars/review-intent';
+            if (url.pathname !== '/__ars/studio-intent' && !isLegacy) {
               next();
               return;
+            }
+            if (isLegacy) {
+              warnLegacy('POST /__ars/review-intent', 'POST /__ars/studio-intent');
             }
 
             if (req.method !== 'POST') {
@@ -76,23 +94,37 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
 
             try {
               const body = await readJsonBody(req);
-              const target = {
-                series: asRequiredString(body.series, 'series'),
-                epId: asRequiredString(body.epId, 'epId'),
-                stepId: asRequiredString(body.stepId, 'stepId'),
+              const series = asRequiredString(body.series, 'series');
+              const epId = asRequiredString(body.epId, 'epId');
+              const stepId = asOptionalString(body.stepId);
+              const anchorTypeRaw = asOptionalString(body.anchorType);
+              const anchorIdRaw = asOptionalString(body.anchorId);
+              const anchorType: StudioIntentAnchorType = anchorTypeRaw
+                ? asAnchorType(anchorTypeRaw)
+                : stepId ? 'step' : 'episode';
+              const anchorId = anchorIdRaw ?? stepId ?? 'episode';
+
+              const target: StudioIntentTarget = {
+                series,
+                epId,
+                anchorType,
+                anchorId,
+                stepId,
+                anchorMeta: parseAnchorMeta(body.anchorMeta),
               };
-              const record = createReviewIntent({
+
+              const record = createStudioIntent({
                 target,
                 source: {
-                  ui: asReviewUi(body.from ?? body.ui ?? 'studio'),
+                  ui: asStudioUi(body.from ?? body.ui ?? 'studio'),
                   hash: asOptionalString(body.hash),
                 },
                 feedback: {
-                  kind: asReviewKind(body.kind ?? 'other'),
+                  kind: asStudioKind(body.kind ?? 'other'),
                   message: asRequiredString(body.message, 'message'),
-                  severity: asReviewSeverity(body.severity ?? 'medium'),
+                  severity: asStudioSeverity(body.severity ?? 'medium'),
                 },
-                attachments: persistReviewAttachments(body, rootDir, target),
+                attachments: persistStudioAttachments(body, rootDir, { series, epId, anchorId }),
                 rootDir,
               });
 
@@ -109,21 +141,25 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
         },
       },
       {
-        name: 'review-session-api',
+        name: 'studio-session-api',
         configureServer(server: any) {
           server.middlewares.use(async (req: any, res: any, next: any) => {
             const url = new URL(req.url, 'http://localhost');
 
-            if (url.pathname === '/__ars/review-session-end') {
+            const isSessionEnd = url.pathname === '/__ars/studio-session-end' || url.pathname === '/__ars/review-session-end';
+            if (isSessionEnd) {
+              if (url.pathname === '/__ars/review-session-end') {
+                warnLegacy('POST /__ars/review-session-end', 'POST /__ars/studio-session-end');
+              }
               if (req.method !== 'POST') {
                 writeJson(res, 405, { ok: false, error: 'Method not allowed' });
                 return;
               }
 
               try {
-                const reviewIntentsDir = path.join(rootDir, '.ars', 'review-intents');
-                fs.mkdirSync(reviewIntentsDir, { recursive: true });
-                const intentCount = fs.readdirSync(reviewIntentsDir)
+                const studioIntentsDir = getStudioIntentsDir(rootDir);
+                fs.mkdirSync(studioIntentsDir, { recursive: true });
+                const intentCount = fs.readdirSync(studioIntentsDir)
                   .filter((fileName) => fileName.endsWith('.json'))
                   .length;
                 const payload = {
@@ -132,7 +168,7 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
                 };
 
                 fs.writeFileSync(
-                  path.join(reviewIntentsDir, '_session-end.flag'),
+                  path.join(studioIntentsDir, '_session-end.flag'),
                   `${JSON.stringify(payload, null, 2)}\n`,
                   'utf-8',
                 );
@@ -145,25 +181,29 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
               return;
             }
 
-            if (url.pathname === '/__ars/review-intents') {
+            const isList = url.pathname === '/__ars/studio-intents' || url.pathname === '/__ars/review-intents';
+            if (isList) {
+              if (url.pathname === '/__ars/review-intents') {
+                warnLegacy('GET /__ars/review-intents', 'GET /__ars/studio-intents');
+              }
               if (req.method !== 'GET') {
                 writeJson(res, 405, { ok: false, error: 'Method not allowed' });
                 return;
               }
 
               try {
-                const reviewDir = path.join(rootDir, '.ars', 'review-intents');
-                if (!fs.existsSync(reviewDir)) {
+                const studioDir = getStudioIntentsDir(rootDir);
+                if (!fs.existsSync(studioDir)) {
                   writeJson(res, 200, { ok: true, intents: [] });
                   return;
                 }
 
-                const fileNames = fs.readdirSync(reviewDir)
+                const fileNames = fs.readdirSync(studioDir)
                   .filter((fileName) => fileName.endsWith('.json'))
                   .sort((a, b) => b.localeCompare(a));
 
                 const intents = fileNames.map((fileName) => {
-                  const raw = fs.readFileSync(path.join(reviewDir, fileName), 'utf-8');
+                  const raw = fs.readFileSync(path.join(studioDir, fileName), 'utf-8');
                   return JSON.parse(raw) as unknown;
                 });
 
@@ -320,6 +360,45 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
               return;
             }
 
+            if (url.pathname === '/__ars/plan') {
+              if (req.method !== 'GET') {
+                writeJson(res, 405, { ok: false, error: 'Method not allowed' });
+                return;
+              }
+
+              try {
+                const requestedSeries = asRequiredString(url.searchParams.get('series'), 'series');
+                const requestedEpId = asRequiredString(url.searchParams.get('ep'), 'ep');
+                const planPath = path.join(rootDir, '.ars', 'episodes', requestedEpId, 'plan.md');
+                if (!fs.existsSync(planPath)) {
+                  writeJson(res, 404, {
+                    ok: false,
+                    error: 'plan.md not found',
+                    expectedPath: path.relative(rootDir, planPath).split(path.sep).join('/'),
+                  });
+                  return;
+                }
+                const stat = fs.statSync(planPath);
+                const markdown = fs.readFileSync(planPath, 'utf-8');
+                const sections = extractSections(markdown);
+                writeJson(res, 200, {
+                  ok: true,
+                  plan: {
+                    series: requestedSeries,
+                    epId: requestedEpId,
+                    path: path.relative(rootDir, planPath).split(path.sep).join('/'),
+                    markdown,
+                    mtime: stat.mtimeMs,
+                    sections,
+                  },
+                });
+              } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                writeJson(res, 400, { ok: false, error: message });
+              }
+              return;
+            }
+
             if (url.pathname === '/__ars/episode-source-map') {
               if (req.method !== 'GET') {
                 writeJson(res, 405, { ok: false, error: 'Method not allowed' });
@@ -462,10 +541,10 @@ function asOptionalString(value: unknown): string | undefined {
   return value.trim();
 }
 
-function persistReviewAttachments(
+function persistStudioAttachments(
   body: Record<string, unknown>,
   rootDir: string,
-  target: { series: string; epId: string; stepId: string },
+  target: { series: string; epId: string; anchorId: string },
 ) {
   const attachmentsValue = body.attachments;
   const screenshotPath =
@@ -484,7 +563,7 @@ function persistReviewAttachments(
 
   if (screenshotDataUrl) {
     return {
-      screenshotPath: writeReviewAttachmentFile(rootDir, target, screenshotDataUrl),
+      screenshotPath: writeStudioAttachmentFile(rootDir, target, screenshotDataUrl),
     };
   }
 
@@ -493,14 +572,14 @@ function persistReviewAttachments(
   };
 }
 
-function writeReviewAttachmentFile(
+function writeStudioAttachmentFile(
   rootDir: string,
-  target: { series: string; epId: string; stepId: string },
+  target: { series: string; epId: string; anchorId: string },
   screenshotDataUrl: string,
 ): string {
   const match = screenshotDataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
   if (!match) {
-    throw new Error('Invalid review attachment image data.');
+    throw new Error('Invalid studio attachment image data.');
   }
 
   const [, mimeType, base64Payload] = match;
@@ -508,14 +587,14 @@ function writeReviewAttachmentFile(
   const attachmentDir = path.join(
     rootDir,
     '.ars',
-    'review-assets',
+    'studio-assets',
     sanitizePathToken(target.series),
     sanitizePathToken(target.epId),
   );
   fs.mkdirSync(attachmentDir, { recursive: true });
 
   const timestamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
-  const fileName = `${timestamp}-${sanitizePathToken(target.stepId)}.${extension}`;
+  const fileName = `${timestamp}-${sanitizePathToken(target.anchorId)}.${extension}`;
   const filePath = path.join(attachmentDir, fileName);
   fs.writeFileSync(filePath, Buffer.from(base64Payload, 'base64'));
   return path.relative(rootDir, filePath).split(path.sep).join('/');
@@ -532,7 +611,7 @@ function imageMimeToExtension(mimeType: string): string {
     case 'image/gif':
       return 'gif';
     default:
-      throw new Error(`Unsupported review attachment mime type: ${mimeType}`);
+      throw new Error(`Unsupported studio attachment mime type: ${mimeType}`);
   }
 }
 
@@ -541,28 +620,57 @@ function sanitizePathToken(value: string): string {
   return normalized.replace(/^-|-$/g, '') || 'attachment';
 }
 
-function asReviewUi(value: unknown): 'studio' {
-  if (value === 'studio' || value === 'slides') {
+function asStudioUi(value: unknown): 'studio' | 'plan' | 'build' | 'review' {
+  if (value === 'studio' || value === 'plan' || value === 'build' || value === 'review') {
+    return value;
+  }
+  if (value === 'slides') {
     return 'studio';
   }
 
-  throw new Error('Invalid review source ui.');
+  throw new Error('Invalid studio intent source ui.');
 }
 
-function asReviewKind(value: unknown): 'visual' | 'content' | 'timing' | 'other' {
-  if (value === 'visual' || value === 'content' || value === 'timing' || value === 'other') {
+function asStudioKind(value: unknown): 'visual' | 'content' | 'timing' | 'plan-section' | 'other' {
+  if (value === 'visual' || value === 'content' || value === 'timing' || value === 'plan-section' || value === 'other') {
     return value;
   }
 
-  throw new Error('Invalid review feedback kind.');
+  throw new Error('Invalid studio intent feedback kind.');
 }
 
-function asReviewSeverity(value: unknown): 'low' | 'medium' | 'high' {
+function asStudioSeverity(value: unknown): 'low' | 'medium' | 'high' {
   if (value === 'low' || value === 'medium' || value === 'high') {
     return value;
   }
 
-  throw new Error('Invalid review feedback severity.');
+  throw new Error('Invalid studio intent feedback severity.');
+}
+
+function asAnchorType(value: string): StudioIntentAnchorType {
+  if (value === 'step' || value === 'card' || value === 'markdown-section' || value === 'plan' || value === 'episode') {
+    return value;
+  }
+  throw new Error(`Invalid anchorType: ${value}`);
+}
+
+function parseAnchorMeta(value: unknown): StudioIntentTarget['anchorMeta'] {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+  const record = value as Record<string, unknown>;
+  const meta: NonNullable<StudioIntentTarget['anchorMeta']> = {};
+  if (typeof record.line === 'number') meta.line = record.line;
+  if (typeof record.title === 'string') meta.title = record.title;
+  if (typeof record.hash === 'string') meta.hash = record.hash;
+  return Object.keys(meta).length > 0 ? meta : undefined;
+}
+
+const warnedLegacyPaths = new Set<string>();
+function warnLegacy(legacy: string, replacement: string): void {
+  if (warnedLegacyPaths.has(legacy)) return;
+  warnedLegacyPaths.add(legacy);
+  console.warn(`[ars] ${legacy} is deprecated; use ${replacement}.`);
 }
 
 function asStepIds(value: unknown): string[] {

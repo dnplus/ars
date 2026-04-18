@@ -48,6 +48,6 @@ Other validation issues (missing summary CTA, long points, deprecated cards) are
 After success (and any auto-fix), guide the user back into the listening round of review. Pronunciation issues are the common follow-up, and the studio is the place to catch them.
 
 Suggest in this order:
-1. Open (or return to) the studio: `npx ars review open <epId>`. If `/ars:review` is already running for this epId, the existing watch loop picks up new pronunciation intents automatically — just tell the user to listen through and hit ✨ on any step where TTS reads something wrong.
+1. Open (or return to) the Studio: `npx ars studio <epId> --phase review`. If `/ars:review` is already running for this epId, the existing watch loop picks up new pronunciation intents automatically — just tell the user to listen through and hit ✨ on any step where TTS reads something wrong.
 2. `/ars:apply-review latest` (or the agent watching the loop) will route pronunciation intents to `cli/pronunciation_dict.yaml` and re-run `npx ars audio generate <epId> --step <stepId>` for just that step.
 3. Re-run full-episode or per-step audio generation as needed until the listening round is clean.

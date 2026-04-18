@@ -20,6 +20,7 @@ const KNOWN_COMMANDS = new Set([
   'prepare',
   'publish',
   'review',
+  'studio',
   'update',
   'config',
   'upload',
@@ -49,7 +50,8 @@ Commands:
   prepare <subcommand> [...]       Prepare release assets and metadata context
   publish <subcommand> [...]       Package and publish outputs
   audio <subcommand> [...]         Audio/TTS workflows
-  review <subcommand> [...]        Review surface + review intent workflows
+  review <subcommand> [...]        (deprecated alias) Forward to ars studio
+  studio <epId> [--phase ...]      Open Studio shell + manage Studio intents
   export <subcommand> [...]        Export cover or subtitle artifacts
   upload <subcommand> [...]        Upload to YouTube
   workstate <subcommand> [...]     Read or write workstate stage
@@ -86,6 +88,8 @@ async function loadCommandModule(command: string): Promise<CommandModule> {
       return import('./commands/publish');
     case 'review':
       return import('./commands/review');
+    case 'studio':
+      return import('./commands/studio');
     case 'update':
       return import('./commands/update');
     case 'upload':

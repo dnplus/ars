@@ -3,7 +3,7 @@ import { config } from "@remotion/eslint-config-flat";
 export default [
   ...config,
   {
-    files: ["src/engine/studio/StudioApp.tsx"],
+    files: ["src/engine/studio/views/ReviewView.tsx"],
     rules: {
       "no-irregular-whitespace": "off",
     },

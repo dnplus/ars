@@ -1,13 +1,25 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Img } from 'remotion';
-import type { ReviewIntentFeedback } from '../../../types/review-intent';
+import type {
+  StudioIntentAnchorMeta,
+  StudioIntentAnchorType,
+  StudioIntentFeedback,
+  StudioIntentSource,
+} from '../../../types/studio-intent';
 import { INTENT_SUBMITTED_EVENT } from '../constants';
 
+export type ActionBarAnchor = {
+  type: StudioIntentAnchorType;
+  id: string;
+  meta?: StudioIntentAnchorMeta;
+};
+
 type ActionBarProps = {
-  stepId: string;
   series: string;
   epId: string;
-  kind: ReviewIntentFeedback['kind'];
+  kind: StudioIntentFeedback['kind'];
+  anchor: ActionBarAnchor;
+  source?: StudioIntentSource['ui'];
 };
 
 type ToastState = {
@@ -15,7 +27,7 @@ type ToastState = {
   message: string;
 };
 
-type ReviewIntentResponse = {
+type StudioIntentResponse = {
   ok: boolean;
   intent?: { id: string };
   error?: string;
@@ -29,7 +41,7 @@ type AttachmentState = {
 
 const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
 
-export const ActionBar: React.FC<ActionBarProps> = ({ stepId, series, epId, kind }) => {
+export const ActionBar: React.FC<ActionBarProps> = ({ series, epId, kind, anchor, source = 'studio' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,22 +55,18 @@ export const ActionBar: React.FC<ActionBarProps> = ({ stepId, series, epId, kind
     if (!buttonRef.current) return;
     const rect = buttonRef.current.getBoundingClientRect();
     const popupW = 300;
-    const popupH = 160; // estimated
+    const popupH = 160;
 
     let top = rect.bottom + 8;
     let left = rect.left;
 
-    // 如果往下超出畫面，改往上
     if (top + popupH > window.innerHeight - 16) {
       top = rect.top - popupH - 8;
     }
-    // 如果往右超出畫面，靠右對齊按鈕
     if (left + popupW > window.innerWidth - 16) {
       left = rect.right - popupW;
     }
-    // 不要超出左邊
     if (left < 8) left = 8;
-    // 不要超出上面
     if (top < 8) top = 8;
 
     setPopupPos({ top, left });
@@ -73,12 +81,12 @@ export const ActionBar: React.FC<ActionBarProps> = ({ stepId, series, epId, kind
     }
   }, [isOpen, calcPopupPos]);
 
-  // Reset on step change
+  // Reset on anchor change
   useEffect(() => {
     setIsOpen(false);
     setMessage('');
     setAttachment(null);
-  }, [stepId]);
+  }, [anchor.id, anchor.type]);
 
   useEffect(() => {
     if (!toast) return;
@@ -90,21 +98,24 @@ export const ActionBar: React.FC<ActionBarProps> = ({ stepId, series, epId, kind
     if (!message.trim()) { textareaRef.current?.focus(); return; }
     setIsSubmitting(true);
     try {
-      const res = await fetch('/__ars/review-intent', {
+      const res = await fetch('/__ars/studio-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          from: 'studio',
+          from: source,
           series,
           epId,
-          stepId,
+          anchorType: anchor.type,
+          anchorId: anchor.id,
+          anchorMeta: anchor.meta,
+          stepId: anchor.type === 'step' ? anchor.id : undefined,
           kind,
           severity: 'medium',
           message: message.trim(),
           attachments: attachment ? { screenshotDataUrl: attachment.dataUrl } : undefined,
         }),
       });
-      const payload = (await res.json()) as ReviewIntentResponse;
+      const payload = (await res.json()) as StudioIntentResponse;
       if (!res.ok || !payload.intent) throw new Error(payload.error ?? `${res.status}`);
       setToast({ tone: 'success', message: `已記錄 ${payload.intent.id}` });
       setIsOpen(false);
@@ -115,7 +126,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({ stepId, series, epId, kind
     } finally {
       setIsSubmitting(false);
     }
-  }, [message, attachment, series, epId, stepId, kind]);
+  }, [message, attachment, series, epId, anchor, kind, source]);
 
   const handlePaste = useCallback((event: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const items = Array.from(event.clipboardData.items);
@@ -296,7 +307,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({ stepId, series, epId, kind
                 lineHeight: 1.5,
               }}
             >
-              需要補圖時可直接在輸入框貼上一張圖片，review intent 會自動保存附件。
+              需要補圖時可直接在輸入框貼上一張圖片，studio intent 會自動保存附件。
             </div>
           )}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>

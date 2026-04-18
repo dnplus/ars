@@ -267,15 +267,17 @@ export function listEpisodeIds(root = process.cwd(), seriesId) {
 }
 
 export function getPendingReviewCounts(root = process.cwd(), seriesId) {
-  const reviewDir = path.join(root, '.ars', 'review-intents');
+  const studioDir = path.join(root, '.ars', 'studio-intents');
+  const legacyDir = path.join(root, '.ars', 'review-intents');
+  const intentDir = fs.existsSync(studioDir) ? studioDir : (fs.existsSync(legacyDir) ? legacyDir : null);
   const counts = new Map();
 
-  if (!fs.existsSync(reviewDir)) {
+  if (!intentDir) {
     return counts;
   }
 
-  for (const fileName of listMatchingFiles(reviewDir, (name) => name.endsWith('.json'))) {
-    const record = readJson(path.join(reviewDir, fileName));
+  for (const fileName of listMatchingFiles(intentDir, (name) => name.endsWith('.json'))) {
+    const record = readJson(path.join(intentDir, fileName));
     const targetSeries = record?.target?.series;
     const epId = record?.target?.epId;
     if (typeof targetSeries !== 'string' || typeof epId !== 'string') {

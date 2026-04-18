@@ -1,4 +1,4 @@
-import { execFileSync } from 'child_process';
+import { execFileSync, type ChildProcess } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import {
@@ -11,6 +11,8 @@ import {
   wrapWithLoginShell,
 } from '../lib/tmux';
 import { getRuntimePackageInfo } from '../lib/runtime-package';
+import { resolveEpisodeTarget } from '../lib/context';
+import { openStudio } from '../lib/studio-launcher';
 
 export function normalizeClaudeLaunchArgs(
   args: string[],
@@ -77,11 +79,68 @@ export async function launchCommand(rawArgs: string[]): Promise<void> {
     throw new Error(`ARS plugin manifest not found: ${pluginManifestPath}`);
   }
 
+  // If the first non-flag argument resolves to an episode, spawn Studio
+  // alongside Claude. Otherwise fall through to the legacy claude-only launch
+  // so bare `ars` still works the same.
+  const episodeContext = tryResolveEpisodeArg(rawArgs);
+  if (episodeContext) {
+    const studio = openStudio({
+      series: episodeContext.series,
+      epId: episodeContext.epId,
+      phase: 'plan',
+      rootDir: process.cwd(),
+      inheritExit: false,
+    });
+    registerStudioCleanup(studio.child);
+    process.env.ARS_ACTIVE_EPISODE = `${episodeContext.series}/${episodeContext.epId}`;
+
+    const args = normalizeClaudeLaunchArgs(episodeContext.remainingArgs, {
+      pluginRoot: runtime.pluginRoot,
+    });
+    runClaude(process.cwd(), args);
+    return;
+  }
+
   const args = normalizeClaudeLaunchArgs(rawArgs, {
     pluginRoot: runtime.pluginRoot,
   });
 
   runClaude(process.cwd(), args);
+}
+
+interface EpisodeContext {
+  series: string;
+  epId: string;
+  remainingArgs: string[];
+}
+
+function tryResolveEpisodeArg(rawArgs: string[]): EpisodeContext | null {
+  if (rawArgs.length === 0) return null;
+  const first = rawArgs[0];
+  if (first.startsWith('-')) return null;
+
+  try {
+    const target = resolveEpisodeTarget(first, process.cwd());
+    return {
+      series: target.series,
+      epId: target.epId,
+      remainingArgs: rawArgs.slice(1),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function registerStudioCleanup(child: ChildProcess): void {
+  let killed = false;
+  const cleanup = () => {
+    if (killed) return;
+    killed = true;
+    try { child.kill('SIGTERM'); } catch { /* noop */ }
+  };
+  process.on('exit', cleanup);
+  process.on('SIGINT', () => { cleanup(); process.exit(130); });
+  process.on('SIGTERM', () => { cleanup(); process.exit(143); });
 }
 
 function runClaudeInsideTmux(cwd: string, args: string[]): void {

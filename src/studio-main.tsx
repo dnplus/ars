@@ -7,7 +7,7 @@
  */
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { StudioApp } from './engine/studio/StudioApp';
+import { StudioShell } from './engine/studio/StudioShell';
 import { isHiddenTemplateSeries, TEMPLATE_SERIES_ID } from './engine/shared/constants';
 import { Episode, SeriesConfig } from './engine/shared/types';
 
@@ -100,34 +100,31 @@ const availableEpisodeIds = Object.keys(seriesEpisodes).sort();
 const episodeId = urlParams.get('ep') || availableEpisodeIds[0] || 'ep-demo';
 const episode = seriesEpisodes[episodeId] ?? null;
 
-if (!episode) {
-  document.body.innerHTML = `
-    <div style="
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      height: 100vh; background: #0a1628; color: #e2e8f0;
-      font-family: system-ui, sans-serif; text-align: center; padding: 20px;
-    ">
-      <h1 style="color: #60a5fa; margin-bottom: 16px;">Episode Not Found</h1>
-      <p style="margin-bottom: 24px;">Episode "${episodeId}" (series: ${targetSeries}) is not available.</p>
-      <p>Available episodes:</p>
-      <ul style="list-style: none; margin-top: 12px; padding: 0;">
+const container = document.getElementById('root');
+if (container) {
+  const root = createRoot(container);
+  root.render(
+    <StrictMode>
+      <StudioShell episode={episode} episodeId={episodeId} seriesId={targetSeries} />
+    </StrictMode>
+  );
+
+  if (!episode) {
+    // Render the legacy episode-not-found list inline so users can still pick
+    // an episode. Lives below the shell so phase tabs remain available.
+    const fallback = document.createElement('div');
+    fallback.style.cssText = 'padding:24px;color:#e2e8f0;font-family:system-ui,sans-serif;';
+    fallback.innerHTML = `
+      <h2 style="color:#60a5fa;margin-bottom:12px;">Episode "${episodeId}" not found in series "${targetSeries}".</h2>
+      <p style="margin-bottom:12px;">Available episodes:</p>
+      <ul style="list-style:none;padding:0;">
         ${availableEpisodeIds
-          .map(
-            (id) =>
-              `<li style="margin: 8px 0;"><a href="?series=${targetSeries}&ep=${id}" style="color: #60a5fa; text-decoration: none; font-size: 1.2rem;">${id} : ${seriesEpisodes[id].metadata.title}</a></li>`
+          .map((id) =>
+            `<li style="margin:6px 0;"><a href="?series=${targetSeries}&ep=${id}" style="color:#60a5fa;text-decoration:none;">${id} : ${seriesEpisodes[id].metadata.title}</a></li>`
           )
           .join('')}
       </ul>
-    </div>
-  `;
-} else {
-  const container = document.getElementById('root');
-  if (container) {
-    const root = createRoot(container);
-      root.render(
-      <StrictMode>
-        <StudioApp episode={episode} episodeId={episodeId} seriesId={targetSeries} />
-      </StrictMode>
-    );
+    `;
+    container.appendChild(fallback);
   }
 }

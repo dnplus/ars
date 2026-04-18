@@ -59,21 +59,21 @@ Stage name: `onboard-walkthrough`
 
 1. Write workstate with stage `onboard-walkthrough`
 2. Give a 2-3 sentence intro to ARS
-3. Open the review studio **in the background** (use `run_in_background: true` on the Bash tool — do NOT wait for it to finish):
+3. Open the Studio **in the background** (use `run_in_background: true` on the Bash tool — do NOT wait for it to finish):
 
 ```bash
-npx ars review open ep-demo --series template
+npx ars studio ep-demo --phase review
 ```
 
 4. Immediately after launching, tell the user:
    - they are currently in **Phase 1 walkthrough**
    - this phase is **demo only** and will not modify their files
-   - Watch the output for the localhost URL (e.g. `http://localhost:5173`) and share it
+   - Watch the output for the localhost URL (e.g. `http://localhost:5174`) and share it
    - Browse the demo, then say **`next`** to continue to Phase 2, or **`skip`** to skip the walkthrough
-   - When they say `next` or `skip`, kill the review server before proceeding:
+   - When they say `next` or `skip`, kill the Studio dev server before proceeding:
 
 ```bash
-pkill -f "ars review open" 2>/dev/null || true
+pkill -f "ars studio" 2>/dev/null || true
 ```
 
 ## Phase 2 — customize
@@ -175,7 +175,7 @@ npx ars doctor
 Do not just paste raw doctor output. Reframe it into a readiness summary:
 
 - `Series context`
-- `Review Studio`
+- `Studio`
 - `Audio / TTS`
 - `YouTube publish`
 - `Analytics`
