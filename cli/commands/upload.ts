@@ -43,7 +43,7 @@ interface UploadOptions {
 
 interface ResolvedAssets {
   videoPath: string | null;
-  coverPath: string | null;
+  coverPath: string;
   srtPath: string | null;
 }
 
@@ -129,12 +129,33 @@ function resolveAssets(series: string, epId: string, customVideoPath?: string): 
     ? (fs.existsSync(customVideoPath) ? customVideoPath : null)
     : (fs.existsSync(defaultVideoPath) ? defaultVideoPath : null);
 
-  const coverPath = path.join(ROOT, 'output/covers', series, `${epId}.jpg`);
+  const thumbnailPath = path.join(ROOT, 'output/publish', series, epId, 'thumbnail.png');
+  if (!fs.existsSync(thumbnailPath)) {
+    console.error(`❌ Thumbnail not found: ${thumbnailPath}`);
+    console.error(`   Run: npx ars export thumbnail ${series}/${epId}`);
+    process.exit(1);
+  }
+  const coverPath = thumbnailPath;
+
+  // A/B test hint: 若 thumbnails/ 下有多個 variant，提示可手動上 YT Studio
+  const variantsDir = path.join(ROOT, 'output/publish', series, epId, 'thumbnails');
+  if (fs.existsSync(variantsDir)) {
+    const variantFiles = fs.readdirSync(variantsDir).filter((f: string) => f.endsWith('.png'));
+    if (variantFiles.length > 1) {
+      console.log(`\n💡 A/B Test hint: 偵測到 ${variantFiles.length} 個 thumbnail variants：`);
+      for (const f of variantFiles) {
+        console.log(`   • output/publish/${series}/${epId}/thumbnails/${f}`);
+      }
+      console.log(`   可手動上傳到 YT Studio 做 A/B test（YouTube 原生，最多 3 張，API 不支援 programmatic）`);
+      console.log(`   https://studio.youtube.com/\n`);
+    }
+  }
+
   const srtPath = path.join(ROOT, 'output/srt', series, `${epId}.srt`);
 
   return {
     videoPath,
-    coverPath: fs.existsSync(coverPath) ? coverPath : null,
+    coverPath,
     srtPath: fs.existsSync(srtPath) ? srtPath : null,
   };
 }

@@ -267,6 +267,46 @@ export const epDemo: Episode = {
     title: "Agentic Remotion Studio",
     subtitle: "Onboard 先把 repo 準備好，後面每一集才接得上",
     skipAudio: true,
+    thumbnail: {
+      variants: [
+        {
+          id: "v1",
+          cardType: "thumbnail",
+          label: "直述標題",
+          data: {
+            title: "先訂 persona.md",
+            subtitle: "AI 自己推出下一步",
+            channelName: "人蔘 Try Catch",
+            episodeTag: "DEMO",
+          },
+        },
+        {
+          id: "v2",
+          cardType: "thumbnail",
+          label: "反問鉤子（無吉祥物）",
+          data: {
+            title: "你真的需要腳本嗎？",
+            subtitle: "讓 ARS 替你決定下一步",
+            channelName: "人蔘 Try Catch",
+            episodeTag: "DEMO",
+            mascotUrl: "none",
+          },
+        },
+        {
+          id: "v3",
+          cardType: "thumbnail",
+          label: "大字衝擊（無吉祥物）",
+          data: {
+            title: "影片系統",
+            subtitle: "onboard 到 analytics，一條流水線",
+            channelName: "人蔘 Try Catch",
+            episodeTag: "DEMO",
+            mascotUrl: "none",
+          },
+        },
+      ],
+      primary: "v1",
+    },
   },
 
   shell: {

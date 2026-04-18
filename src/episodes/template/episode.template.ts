@@ -11,7 +11,37 @@ export const epTemplate: Episode = {
     title: 'Episode Title',
     subtitle: 'Episode Subtitle',
     episodeTag: 'EP0 · Template',
-    // voiceId: 'male-qn-qingse',
+
+    // YouTube thumbnail — 使用 variants 陣列（YT A/B test 最多 3 個）
+    // 用 `npx ars export thumbnail <epId>` 輸出 primary（預設 variants[0]）
+    // 用 `npx ars export thumbnail <epId> --all-variants` 輸出全部
+    // thumbnail: {
+    //   variants: [
+    //     {
+    //       id: "v1",
+    //       cardType: "thumbnail",
+    //       label: "直述標題",
+    //       data: {
+    //         title: "你的標題",
+    //         subtitle: "副標題（可選）",
+    //         channelName: "頻道名稱（可選）",
+    //         episodeTag: "EP01（可選）",
+    //       },
+    //     },
+    //     {
+    //       id: "v2",
+    //       cardType: "thumbnail",
+    //       label: "反問鉤子",
+    //       data: {
+    //         title: "你真的需要...？",
+    //         subtitle: "副標題",
+    //         channelName: "頻道名稱",
+    //         episodeTag: "EP01",
+    //       },
+    //     },
+    //   ],
+    //   primary: "v1",  // 省略取 variants[0]
+    // },
   },
 
   // shell 由 series-config.ts 自動注入，不需要手動設定

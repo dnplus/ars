@@ -166,6 +166,21 @@ export function getActiveSeries(root = process.cwd()) {
   return null;
 }
 
+export function getSeriesSpeechProvider(root = process.cwd(), seriesId) {
+  if (!seriesId) {
+    return null;
+  }
+
+  const seriesConfigPath = path.join(root, 'src', 'episodes', seriesId, 'series-config.ts');
+  try {
+    const content = fs.readFileSync(seriesConfigPath, 'utf8');
+    const match = content.match(/provider:\s*['"](minimax|elevenlabs)['"]/);
+    return match?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function getWorkStatePaths(root = process.cwd(), sessionId) {
   const stateRoot = path.join(root, '.ars', 'state');
   const repoPath = path.join(stateRoot, 'workstate.json');
@@ -286,7 +301,8 @@ export function detectEpisodeProgress(root = process.cwd(), seriesId, episodeId)
   const audioDir = path.join(root, 'public', 'episodes', seriesId, episodeId, 'audio');
   const prepareDir = path.join(root, 'output', 'publish', seriesId, episodeId);
   const renderFile = path.join(root, 'output', 'render', seriesId, `${episodeId}.mp4`);
-  const coverFile = path.join(root, 'output', 'covers', seriesId, `${episodeId}.jpg`);
+  const thumbnailFile = path.join(root, 'output', 'publish', seriesId, episodeId, 'thumbnail.png');
+  const thumbnailsDir = path.join(root, 'output', 'publish', seriesId, episodeId, 'thumbnails');
   const pendingReview = getPendingReviewCounts(root, seriesId).get(episodeId) ?? 0;
 
   const hasPlan = fs.existsSync(planFile);
@@ -298,7 +314,8 @@ export function detectEpisodeProgress(root = process.cwd(), seriesId, episodeId)
     fs.existsSync(path.join(prepareDir, 'prepare-youtube.json')) ||
     fs.existsSync(path.join(prepareDir, 'prepare-youtube.md'));
   const hasRender = fs.existsSync(renderFile);
-  const hasCover = fs.existsSync(coverFile);
+  const hasThumbnail = fs.existsSync(thumbnailFile) ||
+    (fs.existsSync(thumbnailsDir) && fs.readdirSync(thumbnailsDir).some((f) => f.endsWith('.png')));
 
   // Read persisted stage from workstate so review-close can hand off to prepare
   // before prepare artifacts exist. Real-time review signals still win.
@@ -321,7 +338,7 @@ export function detectEpisodeProgress(root = process.cwd(), seriesId, episodeId)
     ? 'review'
     : lateStageValid && hasPrepareYoutube
       ? 'prepare-youtube'
-      : lateStageValid && (hasRender || hasCover)
+      : lateStageValid && (hasRender || hasThumbnail)
         ? 'package'
         : lateStageValid && persistedStage === 'prepare-youtube'
           ? 'prepare-youtube'
@@ -337,7 +354,7 @@ export function detectEpisodeProgress(root = process.cwd(), seriesId, episodeId)
     ? '/ars:apply-review latest'
     : lateStageValid && hasPrepareYoutube
       ? `/ars:publish-youtube ${episodeId}`
-      : lateStageValid && (hasRender || hasCover)
+      : lateStageValid && (hasRender || hasThumbnail)
         ? `npx ars prepare youtube ${episodeId}`
         : lateStageValid && persistedStage === 'prepare-youtube'
           ? `npx ars prepare youtube ${episodeId}`
@@ -356,7 +373,7 @@ export function detectEpisodeProgress(root = process.cwd(), seriesId, episodeId)
     collectDirMtime(audioDir),
     collectDirMtime(prepareDir),
     fileMtime(renderFile),
-    fileMtime(coverFile),
+    fileMtime(thumbnailFile),
   );
 
   return {
@@ -371,7 +388,7 @@ export function detectEpisodeProgress(root = process.cwd(), seriesId, episodeId)
     audioCount: audioFiles.length,
     hasPrepareYoutube,
     hasRender,
-    hasCover,
+    hasThumbnail,
     lastModifiedAtMs,
   };
 }
@@ -488,7 +505,7 @@ export function buildSessionStartContext(root = process.cwd(), sessionId) {
   const activeSeries = getActiveSeries(root);
   const { progress, workState } = getCurrentEpisodeSummary(root, sessionId);
   const youtubeEnabled = config?.publish?.youtube?.enabled === true;
-  const ttsProvider = config?.tts?.provider ?? 'none';
+  const ttsProvider = getSeriesSpeechProvider(root, activeSeries) ?? 'unset';
 
   messages.push(
     `ARS: repo ready | activeSeries=${activeSeries ?? '(unset)'} | tts=${ttsProvider} | youtube=${youtubeEnabled ? 'on' : 'off'}`,

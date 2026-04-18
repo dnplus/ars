@@ -1,10 +1,9 @@
 /**
  * @command export
- * @description Export assets (cover thumbnail, SRT subtitles, etc.)
+ * @description Export assets (thumbnail PNG, SRT subtitles, etc.)
  *
  * Usage:
- *   npx ars export cover <epId>                   Export a single cover
- *   npx ars export cover <series>/*               Export all covers for a series
+ *   npx ars export thumbnail <epId>               Export YouTube thumbnail PNG
  *   npx ars export srt <epId>                     Export SRT subtitle for YouTube CC
  */
 import { execSync } from 'child_process';
@@ -17,16 +16,18 @@ import type { Episode } from '../../src/engine/shared/types';
 import type { SubtitlePhrase } from '../../src/engine/shared/subtitle';
 
 const HELP = `
-📸 ARS Export — Cover / SRT Export
+📸 ARS Export — Thumbnail / SRT Export
 
 Usage:
-  npx ars export cover <epId>             Export a single episode cover
-  npx ars export cover <series>/*         Export all covers for a series
-  npx ars export srt <epId>               Export SRT subtitle for YouTube CC
+  npx ars export thumbnail <epId>                 Export primary thumbnail PNG
+  npx ars export thumbnail <epId> --variant <id>  Export specific variant PNG
+  npx ars export thumbnail <epId> --all-variants  Export all variants + copy primary
+  npx ars export srt <epId>                       Export SRT subtitle for YouTube CC
 
 Examples:
-  npx ars export cover ep001
-  npx ars export cover template/*
+  npx ars export thumbnail ep001
+  npx ars export thumbnail ep001 --variant v2
+  npx ars export thumbnail ep001 --all-variants
   npx ars export srt ep001
 `;
 
@@ -121,6 +122,158 @@ async function exportSrt(args: string[]) {
   console.log(`✅ ${path.relative(root, outPath)} (${idx - 1} cues, ${Math.round(offset)}s)`);
 }
 
+// ── Thumbnail export ─────────────────────────────────────
+
+/** variantId 解析邏輯（與 Root.tsx 一致）*/
+function resolveVariantId(variant: { id?: string }, index: number): string {
+  return variant.id ?? `v${index + 1}`;
+}
+
+/** 解析 primary variant（與 Root.tsx 一致）*/
+function resolvePrimaryVariantId(thumbnail: { variants: Array<{ id?: string }>; primary?: string }): string {
+  if (thumbnail.primary) return thumbnail.primary;
+  return resolveVariantId(thumbnail.variants[0], 0);
+}
+
+/** 用 remotion still 輸出單張 PNG */
+function renderStill(
+  packageRoot: string,
+  root: string,
+  compositionId: string,
+  outPath: string,
+): void {
+  const remotionBin = path.join(packageRoot, 'node_modules', '.bin', 'remotion');
+  const entryPoint = path.join(root, 'src', 'index.ts');
+  const publicDir = path.join(root, 'public');
+  const absOutPath = path.resolve(outPath);
+
+  execSync(
+    `"${remotionBin}" still "${entryPoint}" "${compositionId}" "${absOutPath}" --public-dir="${publicDir}" --image-format=png --log=error`,
+    {
+      cwd: packageRoot,
+      stdio: 'pipe',
+      timeout: 60000,
+      env: {
+        ...process.env,
+        ARS_PACKAGE_ROOT: packageRoot,
+        ARS_REPO_ROOT: root,
+      },
+    }
+  );
+}
+
+async function exportThumbnail(args: string[]) {
+  const target = args[0];
+  if (!target) {
+    console.error('❌ 請提供 target，格式：<epId> 或 <series>/<epId>');
+    console.log(HELP);
+    process.exit(1);
+  }
+
+  // Parse flags
+  const variantFlag = args.includes('--variant') ? args[args.indexOf('--variant') + 1] : undefined;
+  const allVariants = args.includes('--all-variants');
+
+  const root = getRepoRoot();
+  const { series, epId } = resolveEpisodeTarget(target, root);
+  const ctx = resolveSeriesContext(series);
+
+  const epFilePath = path.join(ctx.episodesDir, `${epId}.ts`);
+  if (!fs.existsSync(epFilePath)) {
+    console.error(`❌ Episode not found: ${epFilePath}`);
+    process.exit(1);
+  }
+
+  const mod = await import(epFilePath);
+  const camelId = epId.replace(/-([a-z0-9])/g, (_: string, c: string) => c.toUpperCase());
+  const episode: Episode = mod[camelId] || mod[epId] || mod.default;
+  if (!episode) {
+    console.error(`❌ No recognizable export found in ${epFilePath}`);
+    process.exit(1);
+  }
+
+  if (!episode.metadata?.thumbnail?.variants?.length) {
+    console.error(`❌ episode.metadata.thumbnail 未設定或格式不正確`);
+    console.error(`   請在 ${epFilePath} 的 metadata 改成新格式：`);
+    console.error(`   thumbnail: {`);
+    console.error(`     variants: [`);
+    console.error(`       { id: "v1", cardType: "thumbnail", label: "直述標題", data: { title: "你的標題", subtitle: "副標題", channelName: "頻道名稱", episodeTag: "EP01" } },`);
+    console.error(`     ],`);
+    console.error(`     primary: "v1",  // 省略取 variants[0]`);
+    console.error(`   }`);
+    process.exit(1);
+  }
+
+  const thumbnail = episode.metadata.thumbnail;
+  const { packageRoot } = getRuntimePackageInfo(import.meta.url);
+  const outDir = path.join(root, 'output/publish', series, epId);
+  const variantsDir = path.join(outDir, 'thumbnails');
+
+  fs.mkdirSync(outDir, { recursive: true });
+
+  if (allVariants) {
+    // --all-variants: render 全部 variants 到 thumbnails/<id>.png，primary 複製到 thumbnail.png
+    fs.mkdirSync(variantsDir, { recursive: true });
+    console.log(`\n🖼  Exporting all variants: ${series}/${epId} (${thumbnail.variants.length} variants) ...`);
+
+    for (let i = 0; i < thumbnail.variants.length; i++) {
+      const variant = thumbnail.variants[i];
+      const variantId = resolveVariantId(variant, i);
+      const compositionId = `thumbnail-${series}--${epId}--${variantId}`;
+      const outPath = path.join(variantsDir, `${variantId}.png`);
+
+      console.log(`   Rendering variant: ${variantId}${variant.label ? ` (${variant.label})` : ''} ...`);
+      renderStill(packageRoot, root, compositionId, outPath);
+      const size = (fs.statSync(outPath).size / 1024 / 1024).toFixed(1);
+      console.log(`   ✅ thumbnails/${variantId}.png (${size}MB)`);
+    }
+
+    // Copy primary to thumbnail.png
+    const primaryId = resolvePrimaryVariantId(thumbnail);
+    const primarySrc = path.join(variantsDir, `${primaryId}.png`);
+    const primaryDst = path.join(outDir, 'thumbnail.png');
+    fs.copyFileSync(primarySrc, primaryDst);
+    const primarySize = (fs.statSync(primaryDst).size / 1024 / 1024).toFixed(1);
+    console.log(`\n✅ thumbnail.png → primary (${primaryId}) (${primarySize}MB)`);
+    console.log(`✅ thumbnails/ (${thumbnail.variants.length} variants)`);
+
+  } else if (variantFlag) {
+    // --variant <id>: render 指定 variant 到 thumbnails/<id>.png
+    const idx = thumbnail.variants.findIndex((v, i) => (v.id ?? `v${i + 1}`) === variantFlag);
+    if (idx === -1) {
+      console.error(`❌ Variant "${variantFlag}" not found in thumbnail.variants`);
+      console.error(`   Available: ${thumbnail.variants.map((v, i) => v.id ?? `v${i + 1}`).join(', ')}`);
+      process.exit(1);
+    }
+    const variant = thumbnail.variants[idx];
+    const variantId = resolveVariantId(variant, idx);
+    const compositionId = `thumbnail-${series}--${epId}--${variantId}`;
+    fs.mkdirSync(variantsDir, { recursive: true });
+    const outPath = path.join(variantsDir, `${variantId}.png`);
+
+    console.log(`\n🖼  Exporting variant ${variantId}${variant.label ? ` (${variant.label})` : ''}: ${series}/${epId} ...`);
+    renderStill(packageRoot, root, compositionId, outPath);
+    const size = (fs.statSync(outPath).size / 1024 / 1024).toFixed(1);
+    console.log(`✅ thumbnails/${variantId}.png (${size}MB)`);
+
+  } else {
+    // Default: render primary variant → thumbnail.png
+    const primaryId = resolvePrimaryVariantId(thumbnail);
+    const primaryIdx = thumbnail.variants.findIndex((v, i) => (v.id ?? `v${i + 1}`) === primaryId);
+    if (primaryIdx === -1) {
+      console.error(`❌ Primary variant "${primaryId}" not found in thumbnail.variants`);
+      process.exit(1);
+    }
+    const compositionId = `thumbnail-${series}--${epId}--${primaryId}`;
+    const outPath = path.join(outDir, 'thumbnail.png');
+
+    console.log(`\n🖼  Exporting thumbnail: ${series}/${epId} (primary=${primaryId}) ...`);
+    renderStill(packageRoot, root, compositionId, outPath);
+    const size = (fs.statSync(outPath).size / 1024 / 1024).toFixed(1);
+    console.log(`✅ ${path.relative(root, outPath)} (${size}MB)`);
+  }
+}
+
 // ── Main ─────────────────────────────────────────────────
 
 export async function run(args: string[]) {
@@ -130,98 +283,11 @@ export async function run(args: string[]) {
     return exportSrt(args.slice(1));
   }
 
-  if (subcommand !== 'cover') {
-    console.error('❌ Unknown export subcommand:', subcommand);
-    console.log(HELP);
-    process.exit(1);
+  if (subcommand === 'thumbnail') {
+    return exportThumbnail(args.slice(1));
   }
 
-  const target = args[1];
-  if (!target) {
-    console.error('❌ 請提供 target');
-    console.log(HELP);
-    process.exit(1);
-  }
-
-  const root = getRepoRoot();
-  const compositionPrefix = 'cover';
-  const outBase = path.join(root, 'output/covers');
-
-  // Resolve episodes to export
-  const targets: { series: string; epId: string }[] = [];
-
-  if (target.endsWith('/*')) {
-    const series = target.slice(0, -2);
-    if (!series) {
-      console.error(`❌ Target 格式錯誤，需要 <series>/*`);
-      process.exit(1);
-    }
-
-    const ctx = resolveSeriesContext(series);
-    const files = fs.readdirSync(ctx.episodesDir)
-      .filter(f => /^ep.*\.ts$/.test(f) && !f.includes('.subtitles.') && !f.includes('.template.'));
-    for (const f of files) {
-      const epId = f.replace(/\.ts$/, '');
-      targets.push({ series, epId });
-    }
-    if (targets.length === 0) {
-      console.error(`❌ No episodes found in ${series}`);
-      process.exit(1);
-    }
-  } else {
-    targets.push(resolveEpisodeTarget(target, root));
-  }
-
-  console.log(`\n📸 Exporting ${targets.length} ${subcommand}(s)...\n`);
-
-  let success = 0;
-  let failed = 0;
-
-  for (const { series: s, epId } of targets) {
-    const compositionId = `${compositionPrefix}-${s}--${epId}`;
-    const outDir = path.join(outBase, s);
-    const outPath = path.join(outDir, `${epId}.jpg`);
-
-    fs.mkdirSync(outDir, { recursive: true });
-
-    process.stdout.write(`  🖼  ${s}/${epId} ... `);
-
-    try {
-      const { packageRoot } = getRuntimePackageInfo(import.meta.url);
-      const remotionBin = path.join(packageRoot, 'node_modules', '.bin', 'remotion');
-      // Run with cwd=ARS package so Node.js ESM resolves config imports
-      // (e.g. @remotion/tailwind-v4) from ARS node_modules.
-      // Pass the user repo entry point, public dir, and output as absolute paths.
-      const entryPoint = path.join(root, 'src', 'index.ts');
-      const publicDir = path.join(root, 'public');
-      const absOutPath = path.resolve(outPath);
-      execSync(
-        `"${remotionBin}" still "${entryPoint}" "${compositionId}" "${absOutPath}" --public-dir="${publicDir}" --image-format=jpeg --jpeg-quality=90 --log=error`,
-        {
-          cwd: packageRoot,
-          stdio: 'pipe',
-          timeout: 60000,
-          env: {
-            ...process.env,
-            ARS_PACKAGE_ROOT: packageRoot,
-            ARS_REPO_ROOT: root,
-          },
-        }
-      );
-      const size = (fs.statSync(outPath).size / 1024 / 1024).toFixed(1);
-      console.log(`✅ ${path.relative(root, outPath)} (${size}MB)`);
-      success++;
-    } catch (err: any) {
-      console.log(`❌ Failed`);
-      if (err.stderr) {
-        console.error(`     ${err.stderr.toString().trim().split('\n')[0]}`);
-      }
-      failed++;
-    }
-  }
-
-  console.log(`\n📊 Done: ${success} exported, ${failed} failed`);
-  if (success > 0) {
-    console.log(`📁 Output: ${path.relative(root, outBase)}/`);
-  }
+  console.error('❌ Unknown export subcommand:', subcommand);
+  console.log(HELP);
+  process.exit(1);
 }

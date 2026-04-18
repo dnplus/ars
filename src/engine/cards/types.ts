@@ -25,6 +25,11 @@ export interface CardSpec<TData> {
   schema?: ZodType<TData>;
   defaults?: Partial<TData>;
   component: ComponentType<CardRenderProps<TData>>;
+  /**
+   * 標記此 card 可作為 episode.metadata.thumbnail.variants 的 cardType。
+   * 為 true 時，Root.tsx thumbnails Folder 會為每個 variant 動態查 registry 並建立 Still。
+   */
+  canBeThumbnail?: boolean;
   agentHints?: {
     whenToUse?: string;
     notForUseCases?: string;

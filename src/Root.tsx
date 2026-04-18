@@ -16,7 +16,7 @@ import "./engine/shared/load-local-fonts";
 import React from "react";
 import { Composition, Folder, Still, staticFile } from "remotion";
 import { EpisodeRenderer } from "./engine/Composition";
-import { ThumbnailCard } from "./engine/components/cards/ThumbnailCard";
+import { CARD_REGISTRY } from "./engine/cards/registry";
 import { getLayoutKey } from "./engine/layouts";
 import { ThemePreviewCard } from "./engine/components/ThemePreviewCard";
 import { FALLBACK_THEME, ThemeProvider } from "./engine/shared/ThemeContext";
@@ -163,44 +163,74 @@ export const RemotionRoot: React.FC = () => (
       </Folder>
     ))}
 
-    {/* ── Cover Stills ── */}
-    <Folder name="covers">
+    {/* ── Thumbnail Stills (episode.metadata.thumbnail.variants 存在時才註冊) ── */}
+    <Folder name="thumbnails">
       {visibleSeriesEntries.map(([series, episodes]) => (
-        <Folder key={`cover-${series}`} name={series}>
-          {Object.entries(episodes).sort().map(([epId, episode]) => {
+        <Folder key={`thumbnail-${series}`} name={series}>
+          {Object.entries(episodes).sort().flatMap(([epId, episode]) => {
             const sc = seriesConfigs[series];
             const shell = episode.shell ?? sc?.shell;
             const defaults = sc?.episodeDefaults ?? {};
             const meta = { ...GLOBAL_FALLBACK, ...defaults, ...episode.metadata };
-            const w = meta.width ?? 1280;
-            const h = meta.height ?? 720;
 
-            const mascotUrl = shell?.config?.vtuber?.openImg
-              ? staticFile(shell.config.vtuber.openImg)
-              : staticFile(`episodes/${series}/shared/vtuber/vtuber_open.png`);
+            if (!meta.thumbnail?.variants?.length) return [];
 
-            const CardComponent = () =>
-              (
-                <ThumbnailCard
-                  title={meta.title}
-                  subtitle={meta.subtitle}
-                  channelName={meta.channelName}
-                  episodeTag={meta.episodeTag}
-                  width={w}
-                  height={h}
-                  mascotUrl={mascotUrl}
+            const { variants } = meta.thumbnail;
+
+            return variants.flatMap((variant, idx) => {
+              const variantId = variant.id ?? `v${idx + 1}`;
+              const cardType = variant.cardType ?? "thumbnail";
+              const spec = CARD_REGISTRY.get(cardType);
+
+              // cardType 沒在 registry 裡：skip，不 throw
+              if (!spec) return [];
+
+              const CardComp = spec.component as React.ComponentType<{ data: unknown; step: { id: string; durationInSeconds: number }; episode: { title: string; subtitle?: string; channelName?: string; episodeTag?: string } }>;
+
+              // mascotUrl 處理：
+              // - undefined → 自動注入 vtuber.openImg（向下相容預設行為）
+              // - "none" → 明確不要吉祥物，轉回 undefined 傳給 component
+              // - 其他字串 → 使用者指定的圖，原樣透過
+              let data = variant.data as Record<string, unknown>;
+              if (cardType === "thumbnail") {
+                if (data.mascotUrl === undefined) {
+                  const vtuberImg = shell?.config?.vtuber?.openImg;
+                  if (vtuberImg) {
+                    data = { ...data, mascotUrl: staticFile(vtuberImg) };
+                  }
+                } else if (data.mascotUrl === "none") {
+                  data = { ...data, mascotUrl: undefined };
+                }
+              }
+
+              const episodeMeta = {
+                title: meta.title,
+                subtitle: meta.subtitle,
+                channelName: meta.channelName,
+                episodeTag: meta.episodeTag,
+              };
+              const stepMeta = { id: variantId, durationInSeconds: 0 };
+              const compositionId = `thumbnail-${series}--${epId}--${variantId}`;
+
+              const capturedData = data;
+              const ThumbnailComp = () => (
+                <CardComp
+                  data={capturedData}
+                  step={stepMeta}
+                  episode={episodeMeta}
                 />
               );
 
-            return (
-              <Still
-                key={`cover-${series}--${epId}`}
-                id={`cover-${series}--${epId}`}
-                component={CardComponent}
-                width={w}
-                height={h}
-              />
-            );
+              return [
+                <Still
+                  key={compositionId}
+                  id={compositionId}
+                  component={ThumbnailComp}
+                  width={1280}
+                  height={720}
+                />
+              ];
+            });
           })}
         </Folder>
       ))}

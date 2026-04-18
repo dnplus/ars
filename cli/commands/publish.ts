@@ -33,7 +33,7 @@ const HELP = `
 🚀 ARS Publish — High-Level Release Commands
 
 Usage:
-  npx ars publish package <epId>            Export cover + SRT + render
+  npx ars publish package <epId>            Export thumbnail + SRT + render
   npx ars publish youtube <epId>            Package + upload YouTube
 
 Options:
@@ -139,10 +139,10 @@ function ensureYoutubeReady(series: string, epId: string): void {
 
 function ensurePackageOutputs(series: string, epId: string): void {
   const renderPath = path.join(ROOT, 'output', 'render', series, `${epId}.mp4`);
-  const coverPath = path.join(ROOT, 'output', 'covers', series, `${epId}.jpg`);
+  const thumbnailPath = path.join(ROOT, 'output', 'publish', series, epId, 'thumbnail.png');
   const missing = [
     !fs.existsSync(renderPath) && renderPath,
-    !fs.existsSync(coverPath) && coverPath,
+    !fs.existsSync(thumbnailPath) && thumbnailPath,
   ].filter(Boolean);
 
   if (missing.length > 0) {
@@ -157,7 +157,7 @@ function ensurePackageOutputs(series: string, epId: string): void {
 function localOutputPaths(series: string, epId: string) {
   return {
     renderPath: path.join(ROOT, 'output', 'render', series, `${epId}.mp4`),
-    coverPath: path.join(ROOT, 'output', 'covers', series, `${epId}.jpg`),
+    thumbnailPath: path.join(ROOT, 'output', 'publish', series, epId, 'thumbnail.png'),
     srtPath: path.join(ROOT, 'output', 'srt', series, `${epId}.srt`),
   };
 }
@@ -167,12 +167,12 @@ function publishPackage(target: string, series: string, epId: string, dryRun: bo
   if (dryRun) {
     console.log('   ℹ️  Dry run for publish means: local asset steps still execute; only external uploads stay dry-run.');
   }
-  const { coverPath, srtPath, renderPath } = localOutputPaths(series, epId);
+  const { thumbnailPath, srtPath, renderPath } = localOutputPaths(series, epId);
 
-  if (!force && fs.existsSync(coverPath)) {
-    console.log(`   ⏭️  Cover export skipped: ${path.relative(ROOT, coverPath)}`);
+  if (!force && fs.existsSync(thumbnailPath)) {
+    console.log(`   ⏭️  Thumbnail export skipped: ${path.relative(ROOT, thumbnailPath)}`);
   } else {
-    runLocalStep('Cover export', ...cliArgs('export', 'cover', target));
+    runLocalStep('Thumbnail export', ...cliArgs('export', 'thumbnail', target));
   }
 
   if (!force && fs.existsSync(srtPath)) {

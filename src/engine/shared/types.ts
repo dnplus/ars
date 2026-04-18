@@ -19,6 +19,39 @@ import type { StreamingLayoutConfig } from "../layouts/StreamingLayout";
 import type { StepEffect, EffectConfig } from "./effects/CardEffect";
 import type { Theme } from "./theme";
 
+export type SpeechProviderId = "minimax" | "elevenlabs";
+
+export type SpeechAudioFormat = "mp3" | "wav" | "pcm" | "flac" | "ogg_opus";
+
+export type SpeechSpec = {
+  model?: string;
+  voice?: string;
+  language?: string;
+  rate?: number;
+  pitch?: number;
+  volume?: number;
+  format?: SpeechAudioFormat;
+  providerOptions?: {
+    minimax?: {
+      languageBoost?: string;
+      subtitleEnable?: boolean;
+      pronunciationDictPath?: string;
+      apiBase?: string;
+      voiceModify?: {
+        pitch?: number;
+        intensity?: number;
+        timbre?: number;
+        soundEffects?: string;
+      };
+    };
+    elevenlabs?: {
+      modelId?: string;
+      voiceId?: string;
+      outputFormat?: string;
+    };
+  };
+};
+
 // ========================================
 // Layout Mode（佈局模式）
 // ========================================
@@ -89,8 +122,8 @@ export type EpisodeMetadata = {
    * 省略則不顯示
    */
   channelName?: string;
-  /** TTS voice ID，整集預設聲音；可在 Step 層級 override */
-  voiceId?: string;
+  /** Episode-level speech overrides; merged on top of series speech defaults. */
+  speech?: SpeechSpec;
 
   /** YouTube 上傳用 metadata（prepare publish 會回寫到這裡） */
   youtube?: {
@@ -105,6 +138,56 @@ export type EpisodeMetadata = {
     youtubeUrl?: string;
     youtubeUploadedAt?: string;
   };
+
+  /**
+   * YouTube Thumbnail variants；存在時可用 `npx ars export thumbnail <epId>` 輸出 PNG。
+   * 不進 steps[]，是獨立的 Still composition。
+   * 不含 width/height（export 時固定為 1280×720）。
+   *
+   * 新寫法（必須用 variants 陣列）：
+   *   thumbnail: {
+   *     variants: [
+   *       { id: "v1", cardType: "thumbnail", label: "直述標題", data: { title: "...", subtitle: "..." } },
+   *       { id: "v2", cardType: "thumbnail", label: "反問鉤子", data: { title: "...？", subtitle: "..." } },
+   *     ],
+   *     primary: "v1",  // 省略取 variants[0]
+   *   }
+   *
+   * @deprecated 舊寫法 `thumbnail: { title, subtitle, ... }` 已移除，請改用上方 variants 格式。
+   */
+  thumbnail?: {
+    variants: ThumbnailVariant[];
+    primary?: string;
+  };
+};
+
+/**
+ * ThumbnailVariant — 單一 thumbnail 候選版本。
+ * 放在 episode.metadata.thumbnail.variants[]。
+ *
+ * - id: 省略時自動給 v1/v2/v3（取陣列 index+1）
+ * - cardType: 預設 "thumbnail"，對應 CARD_REGISTRY 的 card type
+ * - data: 由對應 card spec 的 Zod schema 驗證（Record<string, unknown> 以保持開放性）
+ * - label: A/B test 說明，e.g. "反問鉤子"（不進 render，純工具用途）
+ */
+export type ThumbnailVariant = {
+  id?: string;
+  cardType?: string;
+  data: Record<string, unknown>;
+  label?: string;
+};
+
+/**
+ * ThumbnailData — "thumbnail" card 的資料形狀。
+ * 僅供 card registry / Still composition 使用，不是 metadata.thumbnail 的形狀。
+ * metadata.thumbnail 請用 `{ variants: ThumbnailVariant[]; primary?: string }` 格式。
+ */
+export type ThumbnailData = {
+  title: string;
+  subtitle?: string;
+  channelName?: string;
+  episodeTag?: string;
+  mascotUrl?: string;
 };
 
 /**
@@ -114,12 +197,10 @@ export type EpisodeMetadata = {
 export type SeriesConfig = {
   shell: ShellConfig;
   episodeDefaults: Partial<EpisodeMetadata>;
-  /** TTS 聲音微調（MiniMax speech-02-hd）；省略則用預設值 */
-  tts?: {
-    /** 語速 0.5~2.0 */
-    speed?: number;
-    /** 音高 -12~12（正值高亢/年輕，負值低沉） */
-    pitch?: number;
+  speech: {
+    provider: SpeechProviderId;
+    defaults: SpeechSpec;
+    reviewRequiresNativeTiming: boolean;
   };
   /** 封面縮圖設定；省略則使用 ThumbnailCard */
   thumbnail?: {
@@ -202,10 +283,6 @@ export type Step = {
   /** 特效參數覆寫 */
   effectConfig?: EffectConfig;
 
-  /** 此 step 的 TTS 聲音，覆蓋 episode.metadata.voiceId（多人對話用） */
-  voiceId?: string;
-  /** 此 step 的 TTS 語速（0.5~2.0），覆蓋 series tts.speed / CLI --speed */
-  speed?: number;
-  /** 此 step 的 TTS pitch（-12~12），覆蓋 series tts.pitch */
-  pitch?: number;
+  /** Step-level speech overrides; merged on top of episode + series speech. */
+  speech?: SpeechSpec;
 };

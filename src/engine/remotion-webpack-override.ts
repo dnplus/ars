@@ -24,7 +24,7 @@ type WebpackConfig = {
 };
 
 export function sharedWebpackOverride(config: WebpackConfig): WebpackConfig {
-  // When running via `npx ars export cover` from an external user repo,
+  // When running via `npx ars export thumbnail` from an external user repo,
   // ARS_PACKAGE_ROOT points to the ARS package so webpack can resolve
   // remotion and other deps from ARS node_modules.
   const extraModuleDirs: string[] = [];

@@ -6,6 +6,7 @@ import { cardSpec as imageSpec } from "./image/spec";
 import { cardSpec as markdownSpec } from "./markdown/spec";
 import { cardSpec as mermaidSpec } from "./mermaid/spec";
 import { cardSpec as summarySpec } from "./summary/spec";
+import { cardSpec as thumbnailSpec } from "./thumbnail/spec";
 import { cardSpec as tickerSpec } from "./ticker/spec";
 
 // Static fallback for Remotion/webpack environments where import.meta.glob is unavailable.
@@ -16,6 +17,7 @@ const ENGINE_STATIC_SPECS: Record<string, { cardSpec: CardSpec<unknown> }> = {
   "./markdown/spec.ts": { cardSpec: markdownSpec as CardSpec<unknown> },
   "./mermaid/spec.ts": { cardSpec: mermaidSpec as CardSpec<unknown> },
   "./summary/spec.ts": { cardSpec: summarySpec as CardSpec<unknown> },
+  "./thumbnail/spec.ts": { cardSpec: thumbnailSpec as CardSpec<unknown> },
   "./ticker/spec.ts": { cardSpec: tickerSpec as CardSpec<unknown> },
 };
 
