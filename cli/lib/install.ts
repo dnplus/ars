@@ -227,18 +227,54 @@ export function getSourceGitCommit(sourceRoot: string): string {
   );
 }
 
+/**
+ * Top-level paths inside `src/` that should NOT be copied into consumer repos.
+ * Anything else under `src/` is treated as ARS engine source and synced wholesale.
+ *
+ * The default is "sync everything under src/" because adding a new top-level
+ * runtime directory (e.g. `src/studio/` in the Phase 1 Studio rework) would
+ * otherwise silently fail to land in consumer repos until someone remembered to
+ * extend a whitelist. Explicit excludes here are easier to reason about than an
+ * ever-growing allow list.
+ */
+const SRC_SYNC_EXCLUDES = new Set<string>([
+  // episodes is series-owned content; only the template ships, handled below
+  'episodes',
+  // dev-only directories (placeholder; add as we introduce them)
+  '__tests__',
+  '__fixtures__',
+  'test-utils',
+  'internal',
+]);
+
 export function syncEngineFiles(options: SyncEngineOptions): string[] {
   const copied: string[] = [];
-  const sourceEngineDir = path.join(options.sourceRoot, 'src', 'engine');
-  const targetEngineDir = path.join(options.root, 'src', 'engine');
-  syncDirectoryIfNeeded(
-    sourceEngineDir,
-    targetEngineDir,
-    options.overwriteEngine,
-    'engine/',
-    copied,
-  );
+  const sourceSrcDir = path.join(options.sourceRoot, 'src');
 
+  if (fs.existsSync(sourceSrcDir)) {
+    for (const entry of fs.readdirSync(sourceSrcDir, { withFileTypes: true })) {
+      if (SRC_SYNC_EXCLUDES.has(entry.name)) continue;
+
+      const sourcePath = path.join(sourceSrcDir, entry.name);
+      const targetPath = path.join(options.root, 'src', entry.name);
+      // `src/engine/` is the only directory that follows the `--force-engine`
+      // overwrite flag; everything else (review/, studio/, types/, adapters/,
+      // root .tsx files, etc.) follows the support-files flag. Engine churns
+      // most often and ARS owns it end-to-end, so it gets the heavier hammer.
+      const overwrite = entry.name === 'engine'
+        ? options.overwriteEngine
+        : options.overwriteSupportFiles;
+
+      if (entry.isDirectory()) {
+        syncDirectoryIfNeeded(sourcePath, targetPath, overwrite, `${entry.name}/`, copied);
+      } else if (entry.isFile()) {
+        syncFileIfNeeded(sourcePath, targetPath, overwrite, entry.name, copied);
+      }
+    }
+  }
+
+  // Template episode lives under src/episodes/ which is excluded above; ship it
+  // explicitly so consumer repos can use it as a reference.
   const sourceTemplateDir = path.join(
     options.sourceRoot,
     'src',
@@ -253,41 +289,6 @@ export function syncEngineFiles(options: SyncEngineOptions): string[] {
     'episodes/template/',
     copied,
   );
-
-  syncFileIfNeeded(
-    path.join(options.sourceRoot, 'src', 'Root.tsx'),
-    path.join(options.root, 'src', 'Root.tsx'),
-    options.overwriteSupportFiles,
-    'Root.tsx',
-    copied,
-  );
-
-  // Review surface support files
-  syncDirectoryIfNeeded(
-    path.join(options.sourceRoot, 'src', 'review'),
-    path.join(options.root, 'src', 'review'),
-    options.overwriteSupportFiles,
-    'review/',
-    copied,
-  );
-
-  syncDirectoryIfNeeded(
-    path.join(options.sourceRoot, 'src', 'types'),
-    path.join(options.root, 'src', 'types'),
-    options.overwriteSupportFiles,
-    'types/',
-    copied,
-  );
-
-  for (const file of ['studio.html', 'studio-main.tsx', 'index.ts', 'index.css', 'global.d.ts']) {
-    syncFileIfNeeded(
-      path.join(options.sourceRoot, 'src', file),
-      path.join(options.root, 'src', file),
-      options.overwriteSupportFiles,
-      file,
-      copied,
-    );
-  }
 
   syncFileIfNeeded(
     path.join(options.sourceRoot, 'vite.studio.config.ts'),
