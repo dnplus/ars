@@ -44,7 +44,6 @@ export async function run(args: string[]) {
   if (options.skipSeries) {
     if (!options.quiet) {
       console.log(`✅ Wrote ${result.configPath}`);
-      console.log(`   tts.provider = ${result.config.tts.provider}`);
       console.log(
         `   publish.youtube.enabled = ${String(result.config.publish.youtube.enabled)}`,
       );
@@ -121,7 +120,6 @@ export async function run(args: string[]) {
 
   if (!options.quiet) {
     console.log(`✅ Wrote ${result.configPath}`);
-    console.log(`   tts.provider = ${result.config.tts.provider}`);
     console.log(
       `   publish.youtube.enabled = ${String(result.config.publish.youtube.enabled)}`,
     );

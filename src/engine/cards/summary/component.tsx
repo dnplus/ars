@@ -4,7 +4,7 @@ import { BaseSlide } from "../../primitives/BaseSlide";
 import { useTheme } from "../../shared/ThemeContext";
 import type { CardRenderProps } from "../types";
 
-export type SummaryCardButton = {
+export type SummaryCardButton = string | {
   label: string;
   icon?: string;
 };
@@ -18,6 +18,7 @@ export type SummaryCardQrCode = {
 export type SummaryCardData = {
   title: string;
   points: string[];
+  cta?: string;
   ctaButtons?: SummaryCardButton[];
   qrCodes?: SummaryCardQrCode[];
   showCta?: boolean;
@@ -41,13 +42,25 @@ const parsePoint = (point: string) => {
   };
 };
 
+const normalizeButton = (button: SummaryCardButton) => {
+  if (typeof button === "string") {
+    return {
+      label: button,
+      icon: undefined,
+    };
+  }
+
+  return button;
+};
+
 export const SummaryCardComponent: React.FC<
   CardRenderProps<SummaryCardData>
 > = ({ data }) => {
   const theme = useTheme();
+  const normalizedButtons = data.ctaButtons?.map(normalizeButton).filter((button) => button.label?.trim().length > 0) ?? [];
   const showQrCodes = (data.showCta ?? true) && (data.qrCodes?.length ?? 0) > 0;
   const showButtons =
-    (data.showCta ?? true) && !showQrCodes && (data.ctaButtons?.length ?? 0) > 0;
+    (data.showCta ?? true) && !showQrCodes && normalizedButtons.length > 0;
 
   return (
     <BaseSlide
@@ -127,6 +140,20 @@ export const SummaryCardComponent: React.FC<
           })}
         </div>
 
+        {data.cta ? (
+          <div
+            style={{
+              fontSize: 28,
+              lineHeight: 1.45,
+              fontWeight: 600,
+              color: theme.colors.textLight,
+              maxWidth: 1100,
+            }}
+          >
+            {data.cta}
+          </div>
+        ) : null}
+
         {showButtons ? (
           <div
             style={{
@@ -136,7 +163,7 @@ export const SummaryCardComponent: React.FC<
               marginTop: 8,
             }}
           >
-            {data.ctaButtons?.map((button, index) => (
+            {normalizedButtons.map((button, index) => (
               <div
                 key={`${button.label}-${index}`}
                 style={{

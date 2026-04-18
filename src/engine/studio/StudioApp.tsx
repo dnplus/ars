@@ -61,6 +61,17 @@ type AudioCapabilityResponse = {
   error?: string;
 };
 
+type EpisodeSourceMap = {
+  filePath: string;
+  stepLines: Record<string, number>;
+};
+
+type EpisodeSourceMapResponse = {
+  ok: boolean;
+  sourceMap?: EpisodeSourceMap;
+  error?: string;
+};
+
 export const StudioApp: React.FC<StudioAppProps> = ({ episode, episodeId, seriesId }) => {
   const [draftEpisode, setDraftEpisode] = useState(episode);
   const shell = draftEpisode.shell!;
@@ -132,6 +143,7 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode, episodeId, series
   const [showInfo, setShowInfo] = useState(false);
   const [audioExists, setAudioExists] = useState<boolean | null>(null);
   const [audioJob, setAudioJob] = useState<AudioJobState>({ status: 'idle' });
+  const [episodeSourceMap, setEpisodeSourceMap] = useState<EpisodeSourceMap | null>(null);
   const [audioCapability, setAudioCapability] = useState<AudioCapability>({
     visible: false,
     enabled: false,
@@ -194,6 +206,22 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode, episodeId, series
       });
     }
   }, [fallbackSeries]);
+
+  const loadEpisodeSourceMap = useCallback(async () => {
+    try {
+      const params = new URLSearchParams();
+      params.set('series', fallbackSeries);
+      params.set('ep', fallbackEpId);
+      const res = await fetch(`/__ars/episode-source-map?${params.toString()}`);
+      const payload = (await res.json()) as EpisodeSourceMapResponse;
+      if (!res.ok || !payload.sourceMap) {
+        throw new Error(payload.error ?? `HTTP ${res.status}`);
+      }
+      setEpisodeSourceMap(payload.sourceMap);
+    } catch {
+      setEpisodeSourceMap(null);
+    }
+  }, [fallbackEpId, fallbackSeries]);
 
   const handleToggleFullscreen = useCallback(async () => {
     try {
@@ -290,6 +318,10 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode, episodeId, series
   useEffect(() => {
     void loadAudioCapability();
   }, [loadAudioCapability]);
+
+  useEffect(() => {
+    void loadEpisodeSourceMap();
+  }, [loadEpisodeSourceMap]);
 
   useEffect(() => {
     void pollAudioJob();
@@ -592,6 +624,8 @@ export const StudioApp: React.FC<StudioAppProps> = ({ episode, episodeId, series
           <StepEditorPanel
             step={step}
             sourceStep={sourceStep}
+            sourceFilePath={episodeSourceMap?.filePath}
+            sourceStartLine={episodeSourceMap?.stepLines?.[step.id]}
             onApply={applyDraftStep}
             onReset={resetDraftStep}
             onClose={() => setShowStepEditor(false)}

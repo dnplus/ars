@@ -1,31 +1,25 @@
-export interface ReviewIntentTarget {
-  series: string;
-  epId: string;
-  stepId: string;
-}
+/**
+ * @deprecated Renamed to StudioIntent. This module re-exports the new types
+ * under the legacy ReviewIntent names for backwards compatibility. Import from
+ * `src/types/studio-intent` for new code.
+ */
+import type {
+  StudioIntent,
+  StudioIntentAttachments,
+  StudioIntentFeedback,
+  StudioIntentSource,
+  StudioIntentTarget,
+} from './studio-intent';
 
-export interface ReviewIntentSource {
-  ui: 'studio';
-  hash?: string;
-}
-
-export interface ReviewIntentFeedback {
-  kind: 'visual' | 'content' | 'timing' | 'other';
-  message: string;
-  severity: 'low' | 'medium' | 'high';
-}
-
-export interface ReviewIntentAttachments {
-  screenshotPath?: string;
-  screenshotDataUrl?: string;
-}
-
-export interface ReviewIntent {
-  version: 1;
-  id: string;
-  target: ReviewIntentTarget;
-  source: ReviewIntentSource;
-  feedback: ReviewIntentFeedback;
-  attachments?: ReviewIntentAttachments;
-  processedAt?: string;
-}
+export type ReviewIntent = StudioIntent;
+/**
+ * Legacy target shape: callers may pass `{ series, epId, stepId }` and the
+ * intent store will normalize to `{ anchorType: 'step', anchorId: stepId }`.
+ */
+export type ReviewIntentTarget = Omit<StudioIntentTarget, 'anchorType' | 'anchorId'> & {
+  anchorType?: StudioIntentTarget['anchorType'];
+  anchorId?: string;
+};
+export type ReviewIntentSource = StudioIntentSource;
+export type ReviewIntentFeedback = StudioIntentFeedback;
+export type ReviewIntentAttachments = StudioIntentAttachments;

@@ -2,21 +2,16 @@ import fs from 'fs';
 import path from 'path';
 
 export const CONFIG_SCHEMA_VERSION = 2;
-export const TTS_PROVIDER_IDS = ['none', 'minimax'] as const;
 export const REVIEW_UI_IDS = ['studio'] as const;
 export const VISUAL_DENSITY_IDS = ['minimal', 'balanced', 'dense'] as const;
 export const LAYOUT_BIAS_IDS = ['mixed', 'title-card', 'card-only', 'fullscreen'] as const;
 
-export type TTSProviderId = (typeof TTS_PROVIDER_IDS)[number];
 export type ReviewUiId = (typeof REVIEW_UI_IDS)[number];
 export type VisualDensityId = (typeof VISUAL_DENSITY_IDS)[number];
 export type LayoutBiasId = (typeof LAYOUT_BIAS_IDS)[number];
 
 export interface ArsConfig {
   version: number;
-  tts: {
-    provider: TTSProviderId;
-  };
   publish: {
     youtube: {
       enabled: boolean;
@@ -61,9 +56,6 @@ export function getConfigPath(root = getRepoRoot()): string {
 export function createDefaultConfig(): ArsConfig {
   return {
     version: CONFIG_SCHEMA_VERSION,
-    tts: {
-      provider: 'none',
-    },
     publish: {
       youtube: {
         enabled: false,
@@ -135,11 +127,6 @@ export function parseArsConfig(input: unknown): ArsConfig {
       typeof input.version === 'number' && Number.isFinite(input.version)
         ? input.version
         : CONFIG_SCHEMA_VERSION,
-    tts: {
-      provider:
-        expectOptionalOneOf(ttsProviderValue(input), TTS_PROVIDER_IDS, 'tts.provider') ??
-        defaults.tts.provider,
-    },
     publish: {
       youtube: {
         enabled:
@@ -192,13 +179,6 @@ export function parseArsConfig(input: unknown): ArsConfig {
         ) ?? defaults.project.layoutBias,
     },
   };
-}
-
-function ttsProviderValue(input: JsonRecord): unknown {
-  if (!isRecord(input.tts)) {
-    return undefined;
-  }
-  return input.tts.provider;
 }
 
 function isRecord(value: unknown): value is JsonRecord {

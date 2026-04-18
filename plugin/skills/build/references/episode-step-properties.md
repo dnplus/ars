@@ -34,7 +34,7 @@ export const ep001: Episode = {
 | `background` | ❌ | `'aurora'` \| `'none'` |
 | `effect` | ❌ | `'fadeIn'`(default) \| `'none'` \| `'slideUp'` \| `'springIn'` \| `'blurIn'` \| `'scaleIn'` |
 | `effectConfig` | ❌ | `{ durationSec?, delaySec?, direction? }` |
-| `voiceId` | ❌ | Override TTS voice for this step |
+| `speech` | ❌ | Override TTS settings for this step, e.g. `{ voice, rate, pitch }` |
 
 ## contentType reference
 

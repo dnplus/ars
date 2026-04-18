@@ -137,8 +137,7 @@ async function openReview(args: string[]): Promise<void> {
         SERIES: series,
         EP: epId,
         ARS_REPO_ROOT: root,
-        // Only set ARS_PACKAGE_ROOT when falling back to ARS package vite (dev mode)
-        ...(!useConsumer ? { ARS_PACKAGE_ROOT: arsPackageRoot } : {}),
+        ARS_PACKAGE_ROOT: arsPackageRoot,
       },
       cwd: root,
     },

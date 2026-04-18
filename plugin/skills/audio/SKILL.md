@@ -1,6 +1,6 @@
 ---
 name: ars:audio
-description: Usage guide for generating TTS audio and subtitles for an episode using MiniMax.
+description: Usage guide for generating TTS audio and subtitles for an episode using the series-config speech provider.
 argument-hint: "[epId] [--steps <id1,id2,...>] [--step <id>] [--speed <0.5-2.0>] [--no-subtitle]"
 model: claude-haiku-4-5-20251001
 effort: low
@@ -9,6 +9,7 @@ effort: low
 Audio is not a standalone workflow stage in ARS. It happens inside the review phase: the user can trigger full-episode audio from the studio's `generate-full-audio` button or by using this skill.
 
 Use this skill as an execution guide for TTS audio generation and subtitle refresh on the target episode.
+The provider is resolved from `src/episodes/<activeSeries>/series-config.ts` via `SERIES_CONFIG.speech.provider`.
 
 ## Command
 
@@ -25,7 +26,7 @@ npx ars audio generate <epId> [options]
 - If no epId is provided, infer it from recent context or ask.
 - Run the command with `run_in_background: true`. **Do not wrap it with the `Monitor` tool** — background Bash already emits a completion notification, and wrapping it in Monitor just produces dozens of empty progress ticks.
 - When the background command completes, fetch its output once with `BashOutput` and report: how many steps succeeded/failed, total audio duration, and whether subtitles were updated.
-- If `MINIMAX_API_KEY` or `MINIMAX_GROUP_ID` is missing, tell the user to add them to `.env` and stop.
+- If the configured provider is `minimax` and `MINIMAX_API_KEY` or `MINIMAX_GROUP_ID` is missing, tell the user to add them to `.env` and stop.
 
 ## Post-generation validation (MANDATORY)
 

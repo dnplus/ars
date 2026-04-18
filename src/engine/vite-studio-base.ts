@@ -13,8 +13,9 @@ import path from 'path';
 import fs from 'fs';
 import { spawn, type ChildProcess } from 'child_process';
 import { createRequire } from 'module';
+import { getTTSProviderCapabilities } from '../adapters/tts/registry';
 import { createReviewIntent } from '../review/review-intents';
-import { configExists, readArsConfig } from '../../cli/lib/ars-config';
+import type { SpeechProviderId } from './shared/types';
 
 export interface StudioConfigOptions {
   /** Dev server port (each project should use a unique port) */
@@ -43,7 +44,7 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
   const arsPackageRoot = process.env.ARS_PACKAGE_ROOT
     ?? path.resolve(new URL(import.meta.url).pathname, '..', '..', '..');
   const arsModulesDir = path.join(arsPackageRoot, 'node_modules');
-  const require = createRequire(import.meta.url);
+  const require = createRequire(path.join(arsPackageRoot, 'package.json'));
   const tsxLoader = require.resolve('tsx');
   const arsCliEntrypoint = path.join(arsPackageRoot, 'cli', 'index.ts');
   let audioJobState: AudioJobState = { status: 'idle' };
@@ -319,6 +320,24 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
               return;
             }
 
+            if (url.pathname === '/__ars/episode-source-map') {
+              if (req.method !== 'GET') {
+                writeJson(res, 405, { ok: false, error: 'Method not allowed' });
+                return;
+              }
+
+              try {
+                const requestedSeries = asRequiredString(url.searchParams.get('series'), 'series');
+                const requestedEpId = asRequiredString(url.searchParams.get('ep'), 'ep');
+                const sourceMap = getEpisodeSourceMap(rootDir, requestedSeries, requestedEpId);
+                writeJson(res, 200, { ok: true, sourceMap });
+              } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                writeJson(res, 400, { ok: false, error: message });
+              }
+              return;
+            }
+
             next();
           });
         },
@@ -556,7 +575,8 @@ function asStepIds(value: unknown): string[] {
 }
 
 function resolveAudioCapability(rootDir: string, series?: string): AudioCapability {
-  if (!configExists(rootDir)) {
+  const config = readLocalArsConfig(rootDir);
+  if (!config) {
     return {
       visible: false,
       enabled: false,
@@ -564,12 +584,29 @@ function resolveAudioCapability(rootDir: string, series?: string): AudioCapabili
     };
   }
 
-  const config = readArsConfig(rootDir);
-  if (config.tts.provider === 'none') {
+  const seriesId = series || config.project.activeSeries;
+  if (!seriesId) {
     return {
       visible: false,
       enabled: false,
-      reason: '目前 config 未啟用音訊 provider。',
+      reason: '尚未設定 active series。',
+    };
+  }
+
+  const speechConfig = readSeriesSpeechSummary(rootDir, seriesId);
+  if (!speechConfig.provider) {
+    return {
+      visible: false,
+      enabled: false,
+      reason: 'series-config.ts 缺少 speech.provider。',
+    };
+  }
+
+  if (speechConfig.provider === 'elevenlabs') {
+    return {
+      visible: true,
+      enabled: false,
+      reason: 'ElevenLabs adapter 尚未實作。',
     };
   }
 
@@ -588,30 +625,84 @@ function resolveAudioCapability(rootDir: string, series?: string): AudioCapabili
   }
 
   const hasEnvVoiceId = !!process.env.MINIMAX_VOICE_ID || !!process.env.MINIMAX_CLONE_ID;
-  const seriesId = series || config.project.activeSeries;
-  const hasSeriesVoiceId = seriesId ? seriesConfigHasVoiceId(rootDir, seriesId) : false;
-  if (!hasEnvVoiceId && !hasSeriesVoiceId) {
+  if (!hasEnvVoiceId && !speechConfig.hasDefaultVoice) {
     return {
       visible: true,
       enabled: false,
-      reason: '缺少 voiceId；請設定 series-config.ts episodeDefaults.voiceId 或 MINIMAX_VOICE_ID。',
+      reason: '缺少 voice；請設定 speech.defaults.voice 或 MINIMAX_VOICE_ID。',
+    };
+  }
+
+  const capabilities = getTTSProviderCapabilities(speechConfig.provider);
+  if (speechConfig.reviewRequiresNativeTiming && !capabilities.nativeTiming) {
+    return {
+      visible: true,
+      enabled: false,
+      reason: `${speechConfig.provider} 不支援 review 需要的 native timing。`,
     };
   }
 
   return { visible: true, enabled: true };
 }
 
-function seriesConfigHasVoiceId(rootDir: string, series: string): boolean {
+function readSeriesSpeechSummary(rootDir: string, series: string): {
+  provider: SpeechProviderId | null;
+  hasDefaultVoice: boolean;
+  reviewRequiresNativeTiming: boolean;
+} {
   const seriesConfigPath = path.join(rootDir, 'src', 'episodes', series, 'series-config.ts');
   if (!fs.existsSync(seriesConfigPath)) {
-    return false;
+    return {
+      provider: null,
+      hasDefaultVoice: false,
+      reviewRequiresNativeTiming: true,
+    };
   }
 
   try {
     const content = fs.readFileSync(seriesConfigPath, 'utf-8');
-    return content.includes('voiceId');
+    const providerMatch = content.match(/provider:\s*['"](minimax|elevenlabs)['"]/);
+    const reviewMatch = content.match(/reviewRequiresNativeTiming:\s*(true|false)/);
+    return {
+      provider: (providerMatch?.[1] as SpeechProviderId | undefined) ?? null,
+      hasDefaultVoice: /voice:\s*['"][^'"]+['"]/.test(content),
+      reviewRequiresNativeTiming: reviewMatch?.[1] !== 'false',
+    };
   } catch {
-    return false;
+    return {
+      provider: null,
+      hasDefaultVoice: false,
+      reviewRequiresNativeTiming: true,
+    };
+  }
+}
+
+function readLocalArsConfig(rootDir: string): LocalArsConfig | null {
+  const configPath = path.join(rootDir, '.ars', 'config.json');
+  if (!fs.existsSync(configPath)) {
+    return null;
+  }
+
+  try {
+    const raw = JSON.parse(fs.readFileSync(configPath, 'utf-8')) as unknown;
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+      return null;
+    }
+
+    const record = raw as Record<string, unknown>;
+    const project = (
+      record.project && typeof record.project === 'object' && !Array.isArray(record.project)
+        ? record.project
+        : {}
+    ) as Record<string, unknown>;
+
+    return {
+      project: {
+        activeSeries: typeof project.activeSeries === 'string' ? project.activeSeries : undefined,
+      },
+    };
+  } catch {
+    return null;
   }
 }
 
@@ -628,3 +719,315 @@ function writeJson(
   res.setHeader('Content-Type', 'application/json');
   res.end(JSON.stringify(payload));
 }
+
+function getEpisodeSourceMap(rootDir: string, series: string, epId: string): {
+  filePath: string;
+  stepLines: Record<string, number>;
+} {
+  const filePath = path.join(rootDir, 'src', 'episodes', series, `${epId}.ts`);
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`Episode not found: ${filePath}`);
+  }
+
+  const source = fs.readFileSync(filePath, 'utf-8');
+  const stepsRange = findStepsArrayRange(source);
+  if (!stepsRange) {
+    return { filePath, stepLines: {} };
+  }
+
+  const stepLines: Record<string, number> = {};
+  let cursor = stepsRange.start + 1;
+
+  while (cursor < stepsRange.end) {
+    cursor = skipTrivia(source, cursor, stepsRange.end);
+    if (cursor >= stepsRange.end) {
+      break;
+    }
+
+    if (source[cursor] !== '{') {
+      cursor += 1;
+      continue;
+    }
+
+    const objectEnd = findMatching(source, cursor, '{', '}', stepsRange.end + 1);
+    if (objectEnd === -1) {
+      break;
+    }
+
+    const objectText = source.slice(cursor, objectEnd + 1);
+    const idProperty = findTopLevelProperty(objectText, 'id');
+    const idValue = idProperty
+      ? objectText.slice(idProperty.valueStart, idProperty.valueEnd).trim()
+      : null;
+    const stepId = idValue?.match(/^['"](.+)['"]$/)?.[1];
+
+    if (stepId) {
+      stepLines[stepId] = getLineNumber(source, cursor);
+    }
+
+    cursor = objectEnd + 1;
+  }
+
+  return { filePath, stepLines };
+}
+
+function findStepsArrayRange(source: string): { start: number; end: number } | null {
+  const stepsMatch = /steps\s*:\s*\[/.exec(source);
+  if (!stepsMatch) {
+    return null;
+  }
+
+  const openIndex = source.indexOf('[', stepsMatch.index);
+  if (openIndex === -1) {
+    return null;
+  }
+
+  const closeIndex = findMatching(source, openIndex, '[', ']');
+  if (closeIndex === -1) {
+    return null;
+  }
+
+  return { start: openIndex, end: closeIndex };
+}
+
+function findTopLevelProperty(
+  objectText: string,
+  field: string,
+): { valueStart: number; valueEnd: number } | null {
+  let cursor = 1;
+  const limit = objectText.length - 1;
+
+  while (cursor < limit) {
+    cursor = skipTrivia(objectText, cursor, limit);
+    if (cursor >= limit) {
+      break;
+    }
+
+    if (objectText[cursor] === ',') {
+      cursor += 1;
+      continue;
+    }
+
+    const keyInfo = readPropertyName(objectText, cursor, limit);
+    if (!keyInfo) {
+      cursor += 1;
+      continue;
+    }
+
+    const colonIndex = skipTrivia(objectText, keyInfo.nextIndex, limit);
+    if (objectText[colonIndex] !== ':') {
+      cursor = keyInfo.nextIndex;
+      continue;
+    }
+
+    const valueStart = skipTrivia(objectText, colonIndex + 1, limit);
+    let scan = valueStart;
+    let curlyDepth = 0;
+    let squareDepth = 0;
+    let parenDepth = 0;
+
+    while (scan < limit) {
+      const char = objectText[scan];
+      const next = objectText[scan + 1];
+
+      if (char === '"' || char === '\'' || char === '`') {
+        scan = readQuotedString(objectText, scan, char, limit);
+        continue;
+      }
+
+      if (char === '/' && next === '/') {
+        scan += 2;
+        while (scan < limit && objectText[scan] !== '\n') scan += 1;
+        continue;
+      }
+
+      if (char === '/' && next === '*') {
+        scan += 2;
+        while (scan < limit && !(objectText[scan] === '*' && objectText[scan + 1] === '/')) scan += 1;
+        scan += 2;
+        continue;
+      }
+
+      if (char === '{') curlyDepth += 1;
+      else if (char === '}') {
+        if (curlyDepth === 0 && squareDepth === 0 && parenDepth === 0) break;
+        curlyDepth -= 1;
+      } else if (char === '[') squareDepth += 1;
+      else if (char === ']') squareDepth -= 1;
+      else if (char === '(') parenDepth += 1;
+      else if (char === ')') parenDepth -= 1;
+      else if (char === ',' && curlyDepth === 0 && squareDepth === 0 && parenDepth === 0) break;
+
+      scan += 1;
+    }
+
+    if (keyInfo.name === field) {
+      let valueEnd = scan;
+      while (valueEnd > valueStart && /\s/.test(objectText[valueEnd - 1])) {
+        valueEnd -= 1;
+      }
+      return { valueStart, valueEnd };
+    }
+
+    cursor = scan + 1;
+  }
+
+  return null;
+}
+
+function readPropertyName(
+  source: string,
+  index: number,
+  limit: number,
+): { name: string; nextIndex: number } | null {
+  const start = skipTrivia(source, index, limit);
+  const char = source[start];
+
+  if (char === '\'' || char === '"') {
+    let cursor = start + 1;
+    let value = '';
+    while (cursor < limit) {
+      const current = source[cursor];
+      if (current === '\\') {
+        value += source.slice(cursor, cursor + 2);
+        cursor += 2;
+        continue;
+      }
+
+      if (current === char) {
+        return { name: value, nextIndex: cursor + 1 };
+      }
+
+      value += current;
+      cursor += 1;
+    }
+
+    return null;
+  }
+
+  const identifier = /^[A-Za-z_$][A-Za-z0-9_$]*/.exec(source.slice(start));
+  if (!identifier) {
+    return null;
+  }
+
+  return {
+    name: identifier[0],
+    nextIndex: start + identifier[0].length,
+  };
+}
+
+function skipTrivia(source: string, index: number, limit: number): number {
+  let cursor = index;
+  while (cursor < limit) {
+    const char = source[cursor];
+    const next = source[cursor + 1];
+
+    if (/\s/.test(char)) {
+      cursor += 1;
+      continue;
+    }
+
+    if (char === '/' && next === '/') {
+      cursor += 2;
+      while (cursor < limit && source[cursor] !== '\n') cursor += 1;
+      continue;
+    }
+
+    if (char === '/' && next === '*') {
+      cursor += 2;
+      while (cursor < limit && !(source[cursor] === '*' && source[cursor + 1] === '/')) cursor += 1;
+      cursor += 2;
+      continue;
+    }
+
+    break;
+  }
+
+  return cursor;
+}
+
+function readQuotedString(source: string, index: number, quote: string, limit: number): number {
+  let cursor = index + 1;
+  while (cursor < limit) {
+    const char = source[cursor];
+    if (char === '\\') {
+      cursor += 2;
+      continue;
+    }
+
+    if (quote === '`' && char === '$' && source[cursor + 1] === '{') {
+      cursor = findMatching(source, cursor + 1, '{', '}', limit) + 1;
+      continue;
+    }
+
+    if (char === quote) {
+      return cursor + 1;
+    }
+
+    cursor += 1;
+  }
+
+  return limit;
+}
+
+function findMatching(
+  source: string,
+  start: number,
+  openChar: string,
+  closeChar: string,
+  limit = source.length,
+): number {
+  let depth = 0;
+  let cursor = start;
+
+  while (cursor < limit) {
+    const char = source[cursor];
+    const next = source[cursor + 1];
+
+    if (char === '"' || char === '\'' || char === '`') {
+      cursor = readQuotedString(source, cursor, char, limit);
+      continue;
+    }
+
+    if (char === '/' && next === '/') {
+      cursor += 2;
+      while (cursor < limit && source[cursor] !== '\n') cursor += 1;
+      continue;
+    }
+
+    if (char === '/' && next === '*') {
+      cursor += 2;
+      while (cursor < limit && !(source[cursor] === '*' && source[cursor + 1] === '/')) cursor += 1;
+      cursor += 2;
+      continue;
+    }
+
+    if (char === openChar) depth += 1;
+    else if (char === closeChar) {
+      depth -= 1;
+      if (depth === 0) {
+        return cursor;
+      }
+    }
+
+    cursor += 1;
+  }
+
+  return -1;
+}
+
+function getLineNumber(source: string, index: number): number {
+  let line = 1;
+  for (let cursor = 0; cursor < index; cursor += 1) {
+    if (source[cursor] === '\n') {
+      line += 1;
+    }
+  }
+  return line;
+}
+
+type LocalArsConfig = {
+  project: {
+    activeSeries?: string;
+  };
+};

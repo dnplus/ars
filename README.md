@@ -2,7 +2,13 @@
 
 Stop spending weekends on slides and timelines. ARS turns your notes into publishable Remotion episodes — fully agentic.
 
+> 想先確認這工具是不是做給你的？先讀 [persona.md](./persona.md)。
+
 ARS is a Claude Code plugin-first workflow for building Remotion-based video episodes. The plugin owns the user-facing workflow. The CLI is the deterministic backend for install, scaffolding, review launch, asset preparation, export, and YouTube upload.
+
+## Acknowledgements
+
+ARS was shaped in part by ideas explored in [oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode), while focusing on a different product surface: creator-first Remotion episode workflows.
 
 ## Product boundary
 
@@ -58,7 +64,7 @@ Inside Claude Code:
 /ars:onboard
 ```
 
-`/ars:onboard` is the official first-run entrypoint. It walks you through a demo, collects your series name, TTS provider, and YouTube preference, initializes the repo if needed, then guides you through brand, theme, and visual direction setup.
+`/ars:onboard` is the official first-run entrypoint. It walks you through a demo, collects your series name and YouTube preference, initializes the repo if needed, then guides you through brand, theme, visual direction, and series speech setup.
 
 ### 4. (Optional) Manual init
 

@@ -81,6 +81,24 @@ export const SERIES_CONFIG: SeriesConfig = {
     fps: 30,
     channelName: 'Your Channel Name', // TODO: customize with your channel name
     brandTag: 'Template Demo',
-    voiceId: 'female-shaonv', // MiniMax built-in voice; replace with your clone voice ID if needed
+  },
+  speech: {
+    provider: 'minimax',
+    reviewRequiresNativeTiming: true,
+    defaults: {
+      model: 'speech-02-hd',
+      voice: 'female-shaonv', // MiniMax built-in voice; replace with your clone voice ID if needed
+      rate: 1,
+      pitch: 0,
+      volume: 1,
+      format: 'mp3',
+      providerOptions: {
+        minimax: {
+          subtitleEnable: true,
+          pronunciationDictPath: 'cli/pronunciation_dict.yaml',
+          apiBase: 'https://api-uw.minimax.io/v1/t2a_v2',
+        },
+      },
+    },
   },
 };

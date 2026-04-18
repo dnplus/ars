@@ -35,7 +35,6 @@ export const StudioComposition: React.FC<StudioCompositionProps> = ({
           prevLayoutMode={prevLayoutMode}
           audioSrc={audioSrc}
           subtitles={subtitles}
-          disableSubtitles
           silentAudioFallback="shared/silence.mp3"
         />
       </AbsoluteFill>

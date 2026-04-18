@@ -87,7 +87,7 @@ Stage name: `onboard-customize`
 npx ars init <series>
 ```
 
-   This will interactively prompt for TTS provider, YouTube publishing, layout, and channel name. Do NOT ask these again.
+   This will interactively prompt for YouTube publishing, layout, and channel name. TTS now lives in `series-config.ts` under `SERIES_CONFIG.speech`, so customize owns that part.
 
    If `project.activeSeries` is already set, skip directly to step 3.
 

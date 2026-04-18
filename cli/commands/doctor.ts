@@ -14,6 +14,8 @@ import { detectInstallState } from '../lib/install';
 import { getRuntimePackageInfo } from '../lib/runtime-package';
 import { hasVersionDrift, readInstalledVersion } from '../lib/version';
 import { isTmuxAvailable } from '../lib/tmux';
+import { getTTSProviderCapabilities } from '../../src/adapters/tts/registry';
+import type { SpeechProviderId } from '../../src/engine/shared/types';
 
 interface CheckResult {
   id: string;
@@ -385,57 +387,72 @@ function validateProviders(
   root: string,
   results: CheckResult[],
 ): void {
-  if (config.tts.provider === 'none') {
-    results.push({
-      id: 'provider.minimax',
-      status: 'pass',
-      detail: 'MiniMax TTS disabled.',
-    });
-  } else {
-    const hasApiKey = !!process.env.MINIMAX_API_KEY;
-    const hasGroupId = !!process.env.MINIMAX_GROUP_ID;
-    const minimaxOk = hasApiKey && hasGroupId;
-    const missing = [
-      !hasApiKey && 'MINIMAX_API_KEY',
-      !hasGroupId && 'MINIMAX_GROUP_ID',
-    ].filter(Boolean).join(', ');
-    results.push({
-      id: 'provider.minimax',
-      status: minimaxOk ? 'pass' : 'fail',
-      detail: minimaxOk
-        ? 'MiniMax credentials configured.'
-        : `MiniMax enabled but missing: ${missing}.`,
-      fixHint: minimaxOk
-        ? undefined
-        : `Add ${missing} to .env before running audio generation.`,
-    });
+  const activeSeries = config.project.activeSeries?.trim();
+  if (activeSeries) {
+    const speechConfig = readSeriesSpeechSummary(root, activeSeries);
+    if (!speechConfig.provider) {
+      results.push({
+        id: 'provider.speech-config',
+        status: 'fail',
+        detail: `Missing speech.provider in src/episodes/${activeSeries}/series-config.ts.`,
+        fixHint: 'Define SERIES_CONFIG.speech.provider and defaults in series-config.ts.',
+      });
+    } else if (speechConfig.provider === 'elevenlabs') {
+      results.push({
+        id: 'provider.elevenlabs',
+        status: 'fail',
+        detail: 'ElevenLabs is configured but adapter is not implemented yet.',
+        fixHint: 'Switch SERIES_CONFIG.speech.provider back to minimax for now.',
+      });
+    } else {
+      const hasApiKey = !!process.env.MINIMAX_API_KEY;
+      const hasGroupId = !!process.env.MINIMAX_GROUP_ID;
+      const minimaxOk = hasApiKey && hasGroupId;
+      const missing = [
+        !hasApiKey && 'MINIMAX_API_KEY',
+        !hasGroupId && 'MINIMAX_GROUP_ID',
+      ].filter(Boolean).join(', ');
+      results.push({
+        id: 'provider.minimax',
+        status: minimaxOk ? 'pass' : 'fail',
+        detail: minimaxOk
+          ? 'MiniMax credentials configured.'
+          : `MiniMax enabled but missing: ${missing}.`,
+        fixHint: minimaxOk
+          ? undefined
+          : `Add ${missing} to .env before running audio generation.`,
+      });
 
-    // Check that a voice ID is resolvable for audio generation
-    const hasEnvVoiceId = !!process.env.MINIMAX_VOICE_ID || !!process.env.MINIMAX_CLONE_ID;
-    let hasSeriesVoiceId = false;
-    if (config.project.activeSeries) {
-      const seriesConfigPath = path.join(
-        root, 'src', 'episodes', config.project.activeSeries, 'series-config.ts',
-      );
-      if (fs.existsSync(seriesConfigPath)) {
-        try {
-          const content = fs.readFileSync(seriesConfigPath, 'utf-8');
-          hasSeriesVoiceId = content.includes('voiceId');
-        } catch { /* ignore */ }
-      }
+      const hasEnvVoiceId = !!process.env.MINIMAX_VOICE_ID || !!process.env.MINIMAX_CLONE_ID;
+      results.push({
+        id: 'provider.minimax-voice',
+        status: hasEnvVoiceId || speechConfig.hasDefaultVoice ? 'pass' : 'warn',
+        detail: hasEnvVoiceId
+          ? 'Voice configured via env (MINIMAX_VOICE_ID / MINIMAX_CLONE_ID).'
+          : speechConfig.hasDefaultVoice
+            ? 'Voice configured in series-config.ts speech.defaults.voice.'
+            : 'No voice found — audio generation will fail.',
+        fixHint: hasEnvVoiceId || speechConfig.hasDefaultVoice
+          ? undefined
+          : 'Set speech.defaults.voice in series-config.ts, or set MINIMAX_VOICE_ID in .env.',
+      });
     }
-    results.push({
-      id: 'provider.minimax-voice',
-      status: hasEnvVoiceId || hasSeriesVoiceId ? 'pass' : 'warn',
-      detail: hasEnvVoiceId
-        ? `Voice ID configured via env (MINIMAX_VOICE_ID / MINIMAX_CLONE_ID).`
-        : hasSeriesVoiceId
-          ? `Voice ID configured in series-config.ts episodeDefaults.voiceId.`
-          : `No voice ID found — audio generation will fail.`,
-      fixHint: hasEnvVoiceId || hasSeriesVoiceId
-        ? undefined
-        : 'Set voiceId in series-config.ts episodeDefaults, or set MINIMAX_VOICE_ID in .env.',
-    });
+
+    if (speechConfig.provider) {
+      const capabilities = getTTSProviderCapabilities(speechConfig.provider);
+      results.push({
+        id: 'provider.audio-review',
+        status: !speechConfig.reviewRequiresNativeTiming || capabilities.nativeTiming ? 'pass' : 'fail',
+        detail: speechConfig.reviewRequiresNativeTiming
+          ? capabilities.nativeTiming
+            ? `${speechConfig.provider} supports native timing for review.`
+            : `${speechConfig.provider} lacks native timing required by review workflow.`
+          : 'Review timing requirement disabled in series-config.ts.',
+        fixHint: !speechConfig.reviewRequiresNativeTiming || capabilities.nativeTiming
+          ? undefined
+          : 'Use a provider with native timing support, or disable reviewRequiresNativeTiming.',
+      });
+    }
   }
 
   if (!config.publish.youtube.enabled) {
@@ -479,6 +496,38 @@ function validateProviders(
     status: 'pass',
     detail: 'YouTube credentials configured.',
   });
+}
+
+function readSeriesSpeechSummary(root: string, series: string): {
+  provider: SpeechProviderId | null;
+  hasDefaultVoice: boolean;
+  reviewRequiresNativeTiming: boolean;
+} {
+  const seriesConfigPath = path.join(root, 'src', 'episodes', series, 'series-config.ts');
+  if (!fs.existsSync(seriesConfigPath)) {
+    return {
+      provider: null,
+      hasDefaultVoice: false,
+      reviewRequiresNativeTiming: true,
+    };
+  }
+
+  try {
+    const content = fs.readFileSync(seriesConfigPath, 'utf-8');
+    const providerMatch = content.match(/provider:\s*['"](minimax|elevenlabs)['"]/);
+    const reviewMatch = content.match(/reviewRequiresNativeTiming:\s*(true|false)/);
+    return {
+      provider: (providerMatch?.[1] as SpeechProviderId | undefined) ?? null,
+      hasDefaultVoice: /voice:\s*['"][^'"]+['"]/.test(content),
+      reviewRequiresNativeTiming: reviewMatch?.[1] !== 'false',
+    };
+  } catch {
+    return {
+      provider: null,
+      hasDefaultVoice: false,
+      reviewRequiresNativeTiming: true,
+    };
+  }
 }
 
 function printResults(results: CheckResult[]): void {

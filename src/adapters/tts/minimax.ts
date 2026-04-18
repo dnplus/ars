@@ -1,5 +1,13 @@
+import path from 'path';
 import fs from 'fs';
-import type { ITTSAdapter, TTSOptions } from '../types';
+import type { SpeechSpec } from '../../engine/shared/types';
+import type {
+  ITTSAdapter,
+  TTSProviderCapabilities,
+  TTSSynthesizeInput,
+  TTSSynthesizeResult,
+  TTSTimingPhrase,
+} from '../types';
 
 interface MinimaxSubtitleSegment {
   text: string;
@@ -22,53 +30,83 @@ interface MinimaxResponse {
     audio?: string;
     subtitle_file?: string;
   };
+  extra_info?: {
+    audio_length?: number;
+  };
 }
 
 export class MiniMaxTTSAdapter implements ITTSAdapter {
   readonly providerId = 'minimax';
-  readonly supportedVoices: string[];
+  private readonly capabilities: TTSProviderCapabilities = {
+    syncSynthesis: true,
+    nativeTiming: true,
+    pronunciationDictionary: true,
+    numericProsody: true,
+    voiceCloning: false,
+    asyncLongForm: false,
+    supportedFormats: ['mp3', 'wav', 'pcm', 'flac', 'ogg_opus'],
+  };
 
-  constructor(supportedVoices: string[] = []) {
-    this.supportedVoices = supportedVoices;
+  getCapabilities(): TTSProviderCapabilities {
+    return this.capabilities;
   }
 
-  async synthesize(text: string, options: TTSOptions): Promise<Buffer> {
+  async synthesize(input: TTSSynthesizeInput): Promise<TTSSynthesizeResult> {
     const apiKey = process.env.MINIMAX_API_KEY;
     const groupId = process.env.MINIMAX_GROUP_ID;
-    const voiceId = options.voiceId ?? options.cloneId ?? process.env.MINIMAX_VOICE_ID ?? process.env.MINIMAX_CLONE_ID;
+    const voiceId = resolveMiniMaxVoiceId(input.speech);
+    const modelId = input.speech.model ?? 'speech-02-hd';
+    const audioFormat = input.speech.format ?? 'mp3';
+    const minimaxOptions = input.speech.providerOptions?.minimax;
 
     if (!apiKey || !groupId) {
       throw new Error('Missing MINIMAX_API_KEY or MINIMAX_GROUP_ID.');
     }
 
     if (!voiceId) {
-      throw new Error('Missing MiniMax voice identifier. Set voiceId or MINIMAX_VOICE_ID / MINIMAX_CLONE_ID.');
+      throw new Error('Missing MiniMax voice identifier. Set speech.voice or MINIMAX_VOICE_ID / MINIMAX_CLONE_ID.');
     }
 
-    const body = {
-      model: 'speech-02-hd',
-      text,
+    const pronunciationDictionary = loadPronunciationDictionary(
+      minimaxOptions?.pronunciationDictPath,
+      input.text,
+    );
+
+    const body: Record<string, unknown> = {
+      model: modelId,
+      text: input.text,
       voice_setting: {
         voice_id: voiceId,
-        speed: options.speed ?? 1,
-        vol: options.volume ?? 1,
-        pitch: options.pitch ?? 0,
+        speed: input.speech.rate ?? 1,
+        vol: input.speech.volume ?? 1,
+        pitch: input.speech.pitch ?? 0,
       },
       audio_setting: {
-        format: options.outputFormat ?? 'mp3',
+        format: audioFormat,
         sample_rate: 32000,
       },
-      subtitle_enable: options.enableSubtitle ?? false,
-      ...(options.pronunciationDictionary && options.pronunciationDictionary.length > 0
-        ? {
-            pronunciation_dict: {
-              tone: options.pronunciationDictionary,
-            },
-          }
-        : {}),
+      subtitle_enable: input.wantTiming ?? minimaxOptions?.subtitleEnable ?? false,
     };
 
-    const apiUrl = process.env.MINIMAX_API_URL ?? 'https://api-uw.minimax.io/v1/t2a_v2';
+    if (input.speech.language) {
+      body.language = input.speech.language;
+    }
+    if (minimaxOptions?.languageBoost) {
+      body.language_boost = minimaxOptions.languageBoost;
+    }
+    if (minimaxOptions?.voiceModify) {
+      body.voice_modify = minimaxOptions.voiceModify;
+    }
+    if (pronunciationDictionary.length > 0) {
+      body.pronunciation_dict = {
+        tone: pronunciationDictionary,
+      };
+    }
+
+    const apiUrl =
+      minimaxOptions?.apiBase
+      ?? process.env.MINIMAX_API_URL
+      ?? 'https://api-uw.minimax.io/v1/t2a_v2';
     const response = await fetch(`${apiUrl}?GroupId=${groupId}`, {
       method: 'POST',
       headers: {
@@ -92,17 +130,77 @@ export class MiniMaxTTSAdapter implements ITTSAdapter {
     }
 
     const buffer = Buffer.from(data.data.audio, 'hex');
+    const timing = await maybeLoadTiming(
+      data.data.subtitle_file,
+      input.wantTiming ?? minimaxOptions?.subtitleEnable ?? false,
+    );
 
-    if (options.enableSubtitle && options.subtitleOutputPath && data.data.subtitle_file) {
-      const subtitleResponse = await fetch(data.data.subtitle_file);
-      if (!subtitleResponse.ok) {
-        throw new Error(`Failed to download MiniMax subtitle (${subtitleResponse.status}).`);
-      }
-
-      const subtitles = (await subtitleResponse.json()) as MinimaxSubtitleSegment[];
-      fs.writeFileSync(options.subtitleOutputPath, `${JSON.stringify(subtitles, null, 2)}\n`, 'utf-8');
-    }
-
-    return buffer;
+    return {
+      providerId: this.providerId,
+      modelId,
+      voiceRef: voiceId,
+      audio: buffer,
+      audioFormat,
+      durationMs: data.extra_info?.audio_length,
+      timing: timing
+        ? {
+            source: 'provider-native',
+            phrases: timing,
+          }
+        : undefined,
+      usage: {
+        characters: input.text.length,
+      },
+      providerMetadata: {
+        subtitleFile: data.data.subtitle_file,
+      },
+    };
   }
+}
+
+function resolveMiniMaxVoiceId(speech: SpeechSpec): string | undefined {
+  return speech.voice ?? process.env.MINIMAX_VOICE_ID ?? process.env.MINIMAX_CLONE_ID;
+}
+
+function loadPronunciationDictionary(dictPath: string | undefined, text: string): string[] {
+  const yamlPath = path.resolve(process.cwd(), dictPath ?? 'cli/pronunciation_dict.yaml');
+  if (!fs.existsSync(yamlPath)) {
+    return [];
+  }
+
+  try {
+    const content = fs.readFileSync(yamlPath, 'utf-8');
+    return content
+      .split('\n')
+      .filter((line) => line.trim().startsWith('- "'))
+      .map((line) => line.match(/- "(.+)"/)?.[1])
+      .filter((entry): entry is string => Boolean(entry))
+      .filter((entry) => {
+        const word = entry.split('/')[0];
+        return text.includes(word);
+      });
+  } catch {
+    return [];
+  }
+}
+
+async function maybeLoadTiming(
+  subtitleFileUrl: string | undefined,
+  enabled: boolean,
+): Promise<TTSTimingPhrase[] | undefined> {
+  if (!enabled || !subtitleFileUrl) {
+    return undefined;
+  }
+
+  const subtitleResponse = await fetch(subtitleFileUrl);
+  if (!subtitleResponse.ok) {
+    throw new Error(`Failed to download MiniMax subtitle (${subtitleResponse.status}).`);
+  }
+
+  const subtitles = (await subtitleResponse.json()) as MinimaxSubtitleSegment[];
+  return subtitles.map((segment) => ({
+    text: segment.text,
+    startTime: segment.time_begin / 1000,
+    endTime: segment.time_end / 1000,
+  }));
 }

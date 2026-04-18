@@ -3,7 +3,6 @@ import {
   readArsConfig,
   writeArsConfig,
   configExists,
-  TTS_PROVIDER_IDS,
   VISUAL_DENSITY_IDS,
   LAYOUT_BIAS_IDS,
 } from '../lib/ars-config';
@@ -16,7 +15,6 @@ Subcommands:
   set <key> <val>  Set a config field and write back to .ars/config.json
 
 Allowed keys for set:
-  tts.provider               none | minimax
   publish.youtube.enabled    true | false
   project.activeSeries       string
   project.channelName        string
@@ -30,7 +28,6 @@ Options:
 `;
 
 type AllowedKey =
-  | 'tts.provider'
   | 'publish.youtube.enabled'
   | 'project.activeSeries'
   | 'project.channelName'
@@ -40,7 +37,6 @@ type AllowedKey =
   | 'project.layoutBias';
 
 const ALLOWED_KEYS: AllowedKey[] = [
-  'tts.provider',
   'publish.youtube.enabled',
   'project.activeSeries',
   'project.channelName',
@@ -51,7 +47,6 @@ const ALLOWED_KEYS: AllowedKey[] = [
 ];
 
 const ENUM_VALUES: Partial<Record<AllowedKey, readonly string[]>> = {
-  'tts.provider': TTS_PROVIDER_IDS,
   'publish.youtube.enabled': ['true', 'false'],
   'project.visualDensity': VISUAL_DENSITY_IDS,
   'project.layoutBias': LAYOUT_BIAS_IDS,

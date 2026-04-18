@@ -101,7 +101,18 @@ export const SERIES_CONFIG: SeriesConfig = {
     fps: 30,
     channelName: 'Your Channel Name',   // ← Fill from brand interview
     brandTag: 'EP· Tag',                // ← Fill from brand interview
-    voiceId: 'female-shaonv',           // ← MiniMax voice ID; replace with clone
+  },
+  speech: {
+    provider: 'minimax',
+    reviewRequiresNativeTiming: true,
+    defaults: {
+      model: 'speech-02-hd',
+      voice: 'female-shaonv',           // ← MiniMax voice ID; replace with clone
+      rate: 1,
+      pitch: 0,
+      volume: 1,
+      format: 'mp3',
+    },
   },
 };
 ```
@@ -112,7 +123,7 @@ export const SERIES_CONFIG: SeriesConfig = {
 |-------|-------|-------------|
 | `channelName` | `episodeDefaults` | Full channel display name |
 | `brandTag` | `episodeDefaults` | Short tag shown on cover cards (e.g. `"EP · Case Study"`) |
-| `voiceId` | `episodeDefaults` | MiniMax voice ID or clone ID |
+| `speech.defaults.voice` | `speech.defaults` | MiniMax voice ID or clone ID |
 | `theme.colors.primary` | `theme.colors` | Brand primary hex color |
 | `fontFamily` | top of file | Google Font name or system font |
 | `vtuber.enabled` | `vtuber` | `false` when the series should render without a VTuber avatar |

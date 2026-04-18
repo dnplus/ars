@@ -4,12 +4,13 @@ import process from 'process';
 import {
   buildSessionStartContext,
   getRepoRoot,
+  getSeriesSpeechProvider,
   parseHookPayload,
   readStdin,
 } from './lib/ars-workstate.mjs';
 
 const CONFIG_SCHEMA_VERSION = 2;
-const VALID_TTS_PROVIDERS = new Set(['none', 'minimax']);
+const VALID_TTS_PROVIDERS = new Set(['minimax', 'elevenlabs']);
 const VALID_VISUAL_DENSITY = new Set(['minimal', 'balanced', 'dense']);
 const VALID_LAYOUT_BIAS = new Set(['mixed', 'title-card', 'card-only', 'fullscreen']);
 
@@ -54,7 +55,6 @@ async function main() {
   const issues = [];
   const warnings = [];
   const configVersion = config?.version;
-  const ttsProvider = config?.tts?.provider;
   const youtubeEnabled = config?.publish?.youtube?.enabled;
   const activeSeries = typeof config?.project?.activeSeries === 'string'
     ? config.project.activeSeries.trim()
@@ -64,10 +64,6 @@ async function main() {
 
   if (typeof configVersion === 'number' && configVersion !== CONFIG_SCHEMA_VERSION) {
     warnings.push(`version=${configVersion}; latest supported schema is ${CONFIG_SCHEMA_VERSION}`);
-  }
-
-  if (!VALID_TTS_PROVIDERS.has(ttsProvider)) {
-    issues.push('tts.provider must be one of none, minimax');
   }
 
   if (typeof youtubeEnabled !== 'boolean') {
@@ -80,6 +76,11 @@ async function main() {
     const seriesConfigPath = path.join(root, 'src', 'episodes', activeSeries, 'series-config.ts');
     if (!fs.existsSync(seriesConfigPath)) {
       issues.push(`project.activeSeries=${activeSeries} but ${path.relative(root, seriesConfigPath)} is missing`);
+    } else {
+      const speechProvider = getSeriesSpeechProvider(root, activeSeries);
+      if (!speechProvider || !VALID_TTS_PROVIDERS.has(speechProvider)) {
+        issues.push('series-config speech.provider must be one of minimax, elevenlabs');
+      }
     }
   }
 

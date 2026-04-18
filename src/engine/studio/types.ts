@@ -12,6 +12,8 @@ export type StudioStepEntry = {
   step: Step;
   audioSrc?: string;
   subtitles?: SubtitlePhrase[];
+  sourceFilePath?: string;
+  sourceStartLine?: number;
 };
 
 // ========================================

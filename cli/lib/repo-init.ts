@@ -6,7 +6,6 @@ import { createInterface } from 'readline/promises';
 import {
   CONFIG_SCHEMA_VERSION,
   ArsConfig,
-  TTS_PROVIDER_IDS,
   createDefaultConfig,
   getConfigPath,
   readArsConfig,
@@ -187,12 +186,6 @@ async function promptForConfig(): Promise<{ config: ArsConfig; shellLayout: 'str
   const rl = createInterface({ input, output });
 
   try {
-    const ttsProvider = await promptChoice(
-      rl,
-      'TTS provider',
-      TTS_PROVIDER_IDS,
-      defaults.tts.provider,
-    );
     const youtubeEnabled = await promptBooleanWithRl(
       rl,
       'Enable YouTube publishing?',
@@ -208,9 +201,6 @@ async function promptForConfig(): Promise<{ config: ArsConfig; shellLayout: 'str
 
     const config: ArsConfig = {
       version: CONFIG_SCHEMA_VERSION,
-      tts: {
-        provider: ttsProvider,
-      },
       publish: {
         youtube: {
           enabled: youtubeEnabled,

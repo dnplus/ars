@@ -1,13 +1,55 @@
-export interface TTSOptions {
-  voiceId?: string;
-  cloneId?: string;
-  speed?: number;
-  pitch?: number;
-  volume?: number;
-  outputFormat?: 'mp3' | 'wav';
-  enableSubtitle?: boolean;
-  subtitleOutputPath?: string;
-  pronunciationDictionary?: string[];
+import type {
+  SpeechAudioFormat,
+  SpeechProviderId,
+  SpeechSpec,
+} from '../engine/shared/types';
+
+export type TTSProviderCapabilities = {
+  syncSynthesis: true;
+  nativeTiming: boolean;
+  pronunciationDictionary: boolean;
+  numericProsody: boolean;
+  voiceCloning: boolean;
+  asyncLongForm: boolean;
+  supportedFormats: SpeechAudioFormat[];
+};
+
+export type TTSSynthesizeInput = {
+  text: string;
+  speech: SpeechSpec;
+  wantTiming?: boolean;
+};
+
+export type TTSTimingPhrase = {
+  text: string;
+  startTime: number;
+  endTime: number;
+};
+
+export type TTSSynthesizeResult = {
+  providerId: SpeechProviderId;
+  modelId: string;
+  voiceRef?: string;
+  audio: Buffer;
+  audioFormat: SpeechAudioFormat;
+  durationMs?: number;
+  timing?: {
+    source: 'provider-native';
+    phrases: TTSTimingPhrase[];
+  };
+  usage?: {
+    characters?: number;
+  };
+  providerMetadata?: Record<string, unknown>;
+};
+
+export interface ITTSVoiceCloneAdapter {
+  cloneVoice(...args: never[]): Promise<never>;
+}
+
+export interface ITTSLongFormAdapter {
+  createTask(...args: never[]): Promise<never>;
+  getTask(...args: never[]): Promise<never>;
 }
 
 export interface PublishArtifact {
@@ -42,10 +84,10 @@ export interface PublishResult {
 }
 
 export interface ITTSAdapter {
-  readonly providerId: string;
-  readonly supportedVoices: string[];
+  readonly providerId: SpeechProviderId;
 
-  synthesize(text: string, options: TTSOptions): Promise<Buffer>;
+  getCapabilities(): TTSProviderCapabilities;
+  synthesize(input: TTSSynthesizeInput): Promise<TTSSynthesizeResult>;
 }
 
 export interface IPublishAdapter {

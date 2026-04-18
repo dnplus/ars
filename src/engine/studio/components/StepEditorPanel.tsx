@@ -5,12 +5,17 @@ type StepEditorPanelProps = {
   step: Step;
   sourceStep: Step;
   sourceFilePath?: string;
+  sourceStartLine?: number;
   onApply: (nextStep: Step) => void;
   onReset: () => void;
   onClose: () => void;
 };
 
 const formatStep = (step: Step) => JSON.stringify(step, null, 2);
+const EDITOR_FONT_SIZE = 12;
+const EDITOR_LINE_HEIGHT = 1.6;
+const EDITOR_LINE_HEIGHT_PX = EDITOR_FONT_SIZE * EDITOR_LINE_HEIGHT;
+const EDITOR_HORIZONTAL_PADDING = 24;
 
 type TokenType = 'key' | 'string' | 'number' | 'boolean' | 'null' | 'punct' | 'text';
 type Token = { type: TokenType; value: string };
@@ -60,6 +65,7 @@ export const StepEditorPanel: React.FC<StepEditorPanelProps> = ({
   step,
   sourceStep,
   sourceFilePath,
+  sourceStartLine,
   onApply,
   onReset,
   onClose,
@@ -67,8 +73,12 @@ export const StepEditorPanel: React.FC<StepEditorPanelProps> = ({
   const [draft, setDraft] = useState(() => formatStep(step));
   const [error, setError] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
+  const [editorContentWidth, setEditorContentWidth] = useState(0);
+  const [visualLineCounts, setVisualLineCounts] = useState<number[]>([]);
   const gutterRef = useRef<HTMLDivElement>(null);
   const highlightRef = useRef<HTMLPreElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setDraft(formatStep(step));
@@ -76,7 +86,45 @@ export const StepEditorPanel: React.FC<StepEditorPanelProps> = ({
     setIsDirty(false);
   }, [step]);
 
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      return;
+    }
+
+    const updateWidth = () => {
+      setEditorContentWidth(Math.max(0, textarea.clientWidth - EDITOR_HORIZONTAL_PADDING));
+    };
+
+    updateWidth();
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(textarea);
+    window.addEventListener('resize', updateWidth);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateWidth);
+    };
+  }, []);
+
   const sourceJson = useMemo(() => formatStep(sourceStep), [sourceStep]);
+
+  useEffect(() => {
+    const measureEl = measureRef.current;
+    if (!measureEl || editorContentWidth <= 0) {
+      setVisualLineCounts(draft.split('\n').map(() => 1));
+      return;
+    }
+
+    measureEl.style.width = `${editorContentWidth}px`;
+    const nextCounts = draft.split('\n').map((line) => {
+      measureEl.textContent = line.length > 0 ? line : ' ';
+      const measuredHeight = measureEl.getBoundingClientRect().height;
+      return Math.max(1, Math.round(measuredHeight / EDITOR_LINE_HEIGHT_PX));
+    });
+
+    setVisualLineCounts(nextCounts);
+  }, [draft, editorContentWidth]);
 
   const handleApply = () => {
     try {
@@ -159,7 +207,10 @@ export const StepEditorPanel: React.FC<StepEditorPanelProps> = ({
           <div>
             <span style={{ color: 'color-mix(in srgb, var(--color-text-on-dark) 62%, transparent)' }}>source</span>
             {' '}
-            <span style={{ fontFamily: 'var(--font-code, monospace)', fontSize: 11 }}>{sourceFilePath}</span>
+            <span style={{ fontFamily: 'var(--font-code, monospace)', fontSize: 11 }}>
+              {sourceFilePath}
+              {sourceStartLine ? `:${sourceStartLine}` : ''}
+            </span>
           </div>
         ) : null}
       </div>
@@ -202,8 +253,18 @@ export const StepEditorPanel: React.FC<StepEditorPanelProps> = ({
               pointerEvents: 'none',
             }}
           >
-            {draft.split('\n').map((_, i) => (
-              <div key={i}>{i + 1}</div>
+            {visualLineCounts.map((lineCount, i) => (
+              <React.Fragment key={i}>
+                <div style={{ height: `${EDITOR_LINE_HEIGHT_PX}px`, lineHeight: `${EDITOR_LINE_HEIGHT_PX}px` }}>
+                  {i + 1}
+                </div>
+                {Array.from({ length: Math.max(0, lineCount - 1) }).map((_, continuationIndex) => (
+                  <div
+                    key={`cont-${i}-${continuationIndex}`}
+                    style={{ height: `${EDITOR_LINE_HEIGHT_PX}px`, lineHeight: `${EDITOR_LINE_HEIGHT_PX}px` }}
+                  />
+                ))}
+              </React.Fragment>
             ))}
           </div>
 
@@ -223,8 +284,8 @@ export const StepEditorPanel: React.FC<StepEditorPanelProps> = ({
               overflowY: 'auto',
               overflowX: 'hidden',
               fontFamily: 'var(--font-code, monospace)',
-              fontSize: 12,
-              lineHeight: 1.6,
+              fontSize: EDITOR_FONT_SIZE,
+              lineHeight: EDITOR_LINE_HEIGHT,
               whiteSpace: 'pre-wrap',
               wordBreak: 'break-word',
               pointerEvents: 'none',
@@ -240,6 +301,7 @@ export const StepEditorPanel: React.FC<StepEditorPanelProps> = ({
 
           <textarea
             className="editor-input"
+            ref={textareaRef}
             value={draft}
             onChange={(e) => {
               setDraft(e.target.value);
@@ -272,12 +334,32 @@ export const StepEditorPanel: React.FC<StepEditorPanelProps> = ({
               padding: 14,
               paddingLeft: 10,
               fontFamily: 'var(--font-code, monospace)',
-              fontSize: 12,
-              lineHeight: 1.6,
+              fontSize: EDITOR_FONT_SIZE,
+              lineHeight: EDITOR_LINE_HEIGHT,
               boxSizing: 'border-box',
               overflow: 'auto',
               whiteSpace: 'pre-wrap',
               wordBreak: 'break-word',
+            }}
+          />
+
+          <div
+            ref={measureRef}
+            aria-hidden
+            style={{
+              position: 'absolute',
+              visibility: 'hidden',
+              pointerEvents: 'none',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              overflowWrap: 'break-word',
+              fontFamily: 'var(--font-code, monospace)',
+              fontSize: EDITOR_FONT_SIZE,
+              lineHeight: EDITOR_LINE_HEIGHT,
+              padding: 0,
+              margin: 0,
+              top: 0,
+              left: -99999,
             }}
           />
         </div>

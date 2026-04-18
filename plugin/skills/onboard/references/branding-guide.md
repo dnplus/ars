@@ -2,7 +2,7 @@
 
 Use this guide during Phase 2 customize to collect brand information and derive theme tokens.
 
-Channel name, TTS provider, YouTube publishing, and layout are already handled by `npx ars init` — do not re-ask them here.
+Channel name, YouTube publishing, and layout are already handled by `npx ars init` — do not re-ask them here. TTS provider/default voice now live in `series-config.ts` under `SERIES_CONFIG.speech`.
 
 ## Interview Questions
 

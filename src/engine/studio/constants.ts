@@ -9,4 +9,5 @@ export const KIND_LABELS: Record<ReviewIntentFeedback['kind'], string> = {
   content: '口播',
   other: '整集',
   timing: '時序',
+  'plan-section': '段落',
 };
