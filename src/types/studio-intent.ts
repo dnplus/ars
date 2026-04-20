@@ -27,7 +27,7 @@ export interface StudioIntentSource {
 }
 
 export interface StudioIntentFeedback {
-  kind: 'visual' | 'content' | 'timing' | 'plan-section' | 'other';
+  kind: 'visual' | 'content' | 'timing' | 'plan-section' | 'build-trigger' | 'other';
   message: string;
   severity: 'low' | 'medium' | 'high';
 }

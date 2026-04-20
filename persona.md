@@ -48,7 +48,7 @@
 
 - 一個 repo = 一個 series：視覺風格、VTuber、語氣全寫在 `SERIES_GUIDE.md`，跨集保持一致
 - 從 Notion / URL / 筆記一路到 YouTube publish 的 agent-assisted 流水線
-- Studio 即時預覽 + review intent 回饋迴圈 — 告別「render → 看 → 改 → render」的等待
+- Studio 作為 plan / build / review 三階段的視覺檢查面：從 `plan.md` live preview、build 子狀態可觀察、到 review player 都在同一個 shell，搭配 Studio intent 回饋迴圈—— 告別「render → 看 → 改 → render」的等待
 - YouTube analytics 透過 `/ars:reflect` 回灌系列策略，讓題材選擇不只靠直覺
 
 ## 為什麼是這樣設計

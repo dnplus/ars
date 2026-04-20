@@ -274,7 +274,9 @@ export function syncEngineFiles(options: SyncEngineOptions): string[] {
   }
 
   // Template episode lives under src/episodes/ which is excluded above; ship it
-  // explicitly so consumer repos can use it as a reference.
+  // explicitly so consumer repos can use it as a reference. Template is logically
+  // part of the engine (ships with ARS, never user-authored), so it follows
+  // overwriteEngine — `npx ars update` refreshes it like the engine code.
   const sourceTemplateDir = path.join(
     options.sourceRoot,
     'src',
@@ -285,7 +287,7 @@ export function syncEngineFiles(options: SyncEngineOptions): string[] {
   syncDirectoryIfNeeded(
     sourceTemplateDir,
     targetTemplateDir,
-    options.overwriteSupportFiles,
+    options.overwriteEngine,
     'episodes/template/',
     copied,
   );

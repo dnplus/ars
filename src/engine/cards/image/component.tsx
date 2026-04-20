@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Img, staticFile } from "remotion";
+import { BaseSlide, useCardContext } from "../../primitives/BaseSlide";
 import { WindowSlide } from "../../primitives/WindowSlide";
-import { useCardContext } from "../../primitives/BaseSlide";
 import type { WindowFrameKind } from "../../primitives/types";
 import type { CardRenderProps } from "../types";
 
@@ -10,6 +10,7 @@ export type ImageCardData = {
   title?: string;
   caption?: string;
   objectFit?: "cover" | "contain";
+  /** Wrap in a window chrome. Omit (default) for fullscreen, no chrome, no title. */
   frame?: WindowFrameKind;
   animate?: boolean;
 };
@@ -179,7 +180,7 @@ const ImageContent: React.FC<{
           </>
         )}
       </div>
-      {caption ? (
+      {showPlaceholder && caption ? (
         <div
           style={{
             padding: "16px 24px",
@@ -199,21 +200,32 @@ const ImageContent: React.FC<{
 export const ImageCardComponent: React.FC<CardRenderProps<ImageCardData>> = ({
   data,
 }) => {
-  return (
-    <WindowSlide
-      frame={data.frame ?? "mac"}
-      title={data.title || "Image Viewer"}
-      tag="IMAGE"
-      tagColor="highlight"
-      innerPadding="none"
-      animation={data.animate === false ? { skipEnter: true } : undefined}
-    >
-      <ImageContent
-        src={data.src}
+  const content = (
+    <ImageContent
+      src={data.src}
+      title={data.title}
+      objectFit={data.objectFit ?? "contain"}
+      caption={data.caption}
+    />
+  );
+  const animation = data.animate === false ? { skipEnter: true } : undefined;
+
+  if (data.frame) {
+    return (
+      <WindowSlide
+        frame={data.frame}
         title={data.title}
-        objectFit={data.objectFit ?? "contain"}
-        caption={data.caption}
-      />
-    </WindowSlide>
+        innerPadding="none"
+        animation={animation}
+      >
+        {content}
+      </WindowSlide>
+    );
+  }
+
+  return (
+    <BaseSlide padding="none" animation={animation}>
+      {content}
+    </BaseSlide>
   );
 };

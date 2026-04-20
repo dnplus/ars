@@ -16,9 +16,13 @@ Behavior:
 - Read exactly one Studio intent from `.ars/studio-intents/` and inspect its `target`, `source`, `feedback`, and optional `attachments`.
 - If `attachments.screenshotPath` is present, read it before making changes.
 
-Classify the intent first by reading `feedback.message`:
+Classify the intent first by reading `feedback.kind`, then `feedback.message`:
 
-- **Pronunciation fix** — message describes a TTS reading error ("XX 念錯"、"讀成了 YY"、"發音不對"、"斷句怪"、specific wrong pinyin). Do NOT edit the episode source. Instead:
+- **Build trigger** — `feedback.kind === 'build-trigger'`. This comes from the Studio Build phase "觸發 Build" button, not from a review feedback form. Do NOT try to patch the episode source. Instead:
+  1. Confirm `.ars/episodes/<target.epId>/plan.md` exists. If not, tell the user to run `/ars:plan <epId>` first and mark the intent processed without building.
+  2. Invoke `/ars:build <target.epId>`. The build skill handles its own workstate stage transitions and writes `.ars/episodes/<epId>/last-build.json` on completion — the Studio Build phase will reflect the stage / validation updates automatically.
+  3. After `/ars:build` returns, mark the intent processed by writing `processedAt` with an ISO timestamp. Skip the rest of this classification — build-trigger intents do not route to episode / plan edits.
+- **Pronunciation fix** — `feedback.kind === 'other'` (or unspecified) AND message describes a TTS reading error ("XX 念錯"、"讀成了 YY"、"發音不對"、"斷句怪"、specific wrong pinyin). Do NOT edit the episode source. Instead:
   1. Open `cli/pronunciation_dict.yaml`.
   2. Decide the correct pinyin yourself from the word/context (tone numbers 1-5; 5 = neutral). For English acronyms, decide between letter-by-letter `"GB/G B"` or full word `"GB/Gigabyte"` based on the feedback.
   3. Append a new entry like `- "詞組/(pinyin1)(pinyin2)"` in a sensible section. Check the file first — the word may already be there with a wrong pinyin; fix it in place instead of duplicating.

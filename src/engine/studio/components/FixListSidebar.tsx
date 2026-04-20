@@ -8,6 +8,8 @@ import { EPISODE_SCOPE_ID, INTENT_SUBMITTED_EVENT, KIND_LABELS } from '../consta
 
 type FixListSidebarProps = {
   onClose: () => void;
+  seriesId?: string;
+  episodeId?: string;
 };
 
 type ReviewIntentsResponse = {
@@ -28,7 +30,7 @@ const truncate = (str: string, max: number): string =>
 const hasAttachment = (intent: ReviewIntent): boolean =>
   !!intent.attachments?.screenshotPath || !!intent.attachments?.screenshotDataUrl;
 
-export const FixListSidebar: React.FC<FixListSidebarProps> = ({ onClose }) => {
+export const FixListSidebar: React.FC<FixListSidebarProps> = ({ onClose, seriesId, episodeId }) => {
   const [intents, setIntents] = useState<ReviewIntent[]>([]);
 
   useEffect(() => {
@@ -36,11 +38,18 @@ export const FixListSidebar: React.FC<FixListSidebarProps> = ({ onClose }) => {
 
     const fetchIntents = async () => {
       try {
-        const res = await fetch('/__ars/review-intents');
+        const res = await fetch('/__ars/studio-intents');
         if (!res.ok) return;
         const payload = (await res.json()) as ReviewIntentsResponse;
         if (!cancelled && payload.ok) {
-          setIntents(payload.intents);
+          const filtered = payload.intents.filter((intent) => {
+            const target = intent.target;
+            if (!target) return false;
+            if (seriesId && target.series && target.series !== seriesId) return false;
+            if (episodeId && target.epId && target.epId !== episodeId) return false;
+            return true;
+          });
+          setIntents(filtered);
         }
       } catch {
         // ignore

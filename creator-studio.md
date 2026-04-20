@@ -410,6 +410,8 @@ Build phase 至少要暴露：
 
 第一版不需要即時雙向編輯，「檔案 watch + 送 intent → Claude Code 改檔 → 檔案重 watch」這個 loop 就夠。
 
+> 實作備註（v1）：client 端走 3s polling（`PlanView.tsx`），server 端每次 GET 重讀 `plan.md` 計算 heading anchor。`WATCH /plan` 推播留待通用檔案 watch infra 就緒再升級，不是 v1 blocker。
+
 ### 10.3 Build phase API
 
 需要一個可輪詢或事件推送的 build job state：
@@ -424,6 +426,47 @@ Build phase 至少要暴露：
 - current step label
 - short log summary
 - validation status
+
+**實作約束（v1）**：`/ars:build` 是 Claude Code skill、**不是 CLI command**（`cli/index.ts` 沒有 `build` 子命令）。因此 audio-generate 那種「Studio 主動 spawn 非互動式 CLI 子程序」的 job-state model 不適用。Build phase 拆成 **trigger** 與 **observe** 兩個端點：
+
+```
+POST /__ars/build-trigger
+  body: { series, epId }
+  行為: 呼叫 src/studio/studio-intents.ts::createStudioIntent() 寫一筆 StudioIntent
+        ({ anchor: { type: 'episode', id: epId }, source: 'build',
+           feedback: { kind: 'build-trigger', message: ... } })
+        到 .ars/studio-intents/ — 由 TUI 側 /ars:apply-review 觀察並呼叫 /ars:build <epId>
+  回傳: { ok, intentId, writtenAt }
+  不 block；同一 epId 已有 pending build-trigger → 409
+
+GET /__ars/build-status
+  行為: stateless，每次呼叫即時讀檔派生狀態
+  資料來源:
+    - .ars/studio-intents/ 掃 pending `kind:'build-trigger'` → state='pending-trigger'
+    - .ars/state/workstate.json 的 stage 欄位（building:<epId> / validating:<epId> / …）
+      → state='in-progress' + stage
+    - src/episodes/<series>/<epId>.ts 存在且 mtime > 最近 trigger → state='ready-for-review'
+    - .ars/episodes/<epId>/last-build.json（若存在）→ validation summary
+    - stage='failed:<epId>' → state='failed'
+  回傳:
+    {
+      ok: true,
+      build: {
+        state: 'idle' | 'pending-trigger' | 'in-progress' | 'ready-for-review' | 'failed',
+        stage?: string,
+        pendingIntentId?: string,
+        episodeSourcePath?: string,
+        episodeSourceMtime?: string,
+        lastBuildAt?: string,
+        validation?: { ok: boolean, errorCount: number, summary: string },
+      }
+    }
+```
+
+配合需求：
+- `/ars:build` skill 在開工 / validate / 完成 / 失敗時呼叫 `npx ars workstate set --stage ...` 讓 observe 端有資料
+- `/ars:build` validate 完寫 `.ars/episodes/<epId>/last-build.json`
+- `/ars:apply-review` 分支處理 `feedback.kind === 'build-trigger'` → 呼叫 `/ars:build <epId>`
 
 ### 10.4 Review phase 相容
 
@@ -552,6 +595,8 @@ Phase 1-3 正好直接打這三點。
 這比一開始就做 plan apply workflow 更穩。
 
 ## 16. Migration Notes（Phase 1 落地時回頭 sync）
+
+> ✓ **Phase 1 已 land**（2026-04-18）：`StudioShell` / `StudioIntent` / `ars launch` / `ars studio` 皆已在 main，`ars review` 降級為 deprecation shim（僅 `review close` 仍走 CLI 原生）。本節列的 skill text sync（`onboard` L65/L76、`audio` L51、`review` 通篇）也已在 Phase 1 commits 內完成。以下內容保留為 migration 歷史紀錄，供未來回顧當時的決策脈絡。
 
 這份 spec 是設計方向，現有 skill / CLI 描述的是「現在跑得起來的事實」。在 Phase 1（StudioShell 拆分 + `StudioIntent` 泛化）真的 land **之前**，下面這些檔案維持現狀；land **之後**才回頭一次 sync：
 

@@ -1,10 +1,10 @@
 /**
  * @component StudioShell
- * @description Top-level Studio shell. Reads `?phase=` from the URL and renders
- *              the matching phase view (plan / build / review). Defaults to
- *              `review` so existing `ars review open` behavior stays the same.
- *              Phase tabs are intentionally minimal in this commit — Plan and
- *              Build views land in later commits.
+ * @description Top-level Studio shell. Reads `?phase=` and `?ep=` from the URL
+ *              and renders the matching phase view (plan / build / review).
+ *              Holds the active episodeId so the user can switch episodes
+ *              without a full page reload — URL stays in sync via
+ *              `history.replaceState`.
  */
 import React, { useEffect, useState } from 'react';
 import type { Episode } from '../shared/types';
@@ -22,75 +22,199 @@ function readPhaseFromUrl(): StudioPhase {
   return KNOWN_PHASES.includes(raw as StudioPhase) ? (raw as StudioPhase) : 'review';
 }
 
+function readEpisodeFromUrl(fallback: string): string {
+  if (typeof window === 'undefined') return fallback;
+  return new URLSearchParams(window.location.search).get('ep')?.trim() || fallback;
+}
+
+export type EpisodeOption = {
+  id: string;
+  title: string;
+};
+
 type StudioShellProps = {
-  episode: Episode | null;
-  episodeId: string;
+  episodes: Record<string, Episode>;
+  episodeOptions: EpisodeOption[];
+  initialEpisodeId: string;
   seriesId: string;
 };
 
-export const StudioShell: React.FC<StudioShellProps> = ({ episode, episodeId, seriesId }) => {
+export const StudioShell: React.FC<StudioShellProps> = ({
+  episodes,
+  episodeOptions,
+  initialEpisodeId,
+  seriesId,
+}) => {
   const [phase, setPhase] = useState<StudioPhase>(() => readPhaseFromUrl());
+  const [episodeId, setEpisodeId] = useState<string>(() => readEpisodeFromUrl(initialEpisodeId));
 
   useEffect(() => {
-    const onPopState = () => setPhase(readPhaseFromUrl());
+    const onPopState = () => {
+      setPhase(readPhaseFromUrl());
+      setEpisodeId(readEpisodeFromUrl(initialEpisodeId));
+    };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
-  }, []);
+  }, [initialEpisodeId]);
+
+  const updateUrl = (nextPhase: StudioPhase, nextEp: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('phase', nextPhase);
+    url.searchParams.set('ep', nextEp);
+    url.searchParams.set('series', seriesId);
+    window.history.replaceState(null, '', url.toString());
+  };
 
   const switchPhase = (next: StudioPhase) => {
     if (next === phase) return;
-    const url = new URL(window.location.href);
-    url.searchParams.set('phase', next);
-    window.history.replaceState(null, '', url.toString());
+    updateUrl(next, episodeId);
     setPhase(next);
   };
+
+  const switchEpisode = (next: string) => {
+    if (next === episodeId) return;
+    updateUrl(phase, next);
+    setEpisodeId(next);
+  };
+
+  const episode = episodes[episodeId] ?? null;
 
   let body: React.ReactNode;
   if (phase === 'review') {
     if (!episode) {
-      body = <PhasePlaceholder message={`Episode "${episodeId}" 尚未 build。請先在 TUI 跑 /ars:build。`} />;
+      body = (
+        <EpisodeNotFound
+          episodeId={episodeId}
+          seriesId={seriesId}
+          options={episodeOptions}
+          onPick={switchEpisode}
+        />
+      );
     } else {
-      body = <ReviewView episode={episode} episodeId={episodeId} seriesId={seriesId} />;
+      body = (
+        <ReviewView
+          key={episodeId}
+          episode={episode}
+          episodeId={episodeId}
+          seriesId={seriesId}
+        />
+      );
     }
   } else if (phase === 'plan') {
-    body = <PlanView series={seriesId} epId={episodeId} />;
+    body = <PlanView key={episodeId} series={seriesId} epId={episodeId} />;
   } else {
-    body = <BuildView series={seriesId} epId={episodeId} />;
+    body = <BuildView key={episodeId} series={seriesId} epId={episodeId} />;
   }
 
   return (
     <div className="studio-shell">
       <div className="studio-shell-tabs">
-        {KNOWN_PHASES.map((p) => (
-          <button
-            key={p}
-            type="button"
-            className={`studio-shell-tab${p === phase ? ' active' : ''}`}
-            onClick={() => switchPhase(p)}
-          >
-            {p}
-          </button>
-        ))}
+        <div style={{ display: 'flex', gap: 4 }}>
+          {KNOWN_PHASES.map((p) => (
+            <button
+              key={p}
+              type="button"
+              className={`studio-shell-tab${p === phase ? ' active' : ''}`}
+              onClick={() => switchPhase(p)}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+        {episodeOptions.length > 0 && (
+          <EpisodeSwitcher
+            current={episodeId}
+            options={episodeOptions}
+            onChange={switchEpisode}
+          />
+        )}
       </div>
       <div className="studio-shell-body">{body}</div>
     </div>
   );
 };
 
-const PhasePlaceholder: React.FC<{ message: string }> = ({ message }) => (
-  <div style={{
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '100%',
-    color: '#94a3b8',
-    fontFamily: 'system-ui, sans-serif',
-    fontSize: 14,
-    padding: '40px 24px',
-    textAlign: 'center',
-  }}>
-    {message}
+const EpisodeSwitcher: React.FC<{
+  current: string;
+  options: EpisodeOption[];
+  onChange: (id: string) => void;
+}> = ({ current, options, onChange }) => (
+  <label
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: 6,
+      fontSize: 12,
+      color: 'color-mix(in srgb, var(--color-text-on-dark, #e2e8f0) 62%, transparent)',
+    }}
+  >
+    <span>ep</span>
+    <select
+      value={current}
+      onChange={(e) => onChange(e.target.value)}
+      style={{
+        background: 'var(--color-overlay-bg, rgba(15,23,42,0.8))',
+        color: 'var(--color-text-on-dark, #e2e8f0)',
+        border: '1px solid var(--color-border-light, rgba(255,255,255,0.12))',
+        borderRadius: 6,
+        padding: '4px 8px',
+        fontSize: 12,
+        cursor: 'pointer',
+      }}
+    >
+      {options.map((opt) => (
+        <option key={opt.id} value={opt.id}>
+          {opt.id} — {opt.title}
+        </option>
+      ))}
+    </select>
+  </label>
+);
+
+const EpisodeNotFound: React.FC<{
+  episodeId: string;
+  seriesId: string;
+  options: EpisodeOption[];
+  onPick: (id: string) => void;
+}> = ({ episodeId, seriesId, options, onPick }) => (
+  <div
+    style={{
+      padding: 24,
+      color: 'var(--color-text-on-dark, #e2e8f0)',
+      fontFamily: 'system-ui, sans-serif',
+    }}
+  >
+    <h2 style={{ color: '#60a5fa', marginBottom: 12 }}>
+      Episode "{episodeId}" not found in series "{seriesId}".
+    </h2>
+    {options.length > 0 ? (
+      <>
+        <p style={{ marginBottom: 12 }}>Available episodes:</p>
+        <ul style={{ listStyle: 'none', padding: 0 }}>
+          {options.map((opt) => (
+            <li key={opt.id} style={{ margin: '6px 0' }}>
+              <button
+                type="button"
+                onClick={() => onPick(opt.id)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#60a5fa',
+                  cursor: 'pointer',
+                  padding: 0,
+                  font: 'inherit',
+                  textDecoration: 'underline',
+                }}
+              >
+                {opt.id} — {opt.title}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </>
+    ) : (
+      <p>No episodes found in this series. 在 TUI 跑 <code>/ars:plan</code> 建立第一集。</p>
+    )}
   </div>
 );
 

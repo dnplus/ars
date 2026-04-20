@@ -621,7 +621,11 @@ export const ReviewView: React.FC<ReviewViewProps> = ({ episode, episodeId, seri
 
         {/* Right column: fix list sidebar (full height) */}
         {showFixList && (
-          <FixListSidebar onClose={() => setShowFixList(false)} />
+          <FixListSidebar
+            onClose={() => setShowFixList(false)}
+            seriesId={seriesId}
+            episodeId={episodeId}
+          />
         )}
         {showStepEditor && sourceStep && (
           <StepEditorPanel

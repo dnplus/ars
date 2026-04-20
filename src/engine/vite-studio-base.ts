@@ -417,6 +417,73 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
               return;
             }
 
+            if (url.pathname === '/__ars/build-trigger') {
+              if (req.method !== 'POST') {
+                writeJson(res, 405, { ok: false, error: 'Method not allowed' });
+                return;
+              }
+
+              try {
+                const body = await readJsonBody(req);
+                const seriesIn = asRequiredString(body.series, 'series');
+                const epIdIn = asRequiredString(body.epId, 'epId');
+
+                const pending = findPendingBuildTriggerIntent(rootDir, epIdIn);
+                if (pending) {
+                  writeJson(res, 409, {
+                    ok: false,
+                    error: 'A build-trigger intent is already pending for this episode.',
+                    intentId: pending.id,
+                  });
+                  return;
+                }
+
+                const record = createStudioIntent({
+                  target: {
+                    series: seriesIn,
+                    epId: epIdIn,
+                    anchorType: 'episode',
+                    anchorId: epIdIn,
+                  },
+                  source: { ui: 'build' },
+                  feedback: {
+                    kind: 'build-trigger',
+                    message: `Build requested from Studio for ${seriesIn}/${epIdIn}`,
+                    severity: 'medium',
+                  },
+                  rootDir,
+                });
+
+                writeJson(res, 202, {
+                  ok: true,
+                  intentId: record.intent.id,
+                  writtenAt: new Date().toISOString(),
+                });
+              } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                writeJson(res, 400, { ok: false, error: message });
+              }
+              return;
+            }
+
+            if (url.pathname === '/__ars/build-status') {
+              if (req.method !== 'GET') {
+                writeJson(res, 405, { ok: false, error: 'Method not allowed' });
+                return;
+              }
+
+              try {
+                const requestedSeries = asRequiredString(url.searchParams.get('series'), 'series');
+                const requestedEpId = asRequiredString(url.searchParams.get('ep'), 'ep');
+                const build = computeBuildStatus(rootDir, requestedSeries, requestedEpId);
+                writeJson(res, 200, { ok: true, build });
+              } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                writeJson(res, 400, { ok: false, error: message });
+              }
+              return;
+            }
+
             next();
           });
         },
@@ -631,8 +698,15 @@ function asStudioUi(value: unknown): 'studio' | 'plan' | 'build' | 'review' {
   throw new Error('Invalid studio intent source ui.');
 }
 
-function asStudioKind(value: unknown): 'visual' | 'content' | 'timing' | 'plan-section' | 'other' {
-  if (value === 'visual' || value === 'content' || value === 'timing' || value === 'plan-section' || value === 'other') {
+function asStudioKind(value: unknown): 'visual' | 'content' | 'timing' | 'plan-section' | 'build-trigger' | 'other' {
+  if (
+    value === 'visual' ||
+    value === 'content' ||
+    value === 'timing' ||
+    value === 'plan-section' ||
+    value === 'build-trigger' ||
+    value === 'other'
+  ) {
     return value;
   }
 
@@ -680,6 +754,189 @@ function asStepIds(value: unknown): string[] {
 
   const stepIds = value.map((entry) => asRequiredString(entry, 'stepIds[]'));
   return Array.from(new Set(stepIds));
+}
+
+type PlaceholderEntry = {
+  stepId?: string;
+  src: string;
+  caption?: string;
+  isHero?: boolean;
+};
+
+type BuildStatusResponse = {
+  state:
+    | 'idle'
+    | 'pending-trigger'
+    | 'in-progress'
+    | 'ready-for-review'
+    | 'ready-for-review-with-warnings'
+    | 'blocked-assets-missing'
+    | 'failed';
+  stage?: string;
+  pendingIntentId?: string;
+  pendingIntentAt?: string;
+  episodeSourcePath?: string;
+  episodeSourceMtime?: string;
+  lastBuildAt?: string;
+  validation?: { ok: boolean; errorCount: number; summary: string };
+  placeholders?: PlaceholderEntry[];
+  warnings?: string[];
+};
+
+function findPendingBuildTriggerIntent(
+  rootDir: string,
+  epId: string,
+): { id: string; writtenAt?: string } | null {
+  const dir = getStudioIntentsDir(rootDir);
+  if (!fs.existsSync(dir)) return null;
+  const files = fs.readdirSync(dir).filter((name) => name.endsWith('.json'));
+  for (const fileName of files) {
+    try {
+      const raw = fs.readFileSync(path.join(dir, fileName), 'utf-8');
+      const intent = JSON.parse(raw) as {
+        id?: string;
+        processedAt?: string;
+        target?: { epId?: string };
+        feedback?: { kind?: string };
+      };
+      if (intent.processedAt) continue;
+      if (intent.feedback?.kind !== 'build-trigger') continue;
+      if (intent.target?.epId !== epId) continue;
+      return { id: intent.id ?? fileName.replace(/\.json$/, '') };
+    } catch {
+      // ignore unreadable intent file
+    }
+  }
+  return null;
+}
+
+function readWorkstateStage(rootDir: string): string | undefined {
+  try {
+    const raw = fs.readFileSync(
+      path.join(rootDir, '.ars', 'state', 'workstate.json'),
+      'utf-8',
+    );
+    const parsed = JSON.parse(raw) as { stage?: unknown };
+    if (typeof parsed.stage === 'string' && parsed.stage.trim()) {
+      return parsed.stage.trim();
+    }
+  } catch {
+    // workstate.json absent is expected
+  }
+  return undefined;
+}
+
+function readLastBuildRecord(
+  rootDir: string,
+  epId: string,
+): {
+  ok: boolean;
+  errorCount: number;
+  summary: string;
+  finishedAt?: string;
+  placeholders?: PlaceholderEntry[];
+  warnings?: string[];
+} | undefined {
+  try {
+    const raw = fs.readFileSync(
+      path.join(rootDir, '.ars', 'episodes', epId, 'last-build.json'),
+      'utf-8',
+    );
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const ok = typeof parsed.ok === 'boolean' ? parsed.ok : false;
+    const errorCount = typeof parsed.errorCount === 'number' ? parsed.errorCount : ok ? 0 : 1;
+    const summary = typeof parsed.summary === 'string' ? parsed.summary : '';
+    const finishedAt = typeof parsed.finishedAt === 'string' ? parsed.finishedAt : undefined;
+
+    const placeholders = Array.isArray(parsed.placeholders)
+      ? (parsed.placeholders as unknown[])
+          .map((entry): PlaceholderEntry | null => {
+            if (!entry || typeof entry !== 'object') return null;
+            const obj = entry as Record<string, unknown>;
+            if (typeof obj.src !== 'string' || !obj.src.trim()) return null;
+            return {
+              src: obj.src,
+              stepId: typeof obj.stepId === 'string' ? obj.stepId : undefined,
+              caption: typeof obj.caption === 'string' ? obj.caption : undefined,
+              isHero: obj.isHero === true,
+            };
+          })
+          .filter((entry): entry is PlaceholderEntry => entry !== null)
+      : undefined;
+
+    const warnings = Array.isArray(parsed.warnings)
+      ? (parsed.warnings as unknown[]).filter((entry): entry is string => typeof entry === 'string')
+      : undefined;
+
+    return { ok, errorCount, summary, finishedAt, placeholders, warnings };
+  } catch {
+    return undefined;
+  }
+}
+
+function computeBuildStatus(rootDir: string, series: string, epId: string): BuildStatusResponse {
+  const result: BuildStatusResponse = { state: 'idle' };
+
+  const episodeFile = path.join(rootDir, 'src', 'episodes', series, `${epId}.ts`);
+  if (fs.existsSync(episodeFile)) {
+    const stat = fs.statSync(episodeFile);
+    result.episodeSourcePath = path.relative(rootDir, episodeFile).split(path.sep).join('/');
+    result.episodeSourceMtime = new Date(stat.mtimeMs).toISOString();
+    result.state = 'ready-for-review';
+  }
+
+  const lastBuild = readLastBuildRecord(rootDir, epId);
+  if (lastBuild) {
+    result.validation = {
+      ok: lastBuild.ok,
+      errorCount: lastBuild.errorCount,
+      summary: lastBuild.summary,
+    };
+    if (lastBuild.finishedAt) {
+      result.lastBuildAt = lastBuild.finishedAt;
+    }
+    if (lastBuild.placeholders && lastBuild.placeholders.length > 0) {
+      result.placeholders = lastBuild.placeholders;
+    }
+    if (lastBuild.warnings && lastBuild.warnings.length > 0) {
+      result.warnings = lastBuild.warnings;
+    }
+    if (!lastBuild.ok) {
+      result.state = 'failed';
+    } else if (result.placeholders) {
+      const hasHero = result.placeholders.some((entry) => entry.isHero);
+      result.state = hasHero ? 'blocked-assets-missing' : 'ready-for-review-with-warnings';
+    }
+  }
+
+  const stage = readWorkstateStage(rootDir);
+  if (stage) {
+    result.stage = stage;
+    if (stage === `failed:${epId}`) {
+      result.state = 'failed';
+    } else if (stage === `building:${epId}` || stage === `validating:${epId}`) {
+      result.state = 'in-progress';
+    } else if (stage === `blocked:${epId}:assets-missing`) {
+      result.state = 'blocked-assets-missing';
+    } else if (stage === `ready-for-review-with-warnings:${epId}` && result.episodeSourcePath) {
+      result.state = 'ready-for-review-with-warnings';
+    } else if (stage === `ready-for-review:${epId}` && result.episodeSourcePath) {
+      // Only downgrade to plain ready if last-build didn't mark placeholders.
+      if (result.state === 'ready-for-review' || result.state === 'idle') {
+        result.state = 'ready-for-review';
+      }
+    }
+  }
+
+  const pending = findPendingBuildTriggerIntent(rootDir, epId);
+  if (pending) {
+    result.pendingIntentId = pending.id;
+    if (result.state === 'idle' || result.state === 'ready-for-review') {
+      result.state = 'pending-trigger';
+    }
+  }
+
+  return result;
 }
 
 function resolveAudioCapability(rootDir: string, series?: string): AudioCapability {
