@@ -146,6 +146,8 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({
       {/* key 確保同一段字幕不會跨幀重新 layout，避免 headless render 抖動 */}
       <div
         key={currentIdx}
+        data-annotatable="subtitle"
+        data-annotatable-label="字幕"
         style={{
           padding: "16px 32px",
           borderRadius: 12,
@@ -155,6 +157,9 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({
           lineHeight: 1.4,
           boxSizing: "border-box",
           wordBreak: "keep-all",
+          // Studio review mode needs clicks on subtitles; render output ignores
+          // pointer events anyway.
+          pointerEvents: "auto",
           ...style,
           // 固定寬度避免容器隨文字長度變化
           width: style?.maxWidth ?? style?.width ?? "90%",

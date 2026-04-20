@@ -20,6 +20,10 @@ type ActionBarProps = {
   kind: StudioIntentFeedback['kind'];
   anchor: ActionBarAnchor;
   source?: StudioIntentSource['ui'];
+  /** Optional pending-fix count rendered as a badge next to the glyph. */
+  fixCount?: number;
+  /** Glyph override (default 💬). */
+  glyph?: string;
 };
 
 type ToastState = {
@@ -41,7 +45,15 @@ type AttachmentState = {
 
 const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
 
-export const ActionBar: React.FC<ActionBarProps> = ({ series, epId, kind, anchor, source = 'studio' }) => {
+export const ActionBar: React.FC<ActionBarProps> = ({
+  series,
+  epId,
+  kind,
+  anchor,
+  source = 'studio',
+  fixCount,
+  glyph = '💬',
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -177,22 +189,27 @@ export const ActionBar: React.FC<ActionBarProps> = ({ series, epId, kind, anchor
       <button
         ref={buttonRef}
         onClick={() => setIsOpen((v) => !v)}
-        title="標記修正"
+        title="留言 / 標記修正"
         style={{
           background: isOpen ? 'color-mix(in srgb, var(--color-warning) 22%, var(--color-overlay-bg))' : 'var(--color-overlay-bg)',
           border: `1px solid ${isOpen ? 'var(--color-warning)' : 'var(--color-border-light)'}`,
-          borderRadius: 8,
+          borderRadius: 999,
           color: 'var(--color-text-on-dark)',
-          fontSize: 18,
-          width: 40,
+          fontSize: 16,
           height: 40,
+          padding: fixCount && fixCount > 0 ? '0 10px 0 12px' : '0 12px',
+          minWidth: 40,
           cursor: 'pointer',
-          display: 'flex',
+          display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
+          gap: 4,
         }}
       >
-        ✨
+        <span style={{ lineHeight: 1 }}>{glyph}</span>
+        {fixCount !== undefined && fixCount > 0 && (
+          <span className="action-bar-btn-badge">{fixCount}</span>
+        )}
       </button>
 
       {isOpen && (

@@ -63,6 +63,13 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
   const arsCliEntrypoint = path.join(arsPackageRoot, 'cli', 'index.ts');
   let audioJobState: AudioJobState = { status: 'idle' };
   let audioJobProcess: ChildProcess | null = null;
+  // Prepare + Publish share the same shape (spawn → tail output → terminal
+  // status). We reuse AudioJobState as the job schema but keep one slot per
+  // action to avoid cross-contamination.
+  let prepareJobState: AudioJobState = { status: 'idle' };
+  let prepareJobProcess: ChildProcess | null = null;
+  let publishJobState: AudioJobState = { status: 'idle' };
+  let publishJobProcess: ChildProcess | null = null;
 
   return defineConfig({
     root: path.resolve(rootDir, 'src'),
@@ -274,6 +281,20 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
                   return;
                 }
 
+                // Optional CLI knobs from the modal. Keep backward compatible —
+                // omit → same behavior as before (all steps, subtitle on).
+                const noSubtitle = body.noSubtitle === true;
+                const stepsRaw = Array.isArray(body.steps) ? body.steps : [];
+                const steps = stepsRaw
+                  .filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
+                  .map((s) => s.trim());
+                const cliArgs: string[] = [
+                  '--import', tsxLoader, arsCliEntrypoint,
+                  'audio', 'generate', target,
+                ];
+                if (noSubtitle) cliArgs.push('--no-subtitle');
+                if (steps.length > 0) cliArgs.push('--steps', steps.join(','));
+
                 audioJobState = {
                   status: 'running',
                   series,
@@ -283,15 +304,11 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
                   outputTail: [],
                 };
 
-                const child = spawn(
-                  process.execPath,
-                  ['--import', tsxLoader, arsCliEntrypoint, 'audio', 'generate', target],
-                  {
-                    cwd: rootDir,
-                    env: process.env,
-                    stdio: ['ignore', 'pipe', 'pipe'],
-                  },
-                );
+                const child = spawn(process.execPath, cliArgs, {
+                  cwd: rootDir,
+                  env: process.env,
+                  stdio: ['ignore', 'pipe', 'pipe'],
+                });
 
                 audioJobProcess = child;
                 const appendOutput = (chunk: string) => {
@@ -356,6 +373,294 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
               } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
                 writeJson(res, 500, { ok: false, error: message });
+              }
+              return;
+            }
+
+            // Config preview for the Audio action. Lightweight by design:
+            // returns CLI command + resolved provider/voice + capability state.
+            // Step count / char totals are expected to come from the client's
+            // already-loaded episode; we don't re-parse the .ts file here.
+            if (url.pathname === '/__ars/audio-plan') {
+              if (req.method !== 'GET') {
+                writeJson(res, 405, { ok: false, error: 'Method not allowed' });
+                return;
+              }
+
+              try {
+                const series = asRequiredString(
+                  url.searchParams.get('series'),
+                  'series',
+                );
+                const epId = asRequiredString(url.searchParams.get('ep'), 'ep');
+                const capability = resolveAudioCapability(rootDir, series);
+                const speechSummary = readSeriesSpeechSummary(rootDir, series);
+                const outputDir = path.posix.join(
+                  'public',
+                  'episodes',
+                  series,
+                  epId,
+                  'audio',
+                );
+                const subtitlesPath = path.posix.join(
+                  'src',
+                  'episodes',
+                  series,
+                  `${epId}.subtitles.ts`,
+                );
+                writeJson(res, 200, {
+                  ok: true,
+                  plan: {
+                    cli: `npx ars audio generate ${series}/${epId}`,
+                    series,
+                    epId,
+                    provider: speechSummary.provider,
+                    hasDefaultVoice: speechSummary.hasDefaultVoice,
+                    reviewRequiresNativeTiming:
+                      speechSummary.reviewRequiresNativeTiming,
+                    capability,
+                    output: {
+                      audioDir: outputDir,
+                      subtitlesFile: subtitlesPath,
+                    },
+                    runningJob: audioJobState.status === 'running' ? audioJobState : null,
+                  },
+                });
+              } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                writeJson(res, 400, { ok: false, error: message });
+              }
+              return;
+            }
+
+            // -------- Prepare (youtube context preparation) --------
+            if (url.pathname === '/__ars/prepare-plan') {
+              if (req.method !== 'GET') {
+                writeJson(res, 405, { ok: false, error: 'Method not allowed' });
+                return;
+              }
+              try {
+                const series = asRequiredString(url.searchParams.get('series'), 'series');
+                const epId = asRequiredString(url.searchParams.get('ep'), 'ep');
+                const preparedArtifactPath = path.posix.join(
+                  'src', 'episodes', series, `${epId}.prepare-youtube.json`,
+                );
+                writeJson(res, 200, {
+                  ok: true,
+                  plan: {
+                    cli: `npx ars prepare youtube ${series}/${epId}`,
+                    series,
+                    epId,
+                    output: {
+                      artifact: preparedArtifactPath,
+                      markdown: preparedArtifactPath.replace(/\.json$/, '.md'),
+                    },
+                    notes:
+                      'prepare youtube 只寫 prepare-youtube.md/json 上下文，' +
+                      '不呼叫 LLM；之後在 Claude Code 執行 /ars:prepare-youtube 做人工 review。',
+                    runningJob: prepareJobState.status === 'running' ? prepareJobState : null,
+                  },
+                });
+              } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                writeJson(res, 400, { ok: false, error: message });
+              }
+              return;
+            }
+
+            if (url.pathname === '/__ars/prepare-generate') {
+              if (req.method === 'GET') {
+                writeJson(res, 200, { ok: true, job: prepareJobState });
+                return;
+              }
+              if (req.method !== 'POST') {
+                writeJson(res, 405, { ok: false, error: 'Method not allowed' });
+                return;
+              }
+              try {
+                const body = await readJsonBody(req);
+                const series = asRequiredString(body.series, 'series');
+                const epId = asRequiredString(body.epId, 'epId');
+                const dryRun = body.dryRun === true;
+                const target = `${series}/${epId}`;
+                if (prepareJobState.status === 'running') {
+                  writeJson(res, 409, { ok: false, error: 'Prepare already running.', job: prepareJobState });
+                  return;
+                }
+                const cliArgs: string[] = [
+                  '--import', tsxLoader, arsCliEntrypoint,
+                  'prepare', 'youtube', target,
+                ];
+                if (dryRun) cliArgs.push('--dry-run');
+                prepareJobState = {
+                  status: 'running',
+                  series, epId,
+                  startedAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                  outputTail: [],
+                };
+                const child = spawn(process.execPath, cliArgs, {
+                  cwd: rootDir, env: process.env, stdio: ['ignore', 'pipe', 'pipe'],
+                });
+                prepareJobProcess = child;
+                const appendOutput = (chunk: string) => {
+                  const lines = chunk.split(/\r?\n/).map((l) => l.trimEnd()).filter((l) => l.trim());
+                  if (!lines.length) return;
+                  prepareJobState = {
+                    ...prepareJobState,
+                    updatedAt: new Date().toISOString(),
+                    outputTail: [...(prepareJobState.outputTail ?? []), ...lines].slice(-20),
+                  };
+                };
+                child.stdout.on('data', (chunk) => appendOutput(String(chunk)));
+                child.stderr.on('data', (chunk) => appendOutput(String(chunk)));
+                child.on('close', (code) => {
+                  prepareJobState = {
+                    ...prepareJobState,
+                    status: code === 0 ? 'succeeded' : 'failed',
+                    exitCode: code ?? null,
+                    finishedAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                  };
+                  prepareJobProcess = null;
+                });
+                child.on('error', (error) => {
+                  prepareJobState = {
+                    ...prepareJobState,
+                    status: 'failed',
+                    finishedAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    outputTail: [...(prepareJobState.outputTail ?? []), error.message].slice(-20),
+                  };
+                  prepareJobProcess = null;
+                });
+                writeJson(res, 202, { ok: true, job: prepareJobState });
+              } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                writeJson(res, 400, { ok: false, error: message });
+              }
+              return;
+            }
+
+            // -------- Publish (irreversible; requires explicit confirm on client) --------
+            if (url.pathname === '/__ars/publish-plan') {
+              if (req.method !== 'GET') {
+                writeJson(res, 405, { ok: false, error: 'Method not allowed' });
+                return;
+              }
+              try {
+                const series = asRequiredString(url.searchParams.get('series'), 'series');
+                const epId = asRequiredString(url.searchParams.get('ep'), 'ep');
+                const preparedArtifactPath = path.posix.join(
+                  'src', 'episodes', series, `${epId}.prepare-youtube.json`,
+                );
+                const preparedExists = fs.existsSync(path.join(rootDir, preparedArtifactPath));
+                writeJson(res, 200, {
+                  ok: true,
+                  plan: {
+                    cli: `npx ars publish youtube ${series}/${epId}`,
+                    series,
+                    epId,
+                    requiresPrepared: true,
+                    preparedExists,
+                    preparedArtifact: preparedArtifactPath,
+                    privacyOptions: ['private', 'unlisted', 'public'] as const,
+                    defaultPrivacy: 'private',
+                    irreversible: true,
+                    runningJob: publishJobState.status === 'running' ? publishJobState : null,
+                  },
+                });
+              } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                writeJson(res, 400, { ok: false, error: message });
+              }
+              return;
+            }
+
+            if (url.pathname === '/__ars/publish-generate') {
+              if (req.method === 'GET') {
+                writeJson(res, 200, { ok: true, job: publishJobState });
+                return;
+              }
+              if (req.method !== 'POST') {
+                writeJson(res, 405, { ok: false, error: 'Method not allowed' });
+                return;
+              }
+              try {
+                const body = await readJsonBody(req);
+                const series = asRequiredString(body.series, 'series');
+                const epId = asRequiredString(body.epId, 'epId');
+                const mode = typeof body.mode === 'string' ? body.mode : 'youtube';
+                const privacy = typeof body.privacy === 'string' ? body.privacy : 'private';
+                const dryRun = body.dryRun === true;
+                const force = body.force === true;
+                const target = `${series}/${epId}`;
+                if (publishJobState.status === 'running') {
+                  writeJson(res, 409, { ok: false, error: 'Publish already running.', job: publishJobState });
+                  return;
+                }
+                if (!['package', 'youtube'].includes(mode)) {
+                  writeJson(res, 400, { ok: false, error: `Unknown publish mode: ${mode}` });
+                  return;
+                }
+                if (!['private', 'unlisted', 'public'].includes(privacy)) {
+                  writeJson(res, 400, { ok: false, error: `Unknown privacy: ${privacy}` });
+                  return;
+                }
+                const cliArgs: string[] = [
+                  '--import', tsxLoader, arsCliEntrypoint,
+                  'publish', mode, target,
+                  '--privacy', privacy,
+                  '--yes', // client is the source of confirmation; CLI prompt would deadlock
+                ];
+                if (dryRun) cliArgs.push('--dry-run');
+                if (force) cliArgs.push('--force');
+                publishJobState = {
+                  status: 'running',
+                  series, epId,
+                  startedAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                  outputTail: [],
+                };
+                const child = spawn(process.execPath, cliArgs, {
+                  cwd: rootDir, env: process.env, stdio: ['ignore', 'pipe', 'pipe'],
+                });
+                publishJobProcess = child;
+                const appendOutput = (chunk: string) => {
+                  const lines = chunk.split(/\r?\n/).map((l) => l.trimEnd()).filter((l) => l.trim());
+                  if (!lines.length) return;
+                  publishJobState = {
+                    ...publishJobState,
+                    updatedAt: new Date().toISOString(),
+                    outputTail: [...(publishJobState.outputTail ?? []), ...lines].slice(-20),
+                  };
+                };
+                child.stdout.on('data', (chunk) => appendOutput(String(chunk)));
+                child.stderr.on('data', (chunk) => appendOutput(String(chunk)));
+                child.on('close', (code) => {
+                  publishJobState = {
+                    ...publishJobState,
+                    status: code === 0 ? 'succeeded' : 'failed',
+                    exitCode: code ?? null,
+                    finishedAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                  };
+                  publishJobProcess = null;
+                });
+                child.on('error', (error) => {
+                  publishJobState = {
+                    ...publishJobState,
+                    status: 'failed',
+                    finishedAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    outputTail: [...(publishJobState.outputTail ?? []), error.message].slice(-20),
+                  };
+                  publishJobProcess = null;
+                });
+                writeJson(res, 202, { ok: true, job: publishJobState });
+              } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                writeJson(res, 400, { ok: false, error: message });
               }
               return;
             }

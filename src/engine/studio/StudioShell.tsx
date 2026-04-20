@@ -1,12 +1,13 @@
 /**
  * @component StudioShell
  * @description Top-level Studio shell. Reads `?phase=` and `?ep=` from the URL
- *              and renders the matching phase view (plan / build / review).
- *              Holds the active episodeId so the user can switch episodes
- *              without a full page reload — URL stays in sync via
- *              `history.replaceState`.
+ *              and renders the matching phase view (plan / review). Build is
+ *              NOT a phase — it's an action triggered from the Plan view that
+ *              opens a full-screen BuildOverlay and auto-drops the user into
+ *              Review when the server transitions to ready. A legacy
+ *              `?phase=build` URL redirects to `plan` for bookmark compat.
  */
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import type { Episode } from '../shared/types';
 import { ReviewView } from './views/ReviewView';
 import { PlanView } from './views/PlanView';
@@ -18,9 +19,13 @@ export type StudioPhase = 'plan' | 'build' | 'review' | 'slide';
 const KNOWN_PHASES: readonly StudioPhase[] = ['plan', 'build', 'review', 'slide'];
 
 function readPhaseFromUrl(): StudioPhase {
-  if (typeof window === 'undefined') return 'review';
+  if (typeof window === 'undefined') return 'plan';
   const raw = new URLSearchParams(window.location.search).get('phase')?.trim();
-  return KNOWN_PHASES.includes(raw as StudioPhase) ? (raw as StudioPhase) : 'review';
+  if (KNOWN_PHASES.includes(raw as StudioPhase)) {
+    return raw as StudioPhase;
+  }
+  // Legacy: ?phase=build was removed. Land the user on plan.
+  return 'plan';
 }
 
 function readEpisodeFromUrl(fallback: string): string {
@@ -48,6 +53,11 @@ export const StudioShell: React.FC<StudioShellProps> = ({
 }) => {
   const [phase, setPhase] = useState<StudioPhase>(() => readPhaseFromUrl());
   const [episodeId, setEpisodeId] = useState<string>(() => readEpisodeFromUrl(initialEpisodeId));
+  const [buildOverlayOpen, setBuildOverlayOpen] = useState(false);
+  // `planDirty` is a UI hint lifted from ReviewView so that once the user
+  // goes back to Plan via "看完，送審" the dirty pill is immediately visible,
+  // without waiting for the next /__ars/build-status tick.
+  const [planDirty, setPlanDirty] = useState(false);
 
   useEffect(() => {
     const onPopState = () => {
@@ -58,25 +68,44 @@ export const StudioShell: React.FC<StudioShellProps> = ({
     return () => window.removeEventListener('popstate', onPopState);
   }, [initialEpisodeId]);
 
-  const updateUrl = (nextPhase: StudioPhase, nextEp: string) => {
+  const updateUrl = useCallback((nextPhase: StudioPhase, nextEp: string) => {
     const url = new URL(window.location.href);
     url.searchParams.set('phase', nextPhase);
     url.searchParams.set('ep', nextEp);
     url.searchParams.set('series', seriesId);
     window.history.replaceState(null, '', url.toString());
-  };
+  }, [seriesId]);
 
-  const switchPhase = (next: StudioPhase) => {
+  const switchPhase = useCallback((next: StudioPhase) => {
     if (next === phase) return;
     updateUrl(next, episodeId);
     setPhase(next);
-  };
+  }, [phase, episodeId, updateUrl]);
 
-  const switchEpisode = (next: string) => {
+  const switchEpisode = useCallback((next: string) => {
     if (next === episodeId) return;
     updateUrl(phase, next);
     setEpisodeId(next);
-  };
+  }, [episodeId, phase, updateUrl]);
+
+  const handleBuildStarted = useCallback(() => {
+    setBuildOverlayOpen(true);
+  }, []);
+
+  const handleBuildDone = useCallback(() => {
+    setBuildOverlayOpen(false);
+    setPlanDirty(false);
+    if (phase !== 'review') {
+      updateUrl('review', episodeId);
+      setPhase('review');
+    }
+  }, [phase, episodeId, updateUrl]);
+
+  // Ensure URL reflects the current phase even on first mount (plan default).
+  useEffect(() => {
+    updateUrl(phase, episodeId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const episode = episodes[episodeId] ?? null;
 
@@ -101,8 +130,6 @@ export const StudioShell: React.FC<StudioShellProps> = ({
         />
       );
     }
-  } else if (phase === 'plan') {
-    body = <PlanView key={episodeId} series={seriesId} epId={episodeId} />;
   } else if (phase === 'slide') {
     if (!episode) {
       body = (
@@ -124,7 +151,15 @@ export const StudioShell: React.FC<StudioShellProps> = ({
       );
     }
   } else {
-    body = <BuildView key={episodeId} series={seriesId} epId={episodeId} />;
+    body = (
+      <PlanView
+        key={episodeId}
+        series={seriesId}
+        epId={episodeId}
+        onBuildStarted={handleBuildStarted}
+        dirtyHintFromShell={planDirty}
+      />
+    );
   }
 
   return (
@@ -151,6 +186,12 @@ export const StudioShell: React.FC<StudioShellProps> = ({
         )}
       </div>
       <div className="studio-shell-body">{body}</div>
+      <BuildOverlay
+        open={buildOverlayOpen}
+        series={seriesId}
+        epId={episodeId}
+        onDone={handleBuildDone}
+      />
     </div>
   );
 };

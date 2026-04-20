@@ -36,6 +36,8 @@ const MarkdownContent: React.FC<{
     () => ({
       p: ({ children }) => (
         <p
+          data-annotatable="paragraph"
+          data-annotatable-label="段落"
           style={{
             margin: `0 0 ${Math.round(16 * fontScale)}px 0`,
             fontFamily: theme.fonts.main,
@@ -49,6 +51,8 @@ const MarkdownContent: React.FC<{
       ),
       h1: ({ children }) => (
         <h1
+          data-annotatable="heading"
+          data-annotatable-label="主標題"
           style={{
             margin: `0 0 ${Math.round(20 * fontScale)}px 0`,
             fontFamily: theme.fonts.main,
@@ -62,6 +66,8 @@ const MarkdownContent: React.FC<{
       ),
       h2: ({ children }) => (
         <h2
+          data-annotatable="heading"
+          data-annotatable-label="副標題"
           style={{
             margin: `0 0 ${Math.round(16 * fontScale)}px 0`,
             fontFamily: theme.fonts.main,
@@ -75,6 +81,8 @@ const MarkdownContent: React.FC<{
       ),
       h3: ({ children }) => (
         <h3
+          data-annotatable="heading"
+          data-annotatable-label="小標題"
           style={{
             margin: `0 0 ${Math.round(12 * fontScale)}px 0`,
             fontFamily: theme.fonts.main,
@@ -88,6 +96,8 @@ const MarkdownContent: React.FC<{
       ),
       ul: ({ children }) => (
         <ul
+          data-annotatable="list"
+          data-annotatable-label="項目列表"
           style={{
             margin: `0 0 ${Math.round(8 * fontScale)}px 0`,
             paddingLeft: Math.round(40 * fontScale),
@@ -105,6 +115,8 @@ const MarkdownContent: React.FC<{
       ),
       ol: ({ children }) => (
         <ol
+          data-annotatable="list"
+          data-annotatable-label="編號列表"
           style={{
             margin: `0 0 ${Math.round(8 * fontScale)}px 0`,
             paddingLeft: Math.round(40 * fontScale),
@@ -137,6 +149,8 @@ const MarkdownContent: React.FC<{
         if (isCodeBlock) {
           return (
             <code
+              data-annotatable="code-block"
+              data-annotatable-label="程式碼區塊"
               style={{
                 display: "block",
                 padding: Math.round(16 * fontScale),
@@ -194,6 +208,8 @@ const MarkdownContent: React.FC<{
       ),
       blockquote: ({ children }) => (
         <blockquote
+          data-annotatable="quote"
+          data-annotatable-label="引言"
           style={{
             margin: `0 0 ${Math.round(16 * fontScale)}px 0`,
             paddingLeft: 20,
@@ -209,6 +225,8 @@ const MarkdownContent: React.FC<{
       ),
       table: ({ children }) => (
         <table
+          data-annotatable="table"
+          data-annotatable-label="表格"
           style={{
             width: "100%",
             borderCollapse: "collapse",

@@ -11,11 +11,15 @@ import type { Episode, Step } from '../../shared/types';
 import { useStepNavigation } from '../hooks/useStepNavigation';
 import { episodeToStudioSteps, getStudioEpisodeInfo } from '../adapters/episodeToStudioSteps';
 import { ThemeProvider } from '../../shared/ThemeContext';
-import { ActionBar } from '../components/ActionBar';
 import { FixListSidebar } from '../components/FixListSidebar';
 import { StepEditorPanel } from '../components/StepEditorPanel';
+import { PinLayer, type CommittedPin } from '../components/PinLayer';
+import { StatusBar, type StatusBarState } from '../components/StatusBar';
+import { SelectMode } from '../components/SelectMode';
+import { AudioRunner } from '../components/AudioRunner';
 import { StudioComposition, type StudioCompositionProps } from '../StudioComposition';
-import { EPISODE_SCOPE_ID } from '../constants';
+import { INTENT_SUBMITTED_EVENT } from '../constants';
+import type { ReviewIntent } from '../../../types/review-intent';
 
 import '../styles/studio.css';
 
@@ -75,8 +79,16 @@ type EpisodeSourceMapResponse = {
   error?: string;
 };
 
-export const ReviewView: React.FC<ReviewViewProps> = ({ episode, episodeId, seriesId }) => {
+export const ReviewView: React.FC<ReviewViewProps> = ({
+  episode,
+  episodeId,
+  seriesId,
+}) => {
   const [draftEpisode, setDraftEpisode] = useState(episode);
+  const [intents, setIntents] = useState<ReviewIntent[]>([]);
+  const [statusState, setStatusState] = useState<StatusBarState>('watching');
+  const [statusDetail, setStatusDetail] = useState<string>('watching plan.md · ready for review');
+  const [selectModeActive, setSelectModeActive] = useState(false);
   const shell = draftEpisode.shell!;
   const theme = shell.theme!;
   const studioSteps = useMemo(
@@ -146,6 +158,7 @@ export const ReviewView: React.FC<ReviewViewProps> = ({ episode, episodeId, seri
   const [showInfo, setShowInfo] = useState(false);
   const [audioExists, setAudioExists] = useState<boolean | null>(null);
   const [audioJob, setAudioJob] = useState<AudioJobState>({ status: 'idle' });
+  const [audioModalOpen, setAudioModalOpen] = useState(false);
   const [episodeSourceMap, setEpisodeSourceMap] = useState<EpisodeSourceMap | null>(null);
   const [audioCapability, setAudioCapability] = useState<AudioCapability>({
     visible: false,
@@ -166,30 +179,6 @@ export const ReviewView: React.FC<ReviewViewProps> = ({ episode, episodeId, seri
       // ignore
     }
   }, []);
-
-  const handleGenerateFullAudio = useCallback(async () => {
-    try {
-      const res = await fetch('/__ars/audio-generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ series: fallbackSeries, epId: fallbackEpId }),
-      });
-      const payload = (await res.json()) as AudioJobResponse;
-      if (!res.ok || !payload.job) {
-        throw new Error(payload.error ?? `HTTP ${res.status}`);
-      }
-      setAudioJob(payload.job);
-    } catch (error) {
-      setAudioJob({
-        status: 'failed',
-        series: fallbackSeries,
-        epId: fallbackEpId,
-        finishedAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        outputTail: [error instanceof Error ? error.message : String(error)],
-      });
-    }
-  }, [fallbackEpId, fallbackSeries]);
 
   const loadAudioCapability = useCallback(async () => {
     try {
@@ -284,6 +273,66 @@ export const ReviewView: React.FC<ReviewViewProps> = ({ episode, episodeId, seri
   const viewportRef = useRef<HTMLDivElement>(null);
   type CanvasOverlay = { scale: number; top: number; left: number; width: number; height: number };
   const [canvasOverlay, setCanvasOverlay] = useState<CanvasOverlay | null>(null);
+
+  // Poll /__ars/studio-intents to derive per-step pins + pending badge count.
+  // Overlap with FixListSidebar's own poll is intentional — both views need
+  // fresh intents and cross-tab server state is cheap.
+  const fetchIntents = useCallback(async () => {
+    try {
+      const res = await fetch('/__ars/studio-intents');
+      if (!res.ok) return;
+      const payload = (await res.json()) as { ok: boolean; intents: ReviewIntent[] };
+      if (payload.ok) setIntents(payload.intents);
+    } catch {
+      // transient — try again next tick
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchIntents();
+    const timer = window.setInterval(() => void fetchIntents(), 4000);
+    const onSubmitted = () => void fetchIntents();
+    window.addEventListener(INTENT_SUBMITTED_EVENT, onSubmitted);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener(INTENT_SUBMITTED_EVENT, onSubmitted);
+    };
+  }, [fetchIntents]);
+
+  // Derive StatusBar state from active signals. Priority:
+  //   failed > applying > building (audio job) > ready > watching > idle
+  useEffect(() => {
+    if (audioJob.status === 'failed') {
+      setStatusState('failed');
+      setStatusDetail('audio job failed — see TUI log');
+      return;
+    }
+    if (audioJob.status === 'running') {
+      setStatusState('building');
+      setStatusDetail('synthesizing narration · background job');
+      return;
+    }
+    if (audioJob.status === 'succeeded') {
+      setStatusState('ready');
+      setStatusDetail('narration ready · review when idle');
+      return;
+    }
+    setStatusState('watching');
+    setStatusDetail('watching .ars/studio-intents · idle');
+  }, [audioJob.status]);
+
+  // Applying flash: whenever a new fix-applied banner arrives, flip to
+  // 'applying' for ~2s so the user sees Claude Code acting.
+  useEffect(() => {
+    if (!fixAppliedBanner) return;
+    setStatusState('applying');
+    setStatusDetail(`已套用 ${fixAppliedBanner.stepIds.length} 筆 fix · ${new Date(fixAppliedBanner.timestamp).toLocaleTimeString()}`);
+    const t = window.setTimeout(() => {
+      setStatusState('ready');
+      setStatusDetail('fixes applied · reload to refresh');
+    }, 2500);
+    return () => window.clearTimeout(t);
+  }, [fixAppliedBanner]);
 
   // Scale canvas to fit the left pane (sidebar-aware via flex)
   useEffect(() => {
@@ -398,6 +447,23 @@ export const ReviewView: React.FC<ReviewViewProps> = ({ episode, episodeId, seri
 
   const step = currentStudioStep.step;
   const sourceStep = episode.steps[currentIndex] ?? step;
+
+  // Derive pins + pending counts from the live intents list.
+  const stepIntents = intents.filter((it) => it.target?.stepId === step.id);
+  const pinsForStep: CommittedPin[] = stepIntents
+    .map<CommittedPin | null>((it, idx) => {
+      const hash = it.target?.anchorMeta?.hash ?? '';
+      const match = /^pin:([\d.]+),([\d.]+)$/.exec(hash);
+      if (!match) return null;
+      const x = Number.parseFloat(match[1]);
+      const y = Number.parseFloat(match[2]);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+      const status: CommittedPin['status'] = it.processedAt ? 'applied' : 'pending';
+      return { id: it.id, x, y, num: idx + 1, status };
+    })
+    .filter((p): p is CommittedPin => p !== null);
+  const pendingForStep = stepIntents.filter((it) => !it.processedAt).length;
+
   const audioButtonLabel =
     audioJob.status === 'running'
       ? '🔊 生成中…'
@@ -430,7 +496,9 @@ export const ReviewView: React.FC<ReviewViewProps> = ({ episode, episodeId, seri
             <div className="studio-scale-wrapper">
               <div
                 ref={canvasRef}
-                className="studio-canvas"
+                className={`studio-canvas${selectModeActive ? ' studio-select-mode' : ''}`}
+                data-annotatable="card"
+                data-annotatable-label="整張卡片"
                 style={{ width: compositionWidth, height: compositionHeight }}
               >
                 <Player
@@ -458,38 +526,50 @@ export const ReviewView: React.FC<ReviewViewProps> = ({ episode, episodeId, seri
                   style={{ width: compositionWidth, height: compositionHeight }}
                 />
 
+                <PinLayer
+                  series={fallbackSeries}
+                  epId={fallbackEpId}
+                  stepId={step.id}
+                  source="review"
+                  scale={canvasOverlay?.scale ?? 1}
+                  pins={pinsForStep}
+                  disabled={selectModeActive}
+                />
+
+                {/* Virtual audio chip. `audioSrc` is a URL template that always
+                    resolves, so we can't use it for existence — instead we
+                    key off subtitles presence (only written after a successful
+                    TTS run). When real audio is in place the chip is
+                    annotatable (common use: "這個詞讀音不對") and ships the
+                    step's narration as context. Otherwise it renders 🔇 and
+                    is non-interactive. */}
+                {currentStudioStep.subtitles && currentStudioStep.subtitles.length > 0 ? (
+                  <div
+                    className="studio-audio-chip"
+                    data-annotatable="audio"
+                    data-annotatable-label="音訊"
+                    data-annotatable-context={step.narration ?? ''}
+                    title="點擊留言：修正這段語音（讀音、停頓、語氣…）"
+                  >
+                    <span>TTS · 語音</span>
+                  </div>
+                ) : (
+                  <div
+                    className="studio-audio-chip muted"
+                    title="此步驟尚未生成語音 — 使用導覽列的 🔊 生成音訊"
+                  >
+                    <span>🔇 無語音</span>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Card ✨ — top-left of canvas (outside scaled canvas, no transform interference) */}
-            {canvasOverlay && (
-              <div style={{ position: 'absolute', top: canvasOverlay.top + 16 * canvasOverlay.scale, left: canvasOverlay.left + 16 * canvasOverlay.scale, zIndex: 120 }}>
-                <ActionBar anchor={{ type: 'step', id: step.id }} source="review" series={fallbackSeries} epId={fallbackEpId} kind="visual" />
-              </div>
-            )}
           </div>
 
-          {/* Narration bar — between viewport and nav */}
-          {step.narration && (
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              padding: '8px 16px',
-              background: 'var(--color-overlay-bg)',
-              borderTop: '1px solid var(--color-border-light)',
-              borderBottom: '1px solid var(--color-border-light)',
-              flexShrink: 0,
-            }}>
-              <ActionBar anchor={{ type: 'step', id: step.id }} source="review" series={fallbackSeries} epId={fallbackEpId} kind="content" />
-              <div style={{
-                flex: 1,
-                color: 'var(--color-text-on-dark)',
-                fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap',
-                maxHeight: 80, overflowY: 'auto',
-              }}>
-                {step.narration}
-              </div>
-            </div>
-          )}
+          <StatusBar state={statusState} detail={statusDetail} />
+
+          {/* Narration lives as subtitles inside the canvas now; the nav-level
+              preview was removed to avoid double display. */}
 
           {/* Fix-applied banner */}
           {fixAppliedBanner && (
@@ -531,22 +611,31 @@ export const ReviewView: React.FC<ReviewViewProps> = ({ episode, episodeId, seri
             </button>
           </div>
 
-          <div className="nav-center">
-            {/* Global ✨ — center of nav bar */}
-            <ActionBar anchor={{ type: 'episode', id: EPISODE_SCOPE_ID }} source="review" series={fallbackSeries} epId={fallbackEpId} kind="other" />
-          </div>
+          <div className="nav-center" />
 
           <div className="nav-right" style={{ position: 'relative' }}>
-            {audioCapability.visible && (
-              <button
-                className={`nav-btn${audioJob.status === 'running' ? ' active' : ''}`}
-                onClick={() => void handleGenerateFullAudio()}
-                disabled={audioJob.status === 'running' || !audioCapability.enabled}
-                title={audioButtonTitle}
-              >
-                {audioButtonLabel}
-              </button>
-            )}
+            <button
+              className={`nav-btn${selectModeActive ? ' active' : ''}`}
+              onClick={() => setSelectModeActive((v) => !v)}
+              title={selectModeActive ? '退出留言模式（Esc）' : '點擊畫面元素留言'}
+              style={{ padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
+              <span style={{ fontSize: 16, lineHeight: 1 }}>💬</span>
+              <span>留言</span>
+              {pendingForStep > 0 && (
+                <span className="action-bar-btn-badge">{pendingForStep}</span>
+              )}
+            </button>
+            {/* Always openable: the modal surfaces capability problems in its
+                own preview so the user can see why they're blocked. Running
+                state is visually hinted via `active`. */}
+            <button
+              className={`nav-btn${audioJob.status === 'running' ? ' active' : ''}`}
+              onClick={() => setAudioModalOpen(true)}
+              title={audioButtonTitle}
+            >
+              {audioButtonLabel}
+            </button>
             <button
               className={`nav-btn${showStepEditor ? ' active' : ''}`}
               onClick={() => setShowStepEditor((v) => !v)}
@@ -625,8 +714,18 @@ export const ReviewView: React.FC<ReviewViewProps> = ({ episode, episodeId, seri
             onClose={() => setShowFixList(false)}
             seriesId={seriesId}
             episodeId={episodeId}
+            currentStepId={step.id}
           />
         )}
+        <SelectMode
+          active={selectModeActive}
+          onExit={() => setSelectModeActive(false)}
+          canvasEl={canvasRef.current}
+          stepId={step.id}
+          series={fallbackSeries}
+          epId={fallbackEpId}
+          source="review"
+        />
         {showStepEditor && sourceStep && (
           <StepEditorPanel
             step={step}
@@ -639,6 +738,13 @@ export const ReviewView: React.FC<ReviewViewProps> = ({ episode, episodeId, seri
           />
         )}
       </div>
+      <AudioRunner
+        open={audioModalOpen}
+        onClose={() => setAudioModalOpen(false)}
+        episode={draftEpisode}
+        series={fallbackSeries}
+        epId={fallbackEpId}
+      />
     </ThemeProvider>
   );
 };

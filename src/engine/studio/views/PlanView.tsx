@@ -30,15 +30,45 @@ type PlanResponse = {
   error?: string;
 };
 
+type BuildStatusLite = {
+  lastBuildAt?: string;
+  episodeSourceMtime?: string;
+  pendingIntentId?: string;
+  state?: string;
+};
+
+type BuildStatusResponse = {
+  ok: boolean;
+  build?: BuildStatusLite;
+  error?: string;
+};
+
+type TriggerResponse = {
+  ok: boolean;
+  intentId?: string;
+  writtenAt?: string;
+  error?: string;
+};
+
 type PlanViewProps = {
   series: string;
   epId: string;
+  onBuildStarted?: (intentId: string) => void;
+  dirtyHintFromShell?: boolean;
 };
 
-export const PlanView: React.FC<PlanViewProps> = ({ series, epId }) => {
+export const PlanView: React.FC<PlanViewProps> = ({
+  series,
+  epId,
+  onBuildStarted,
+  dirtyHintFromShell,
+}) => {
   const [plan, setPlan] = useState<PlanPayload | null>(null);
   const [missingPath, setMissingPath] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [buildMeta, setBuildMeta] = useState<BuildStatusLite>({});
+  const [triggering, setTriggering] = useState(false);
+  const [triggerError, setTriggerError] = useState<string | null>(null);
   const lastMtimeRef = useRef<number>(0);
 
   const fetchPlan = useCallback(async () => {
@@ -66,11 +96,77 @@ export const PlanView: React.FC<PlanViewProps> = ({ series, epId }) => {
     }
   }, [series, epId]);
 
+  const fetchBuildMeta = useCallback(async () => {
+    try {
+      const params = new URLSearchParams({ series, ep: epId });
+      const res = await fetch(`/__ars/build-status?${params.toString()}`);
+      if (!res.ok) return;
+      const payload = (await res.json()) as BuildStatusResponse;
+      if (payload.build) {
+        setBuildMeta({
+          lastBuildAt: payload.build.lastBuildAt,
+          episodeSourceMtime: payload.build.episodeSourceMtime,
+          pendingIntentId: payload.build.pendingIntentId,
+          state: payload.build.state,
+        });
+      }
+    } catch {
+      // Soft-fail — trigger UI just hides the timestamp.
+    }
+  }, [series, epId]);
+
   useEffect(() => {
     void fetchPlan();
-    const timer = window.setInterval(() => void fetchPlan(), POLL_INTERVAL_MS);
+    void fetchBuildMeta();
+    const timer = window.setInterval(() => {
+      void fetchPlan();
+      void fetchBuildMeta();
+    }, POLL_INTERVAL_MS);
     return () => window.clearInterval(timer);
-  }, [fetchPlan]);
+  }, [fetchPlan, fetchBuildMeta]);
+
+  const handleTriggerBuild = useCallback(async () => {
+    if (triggering) return;
+    setTriggering(true);
+    setTriggerError(null);
+    try {
+      const res = await fetch('/__ars/build-trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ series, epId }),
+      });
+      const payload = (await res.json()) as TriggerResponse;
+      if (res.status === 409) {
+        // Already pending — still show overlay so user sees progress.
+        if (payload.intentId) {
+          onBuildStarted?.(payload.intentId);
+        } else {
+          setTriggerError('已有 build 正在排隊');
+        }
+        return;
+      }
+      if (!res.ok || !payload.intentId) {
+        throw new Error(payload.error ?? `HTTP ${res.status}`);
+      }
+      onBuildStarted?.(payload.intentId);
+    } catch (err) {
+      setTriggerError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setTriggering(false);
+    }
+  }, [series, epId, triggering, onBuildStarted]);
+
+  const derivedDirty = (() => {
+    if (dirtyHintFromShell) return true;
+    const built = buildMeta.lastBuildAt ? Date.parse(buildMeta.lastBuildAt) : NaN;
+    const source = buildMeta.episodeSourceMtime ? Date.parse(buildMeta.episodeSourceMtime) : NaN;
+    if (Number.isFinite(built) && Number.isFinite(source)) return source > built;
+    return !buildMeta.lastBuildAt;
+  })();
+
+  const lastBuiltLabel = buildMeta.lastBuildAt
+    ? new Date(buildMeta.lastBuildAt).toLocaleString()
+    : '從未 build';
 
   // Compute section anchors client-side as a fallback if server data is missing
   const sections = useMemo<MarkdownSection[]>(
@@ -131,6 +227,28 @@ export const PlanView: React.FC<PlanViewProps> = ({ series, epId }) => {
         <ReactMarkdown remarkPlugins={[remarkGfm]} components={headingComponents}>
           {plan.markdown}
         </ReactMarkdown>
+
+        <div className="studio-plan-trigger">
+          <div className="studio-plan-trigger-meta">
+            <span className="studio-plan-trigger-label">LAST BUILD</span>
+            <span className="studio-plan-trigger-time">{lastBuiltLabel}</span>
+            {derivedDirty && <span className="studio-plan-dirty">● plan 已變更</span>}
+            {triggerError && (
+              <span className="studio-plan-dirty" style={{ color: 'var(--color-negative, #8b5e3c)' }}>
+                {triggerError}
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            className="studio-plan-trigger-btn"
+            onClick={() => void handleTriggerBuild()}
+            disabled={triggering}
+            title="觸發 /ars:build，Claude Code 收到 intent 後開跑"
+          >
+            {triggering ? '送出中…' : '🚀 Build & Review'}
+          </button>
+        </div>
       </article>
     </div>
   );

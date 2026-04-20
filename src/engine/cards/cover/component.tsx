@@ -47,6 +47,8 @@ export const CoverCardComponent: React.FC<CardRenderProps<CoverCardData>> = ({
       >
         {headerText ? (
           <div
+            data-annotatable="cover-tag"
+            data-annotatable-label="頻道標籤"
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -74,6 +76,8 @@ export const CoverCardComponent: React.FC<CardRenderProps<CoverCardData>> = ({
         ) : null}
 
         <div
+          data-annotatable="cover-title"
+          data-annotatable-label="封面主標題"
           style={{
             fontSize: titleFontSize,
             fontWeight: 900,
@@ -97,6 +101,8 @@ export const CoverCardComponent: React.FC<CardRenderProps<CoverCardData>> = ({
 
         {subtitle ? (
           <div
+            data-annotatable="cover-subtitle"
+            data-annotatable-label="封面副標題"
             style={{
               fontSize: 38,
               fontWeight: 600,
