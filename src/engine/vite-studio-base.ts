@@ -16,6 +16,15 @@ import { createRequire } from 'module';
 import { getTTSProviderCapabilities } from '../adapters/tts/registry';
 import { createStudioIntent, getStudioIntentsDir } from '../studio/studio-intents';
 import { migrateReviewIntents } from '../studio/migrate-review-intents';
+import {
+  generatePreparedYoutubeCandidates,
+  getPrepareArtifactPath,
+  getPrepareMarkdownPath,
+  readPrepareArtifact,
+  selectPreparedYoutubeCandidate,
+  writePrepareArtifact,
+  type YoutubePrepareArtifact,
+} from '../studio/prepare-youtube-artifact';
 import type { StudioIntentAnchorType, StudioIntentTarget } from '../types/studio-intent';
 import { extractSections } from './shared/markdown-anchor';
 import type { SpeechProviderId } from './shared/types';
@@ -442,23 +451,58 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
               try {
                 const series = asRequiredString(url.searchParams.get('series'), 'series');
                 const epId = asRequiredString(url.searchParams.get('ep'), 'ep');
-                const preparedArtifactPath = path.posix.join(
-                  'src', 'episodes', series, `${epId}.prepare-youtube.json`,
-                );
+                const preparedArtifact = readPrepareArtifact(rootDir, series, epId);
+                const preparedArtifactPath = path.relative(
+                  rootDir,
+                  getPrepareArtifactPath(rootDir, series, epId),
+                ).split(path.sep).join('/');
+                const markdownPath = path.relative(
+                  rootDir,
+                  getPrepareMarkdownPath(rootDir, series, epId),
+                ).split(path.sep).join('/');
+                const pendingPrepareIntents = getPendingPrepareIntents(rootDir, series, epId);
                 writeJson(res, 200, {
                   ok: true,
                   plan: {
                     cli: `npx ars prepare youtube ${series}/${epId}`,
                     series,
                     epId,
+                    preparedExists: preparedArtifact !== null,
+                    preparedStatus: preparedArtifact?.status ?? null,
                     output: {
                       artifact: preparedArtifactPath,
-                      markdown: preparedArtifactPath.replace(/\.json$/, '.md'),
+                      markdown: markdownPath,
                     },
                     notes:
-                      'prepare youtube 只寫 prepare-youtube.md/json 上下文，' +
-                      '不呼叫 LLM；之後在 Claude Code 執行 /ars:prepare-youtube 做人工 review。',
+                      'prepare 先產 context artifact；candidate 生成與挑選由 studio picker 完成。',
+                    pendingPrepareIntents: pendingPrepareIntents.length,
                     runningJob: prepareJobState.status === 'running' ? prepareJobState : null,
+                  },
+                });
+              } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                writeJson(res, 400, { ok: false, error: message });
+              }
+              return;
+            }
+
+            if (url.pathname === '/__ars/prepare-artifact') {
+              if (req.method !== 'GET') {
+                writeJson(res, 405, { ok: false, error: 'Method not allowed' });
+                return;
+              }
+              try {
+                const series = asRequiredString(url.searchParams.get('series'), 'series');
+                const epId = asRequiredString(url.searchParams.get('ep'), 'ep');
+                const artifact = readPrepareArtifact(rootDir, series, epId);
+                const pendingPrepareIntents = getPendingPrepareIntents(rootDir, series, epId);
+                writeJson(res, 200, {
+                  ok: true,
+                  artifact,
+                  pendingPrepareIntents,
+                  paths: {
+                    artifact: path.relative(rootDir, getPrepareArtifactPath(rootDir, series, epId)).split(path.sep).join('/'),
+                    markdown: path.relative(rootDir, getPrepareMarkdownPath(rootDir, series, epId)).split(path.sep).join('/'),
                   },
                 });
               } catch (error) {
@@ -542,6 +586,66 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
               return;
             }
 
+            if (url.pathname === '/__ars/prepare-candidates') {
+              if (req.method !== 'POST') {
+                writeJson(res, 405, { ok: false, error: 'Method not allowed' });
+                return;
+              }
+              try {
+                const body = await readJsonBody(req);
+                const series = asRequiredString(body.series, 'series');
+                const epId = asRequiredString(body.epId, 'epId');
+                const artifact = readPrepareArtifact(rootDir, series, epId);
+                if (!artifact) {
+                  writeJson(res, 404, { ok: false, error: 'Prepare artifact not found. Run prepare first.' });
+                  return;
+                }
+                const nextArtifact: YoutubePrepareArtifact = {
+                  ...artifact,
+                  status: 'pending-review',
+                  youtube: {
+                    ...artifact.youtube,
+                    selected: null,
+                    title: null,
+                    description: null,
+                    tags: [],
+                    candidates: generatePreparedYoutubeCandidates(artifact),
+                  },
+                };
+                writePrepareArtifact(rootDir, nextArtifact);
+                writeJson(res, 200, { ok: true, artifact: nextArtifact });
+              } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                writeJson(res, 400, { ok: false, error: message });
+              }
+              return;
+            }
+
+            if (url.pathname === '/__ars/prepare-select') {
+              if (req.method !== 'POST') {
+                writeJson(res, 405, { ok: false, error: 'Method not allowed' });
+                return;
+              }
+              try {
+                const body = await readJsonBody(req);
+                const series = asRequiredString(body.series, 'series');
+                const epId = asRequiredString(body.epId, 'epId');
+                const candidateId = asRequiredString(body.candidateId, 'candidateId');
+                const artifact = readPrepareArtifact(rootDir, series, epId);
+                if (!artifact) {
+                  writeJson(res, 404, { ok: false, error: 'Prepare artifact not found. Run prepare first.' });
+                  return;
+                }
+                const nextArtifact = selectPreparedYoutubeCandidate(artifact, candidateId);
+                writePrepareArtifact(rootDir, nextArtifact);
+                writeJson(res, 200, { ok: true, artifact: nextArtifact });
+              } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                writeJson(res, 400, { ok: false, error: message });
+              }
+              return;
+            }
+
             // -------- Publish (irreversible; requires explicit confirm on client) --------
             if (url.pathname === '/__ars/publish-plan') {
               if (req.method !== 'GET') {
@@ -551,10 +655,12 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
               try {
                 const series = asRequiredString(url.searchParams.get('series'), 'series');
                 const epId = asRequiredString(url.searchParams.get('ep'), 'ep');
-                const preparedArtifactPath = path.posix.join(
-                  'src', 'episodes', series, `${epId}.prepare-youtube.json`,
-                );
-                const preparedExists = fs.existsSync(path.join(rootDir, preparedArtifactPath));
+                const preparedArtifact = readPrepareArtifact(rootDir, series, epId);
+                const pendingPrepareIntents = getPendingPrepareIntents(rootDir, series, epId);
+                const preparedArtifactPath = path.relative(
+                  rootDir,
+                  getPrepareArtifactPath(rootDir, series, epId),
+                ).split(path.sep).join('/');
                 writeJson(res, 200, {
                   ok: true,
                   plan: {
@@ -562,7 +668,9 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
                     series,
                     epId,
                     requiresPrepared: true,
-                    preparedExists,
+                    preparedExists: preparedArtifact !== null,
+                    preparedReady: preparedArtifact?.status === 'ready',
+                    pendingPrepareIntents: pendingPrepareIntents.length,
                     preparedArtifact: preparedArtifactPath,
                     privacyOptions: ['private', 'unlisted', 'public'] as const,
                     defaultPrivacy: 'private',
@@ -595,8 +703,18 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
                 const dryRun = body.dryRun === true;
                 const force = body.force === true;
                 const target = `${series}/${epId}`;
+                const preparedArtifact = readPrepareArtifact(rootDir, series, epId);
+                const pendingPrepareIntents = getPendingPrepareIntents(rootDir, series, epId);
                 if (publishJobState.status === 'running') {
                   writeJson(res, 409, { ok: false, error: 'Publish already running.', job: publishJobState });
+                  return;
+                }
+                if (!preparedArtifact || preparedArtifact.status !== 'ready') {
+                  writeJson(res, 409, { ok: false, error: 'Prepare is not ready yet. Select a candidate first.' });
+                  return;
+                }
+                if (pendingPrepareIntents.length > 0) {
+                  writeJson(res, 409, { ok: false, error: 'Prepare still has pending review intents.' });
                   return;
                 }
                 if (!['package', 'youtube'].includes(mode)) {
@@ -879,6 +997,18 @@ type AudioCapability = {
   reason?: string;
 };
 
+type StudioIntentRecord = {
+  id?: string;
+  processedAt?: string;
+  target?: {
+    series?: string;
+    epId?: string;
+    anchorMeta?: {
+      hash?: string;
+    };
+  };
+};
+
 async function readJsonBody(req: NodeJS.ReadableStream): Promise<Record<string, unknown>> {
   let raw = '';
   for await (const chunk of req) {
@@ -1016,6 +1146,31 @@ function asStudioKind(value: unknown): 'visual' | 'content' | 'timing' | 'plan-s
   }
 
   throw new Error('Invalid studio intent feedback kind.');
+}
+
+function readStudioIntentRecords(rootDir: string): StudioIntentRecord[] {
+  const dir = getStudioIntentsDir(rootDir);
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir)
+    .filter((name) => name.endsWith('.json'))
+    .map((fileName) => {
+      try {
+        const raw = fs.readFileSync(path.join(dir, fileName), 'utf-8');
+        return JSON.parse(raw) as StudioIntentRecord;
+      } catch {
+        return null;
+      }
+    })
+    .filter((record): record is StudioIntentRecord => record !== null);
+}
+
+function getPendingPrepareIntents(rootDir: string, series: string, epId: string): StudioIntentRecord[] {
+  return readStudioIntentRecords(rootDir).filter((intent) => {
+    if (intent.processedAt) return false;
+    if (intent.target?.series !== series || intent.target?.epId !== epId) return false;
+    const hash = intent.target?.anchorMeta?.hash ?? '';
+    return hash.startsWith('prepare:');
+  });
 }
 
 function asStudioSeverity(value: unknown): 'low' | 'medium' | 'high' {

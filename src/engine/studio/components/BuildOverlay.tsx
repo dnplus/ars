@@ -3,8 +3,8 @@
  * @description Full-screen transition shown after the user triggers a build from
  *              the Plan view. Polls /__ars/build-status every 1.5s while open
  *              and maps `stage` into a five-step typewriter stream. Calls
- *              onDone() when the server transitions to `ready-for-review` or
- *              `ready-for-review-with-warnings`. Keeps rendering on `failed`
+ *              onDone() when the server transitions to a terminal reviewable
+ *              state. Keeps rendering on `failed` / `blocked-assets-missing`
  *              with a red variant + a retry hook.
  *
  *              Design intent: feels like watching a CI pipeline tail. Scan-line
@@ -102,7 +102,8 @@ export const BuildOverlay: React.FC<BuildOverlayProps> = ({
       const isReady =
         payload.build.state === 'ready-for-review' ||
         payload.build.state === 'ready-for-review-with-warnings';
-      const isFailed = payload.build.state === 'failed';
+      const isBlocked = payload.build.state === 'blocked-assets-missing';
+      const isFailed = payload.build.state === 'failed' || isBlocked;
       const elapsed = Date.now() - openedAtRef.current;
 
       if (isReady && !doneFiredRef.current) {
@@ -112,7 +113,9 @@ export const BuildOverlay: React.FC<BuildOverlayProps> = ({
         window.setTimeout(() => onDone(), wait + 400);
       } else if (isFailed && !doneFiredRef.current) {
         doneFiredRef.current = true;
-        const summary = payload.build.validation?.summary ?? 'build failed';
+        const summary = isBlocked
+          ? payload.build.warnings?.[0] ?? 'build blocked: hero assets missing'
+          : payload.build.validation?.summary ?? 'build failed';
         setErrorText(summary);
         onFailed?.(summary);
       }
@@ -157,14 +160,17 @@ export const BuildOverlay: React.FC<BuildOverlayProps> = ({
 
   const pct = Math.round(((phase + 1) / STREAM.length) * 100);
   const visible = STREAM.slice(0, phase + 1);
-  const isFailed = buildState === 'failed' || !!errorText;
+  const isFailed =
+    buildState === 'failed' ||
+    buildState === 'blocked-assets-missing' ||
+    !!errorText;
 
   return (
     <div className={`studio-build-overlay${isFailed ? ' failed' : ''}`}>
       <div className="studio-build-overlay-scan" />
       <div className="studio-build-overlay-inner">
         <div className="studio-build-overlay-label">
-          ARS · {isFailed ? 'build failed' : `building ${epId}`}
+          ARS · {isFailed ? 'build blocked' : `building ${epId}`}
         </div>
         <div className="studio-build-overlay-stream">
           {visible.map((s, i) => (
@@ -176,7 +182,11 @@ export const BuildOverlay: React.FC<BuildOverlayProps> = ({
           {isFailed && (
             <div className="studio-build-line failed-reason">
               <div className="studio-build-line-main">✗ {errorText ?? 'build failed'}</div>
-              <div className="studio-build-line-sub">查看 TUI log 或重試 /ars:build {epId}</div>
+              <div className="studio-build-line-sub">
+                {buildState === 'blocked-assets-missing'
+                  ? '先補齊 hero 素材，再重試 /ars:build'
+                  : `查看 TUI log 或重試 /ars:build ${epId}`}
+              </div>
             </div>
           )}
         </div>

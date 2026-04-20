@@ -17,6 +17,8 @@ import { PinLayer, type CommittedPin } from '../components/PinLayer';
 import { StatusBar, type StatusBarState } from '../components/StatusBar';
 import { SelectMode } from '../components/SelectMode';
 import { AudioRunner } from '../components/AudioRunner';
+import { PrepareRunner } from '../components/PrepareRunner';
+import { PublishRunner } from '../components/PublishRunner';
 import { StudioComposition, type StudioCompositionProps } from '../StudioComposition';
 import { INTENT_SUBMITTED_EVENT } from '../constants';
 import type { ReviewIntent } from '../../../types/review-intent';
@@ -159,6 +161,8 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
   const [audioExists, setAudioExists] = useState<boolean | null>(null);
   const [audioJob, setAudioJob] = useState<AudioJobState>({ status: 'idle' });
   const [audioModalOpen, setAudioModalOpen] = useState(false);
+  const [prepareModalOpen, setPrepareModalOpen] = useState(false);
+  const [publishModalOpen, setPublishModalOpen] = useState(false);
   const [episodeSourceMap, setEpisodeSourceMap] = useState<EpisodeSourceMap | null>(null);
   const [audioCapability, setAudioCapability] = useState<AudioCapability>({
     visible: false,
@@ -449,7 +453,11 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
   const sourceStep = episode.steps[currentIndex] ?? step;
 
   // Derive pins + pending counts from the live intents list.
-  const stepIntents = intents.filter((it) => it.target?.stepId === step.id);
+  const stepIntents = intents.filter((it) => (
+    it.target?.series === fallbackSeries &&
+    it.target?.epId === fallbackEpId &&
+    it.target?.stepId === step.id
+  ));
   const pinsForStep: CommittedPin[] = stepIntents
     .map<CommittedPin | null>((it, idx) => {
       const hash = it.target?.anchorMeta?.hash ?? '';
@@ -637,6 +645,20 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
               {audioButtonLabel}
             </button>
             <button
+              className={`nav-btn${prepareModalOpen ? ' active' : ''}`}
+              onClick={() => setPrepareModalOpen(true)}
+              title="產生並挑選 YouTube metadata 候選"
+            >
+              📝 Prepare
+            </button>
+            <button
+              className={`nav-btn${publishModalOpen ? ' active' : ''}`}
+              onClick={() => setPublishModalOpen(true)}
+              title="依 prepare 結果執行 publish"
+            >
+              🚀 Publish
+            </button>
+            <button
               className={`nav-btn${showStepEditor ? ' active' : ''}`}
               onClick={() => setShowStepEditor((v) => !v)}
               title="Step 編輯器"
@@ -742,6 +764,18 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
         open={audioModalOpen}
         onClose={() => setAudioModalOpen(false)}
         episode={draftEpisode}
+        series={fallbackSeries}
+        epId={fallbackEpId}
+      />
+      <PrepareRunner
+        open={prepareModalOpen}
+        onClose={() => setPrepareModalOpen(false)}
+        series={fallbackSeries}
+        epId={fallbackEpId}
+      />
+      <PublishRunner
+        open={publishModalOpen}
+        onClose={() => setPublishModalOpen(false)}
         series={fallbackSeries}
         epId={fallbackEpId}
       />

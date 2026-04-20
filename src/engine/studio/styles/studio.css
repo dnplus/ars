@@ -1480,3 +1480,87 @@ body {
   opacity: 0;
   pointer-events: none;
 }
+
+.studio-prepare-candidates {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.studio-prepare-card {
+  border: 1px solid color-mix(in srgb, var(--color-text-on-dark, #f5f0e8) 12%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--color-bg-dark, #2d2823) 70%, transparent);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.studio-prepare-card.selected {
+  border-color: color-mix(in srgb, var(--color-positive, #6b8f71) 60%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-positive, #6b8f71) 28%, transparent);
+}
+
+.studio-prepare-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.studio-prepare-card-id {
+  font: 700 11px/1 var(--font-code, monospace);
+  letter-spacing: 0.08em;
+  color: var(--color-primary, #c4a77d);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.studio-prepare-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.studio-prepare-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.studio-prepare-field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font: 700 11px/1 var(--font-code, monospace);
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--color-text-on-dark, #f5f0e8) 62%, transparent);
+  text-transform: uppercase;
+}
+
+.studio-prepare-field-value {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--color-text-on-dark, #f5f0e8) 8%, transparent);
+  background: color-mix(in srgb, var(--color-text-on-dark, #f5f0e8) 4%, transparent);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.studio-prepare-field-value.multiline {
+  white-space: pre-wrap;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.studio-prepare-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--color-text-on-dark, #f5f0e8) 82%, transparent);
+}

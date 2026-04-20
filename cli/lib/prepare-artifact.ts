@@ -15,6 +15,7 @@ interface LegacyPrepareArtifact {
   };
   youtube?: {
     candidates?: PreparedYoutubeCandidate[];
+    selected?: string | null;
   };
 }
 
@@ -75,7 +76,10 @@ export function readPreparedYoutubeCandidate(
   const candidates = legacyArtifact?.youtube?.candidates ?? [];
   if (candidates.length === 0) return null;
 
-  const selectedId = legacyArtifact?.selected?.youtubeCandidateId ?? candidates[0]?.id;
+  const selectedId =
+    legacyArtifact?.youtube?.selected
+    ?? legacyArtifact?.selected?.youtubeCandidateId
+    ?? candidates[0]?.id;
   const candidate = candidates.find((item) => item.id === selectedId) ?? candidates[0];
   if (!candidate) return null;
 

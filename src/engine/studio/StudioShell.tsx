@@ -54,10 +54,7 @@ export const StudioShell: React.FC<StudioShellProps> = ({
   const [phase, setPhase] = useState<StudioPhase>(() => readPhaseFromUrl());
   const [episodeId, setEpisodeId] = useState<string>(() => readEpisodeFromUrl(initialEpisodeId));
   const [buildOverlayOpen, setBuildOverlayOpen] = useState(false);
-  // `planDirty` is a UI hint lifted from ReviewView so that once the user
-  // goes back to Plan via "看完，送審" the dirty pill is immediately visible,
-  // without waiting for the next /__ars/build-status tick.
-  const [planDirty, setPlanDirty] = useState(false);
+  const [planDirtyByEpisode, setPlanDirtyByEpisode] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const onPopState = () => {
@@ -94,12 +91,16 @@ export const StudioShell: React.FC<StudioShellProps> = ({
 
   const handleBuildDone = useCallback(() => {
     setBuildOverlayOpen(false);
-    setPlanDirty(false);
+    setPlanDirtyByEpisode((prev) => ({ ...prev, [episodeId]: false }));
     if (phase !== 'review') {
       updateUrl('review', episodeId);
       setPhase('review');
     }
   }, [phase, episodeId, updateUrl]);
+
+  const handleBuildFailed = useCallback(() => {
+    setBuildOverlayOpen(false);
+  }, []);
 
   // Ensure URL reflects the current phase even on first mount (plan default).
   useEffect(() => {
@@ -157,7 +158,7 @@ export const StudioShell: React.FC<StudioShellProps> = ({
         series={seriesId}
         epId={episodeId}
         onBuildStarted={handleBuildStarted}
-        dirtyHintFromShell={planDirty}
+        dirtyHintFromShell={planDirtyByEpisode[episodeId] === true}
       />
     );
   }
@@ -191,6 +192,7 @@ export const StudioShell: React.FC<StudioShellProps> = ({
         series={seriesId}
         epId={episodeId}
         onDone={handleBuildDone}
+        onFailed={handleBuildFailed}
       />
     </div>
   );
