@@ -11,10 +11,11 @@ import type { Episode } from '../shared/types';
 import { ReviewView } from './views/ReviewView';
 import { PlanView } from './views/PlanView';
 import { BuildView } from './views/BuildView';
+import { SlideView } from './views/SlideView';
 
-export type StudioPhase = 'plan' | 'build' | 'review';
+export type StudioPhase = 'plan' | 'build' | 'review' | 'slide';
 
-const KNOWN_PHASES: readonly StudioPhase[] = ['plan', 'build', 'review'];
+const KNOWN_PHASES: readonly StudioPhase[] = ['plan', 'build', 'review', 'slide'];
 
 function readPhaseFromUrl(): StudioPhase {
   if (typeof window === 'undefined') return 'review';
@@ -102,6 +103,26 @@ export const StudioShell: React.FC<StudioShellProps> = ({
     }
   } else if (phase === 'plan') {
     body = <PlanView key={episodeId} series={seriesId} epId={episodeId} />;
+  } else if (phase === 'slide') {
+    if (!episode) {
+      body = (
+        <EpisodeNotFound
+          episodeId={episodeId}
+          seriesId={seriesId}
+          options={episodeOptions}
+          onPick={switchEpisode}
+        />
+      );
+    } else {
+      body = (
+        <SlideView
+          key={episodeId}
+          episode={episode}
+          episodeId={episodeId}
+          seriesId={seriesId}
+        />
+      );
+    }
   } else {
     body = <BuildView key={episodeId} series={seriesId} epId={episodeId} />;
   }

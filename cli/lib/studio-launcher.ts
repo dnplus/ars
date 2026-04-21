@@ -9,7 +9,7 @@ import path from 'path';
 import { spawn, type ChildProcess } from 'child_process';
 import { getRuntimePackageInfo } from './runtime-package';
 
-export type StudioPhase = 'plan' | 'build' | 'review';
+export type StudioPhase = 'plan' | 'build' | 'review' | 'slide';
 
 export interface OpenStudioOptions {
   series: string;
