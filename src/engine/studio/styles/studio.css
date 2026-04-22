@@ -544,3 +544,14 @@ body {
   display: flex;
   flex-direction: column;
 }
+
+/* ========================================
+   Slide mode chrome auto-hide
+   ======================================== */
+.slide-chrome {
+  transition: opacity var(--transition-fast);
+}
+.slide-chrome--hidden {
+  opacity: 0;
+  pointer-events: none;
+}

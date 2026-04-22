@@ -25,12 +25,12 @@ import type {
 } from '../../src/types/studio-intent';
 
 const HELP = `
-Usage: npx ars studio <epId> [--phase plan|build|review] [--port <num>]
+Usage: npx ars studio <epId> [--phase plan|build|review|slide] [--port <num>]
        npx ars studio intent <subcommand> [options]
 
 Studio launcher:
   <epId>                                  Open Studio shell for the episode
-  --phase plan|build|review               Phase to open (default: plan)
+  --phase plan|build|review|slide         Phase to open (default: plan)
   --port <num>                            Vite dev server port (default: 5174)
 
 Intent subcommands:
@@ -68,7 +68,7 @@ const FEEDBACK_SEVERITY_VALUES = new Set<StudioIntentFeedback['severity']>([
   'high',
 ]);
 
-const KNOWN_PHASES = new Set<StudioPhase>(['plan', 'build', 'review']);
+const KNOWN_PHASES = new Set<StudioPhase>(['plan', 'build', 'review', 'slide']);
 
 export async function run(args: string[]) {
   if (args.length === 0 || args.includes('--help') || args.includes('-h')) {
@@ -111,7 +111,7 @@ async function openStudioCommand(args: string[]): Promise<void> {
   const target = positional[0];
   if (!target) {
     console.error('❌ 請提供 epId。');
-    console.log('Usage: npx ars studio <epId> [--phase plan|build|review]');
+    console.log('Usage: npx ars studio <epId> [--phase plan|build|review|slide]');
     process.exit(1);
   }
 
