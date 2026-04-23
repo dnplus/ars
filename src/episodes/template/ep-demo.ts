@@ -15,20 +15,20 @@ const onboardSession = {
 } as const;
 
 const episodeSession = {
-  appTitle: "ARS#1.0.0 ginseng-channel/ep025",
+  appTitle: "ARS#1.0.0 your-series/ep001",
   workflow: "plan › build › review › prepare › publish",
   version: "Claude Code v2.1.112",
   model: "Sonnet 4.6 with high effort · Claude Max",
-  workspace: "~/cowork-workspace/ginseng-channel",
+  workspace: "~/cowork-workspace/your-series",
   badges: [{ label: "episode", tone: "warning" }],
 } as const;
 
 const analyticsSession = {
-  appTitle: "ARS#1.0.0 ginseng-channel/ep025",
+  appTitle: "ARS#1.0.0 your-series/ep001",
   workflow: "publish › analytics",
   version: "Claude Code v2.1.112",
   model: "Sonnet 4.6 with high effort · Claude Max",
-  workspace: "~/cowork-workspace/ginseng-channel",
+  workspace: "~/cowork-workspace/your-series",
   badges: [{ label: "analytics", tone: "info" }],
 } as const;
 
@@ -46,7 +46,7 @@ const walkthroughScene = [
   { type: "result", text: "localhost:5177/?series=template&ep=ep-demo" },
   {
     type: "assistant",
-    text: "Browse 完之後回我 next 繼續 Phase 2，或 skip 跳過 walkthrough。",
+    text: "Browse 完之後回我 next 繼續 Phase 2，或 skip 跳過 walkthrough；Studio 先不要關，後面的 customize 還會繼續用這個預覽。",
   },
   {
     type: "prompt",
@@ -74,11 +74,11 @@ const customizeScene = [
   },
   {
     type: "assistant",
-    text: "好，那就沿用 template 先前的 layout、theme 和 VTuber 設定。若有要補的 brand / persona 資料，直接貼來源給我。",
+    text: "好，那就保留 demo episode 當參考，系列品牌與預設接下來交給你的 series-config.ts 和 SERIES_GUIDE.md。Studio 先一路開著，等等直接刷新看 customize 後的樣子；我也會同步開 comment monitor，主動輪詢 Studio intents。",
   },
   {
     type: "prompt",
-    text: "你幫我改一下 @SERIES_GUIDE.md 參考這個 https://www.notion.so/ginseng-channel/2f53be7297e280b0b39ad21010633e6e?source=copy_link",
+    text: "你幫我改一下 @SERIES_GUIDE.md，參考這份團隊背景頁面",
   },
   {
     type: "result",
@@ -113,7 +113,7 @@ const customizeScene = [
   },
   {
     type: "success",
-    text: "customize 完成：大部分沿用 template，額外資料直接從 Notion 補進 SERIES_GUIDE.md。",
+    text: "customize 完成：大部分沿用 template，額外資料直接從 Notion 補進 SERIES_GUIDE.md。現在回到仍然開著的 Studio 重新整理，檢查預覽和留言；進 verify 前我會先把 pending intents 清乾淨。",
   },
   {
     type: "assistant",
@@ -123,16 +123,17 @@ const customizeScene = [
 
 const verifyScene = [
   { type: "section", text: "verify" },
-  { type: "assistant", text: "最後跑 doctor，確認整個 repo 已經 ready。" },
+  { type: "assistant", text: "最後跑 doctor，確認整個 repo 已經 ready。Studio 先保持開著，verify 期間 comment monitor 會繼續輪詢；如果有新的預覽留言就一起收斂。" },
   { type: "tool", text: "Run doctor", meta: "npx ars doctor" },
   { type: "result", text: "config.exists ............. pass  Loaded .ars/config.json" },
-  { type: "result", text: "config.active-series ...... pass  activeSeries=ginseng-channel" },
+  { type: "result", text: "config.active-series ...... pass  activeSeries=your-series" },
   { type: "result", text: "engine.install ............ pass  remotion + vite ready" },
   { type: "result", text: "plugin.assets ............. pass  onboard skill + shared assets synced" },
-  { type: "result", text: "providers.minimax ......... pass  API key + voice id detected" },
-  { type: "result", text: "providers.youtube ......... pass  OAuth refresh token detected" },
+  { type: "result", text: "provider.minimax .......... pass  MiniMax configured but disabled in series-config.ts" },
+  { type: "result", text: "provider.youtube .......... pass  YouTube publishing disabled." },
+  { type: "tool", text: "Drain pending Studio intents, stop comment monitor, close background Studio", meta: "onboard teardown" },
   { type: "tool", text: "Clear workstate + stamp onboardedAt", meta: "onboard complete" },
-  { type: "success", text: "doctor clean — onboardedAt stamped, ready to start the first episode." },
+  { type: "success", text: "doctor clean — onboardedAt stamped，comment monitor 與 onboarding Studio 都已關閉，ready to start the first episode." },
   { type: "assistant", text: "下一步：可以直接輸入 /ars:plan <topic>，或如果 ep 已存在就跑 /ars:build <epId>。" },
 ] as const;
 
@@ -140,7 +141,7 @@ const episodeMontage = [
   { type: "section", text: "episode" },
   {
     type: "prompt",
-    text: "/ars:plan 參考這個做一集 https://www.notion.so/ginseng-channel/NVIDIA-TSMC-AI-a943b6b4350642249d3873eade3e0d7e?source=copy_link",
+    text: "/ars:plan 參考這份研究筆記做一集",
   },
   {
     type: "assistant",
@@ -165,7 +166,7 @@ const episodeMontage = [
     text: "ars:builder(Build ep025 from approved plan)",
     meta: "build",
     details: [
-      { text: "write src/episodes/ginseng-channel/ep025.ts", tone: "positive" },
+      { text: "write src/episodes/your-series/ep001.ts", tone: "positive" },
       { text: "sync narration / step durations / card data from plan.md", tone: "muted" },
     ],
   },
@@ -179,7 +180,7 @@ const episodeMontage = [
     text: "Open review studio",
     meta: "review",
     details: [
-      { text: "localhost:5177/?series=ginseng-channel&ep=ep025", tone: "info" },
+      { text: "localhost:5177/?series=your-series&ep=ep001", tone: "info" },
       { text: "review script / visuals / timing, then patch if needed", tone: "muted" },
     ],
   },
@@ -276,7 +277,6 @@ export const epDemo: Episode = {
           data: {
             title: "先訂 persona.md",
             subtitle: "AI 自己推出下一步",
-            channelName: "人蔘 Try Catch",
             episodeTag: "DEMO",
           },
         },
@@ -287,7 +287,6 @@ export const epDemo: Episode = {
           data: {
             title: "你真的需要腳本嗎？",
             subtitle: "讓 ARS 替你決定下一步",
-            channelName: "人蔘 Try Catch",
             episodeTag: "DEMO",
             mascotUrl: "none",
           },
@@ -299,33 +298,12 @@ export const epDemo: Episode = {
           data: {
             title: "影片系統",
             subtitle: "onboard 到 analytics，一條流水線",
-            channelName: "人蔘 Try Catch",
             episodeTag: "DEMO",
             mascotUrl: "none",
           },
         },
       ],
       primary: "v1",
-    },
-  },
-
-  shell: {
-    layout: "streaming",
-    config: {
-      vtuber: {
-        enabled: true,
-        closedImg: "episodes/template/shared/vtuber/ginseng_closed.png",
-        openImg: "episodes/template/shared/vtuber/ginseng_open.png",
-        volumeThreshold: 0.02,
-        width: 462,
-        height: 462,
-      },
-      subtitle: {
-        enabled: true,
-        style: "bottom-center",
-        fontSize: 34,
-        background: "rgba(0, 0, 0, 0.8)",
-      },
     },
   },
 
@@ -338,11 +316,10 @@ export const epDemo: Episode = {
       data: {
         title: "Agentic Remotion Studio",
         subtitle: "你不是在做一支片，你是在啟動一套影片系統",
-        channelName: "實戰案例：人蔘 Try Catch",
         episodeTag: "REAL WORKFLOW DEMO",
         animation: "matrix",
       },
-      narration: "這不是概念展示，而是人蔘 Try Catch 正在使用的影片工作流。你接下來看到的，不是單一指令，而是從 onboard、審稿到 analytics 都接在一起的一套系統。",
+      narration: "這不是概念展示，而是你接下來可以在自己系列裡反覆使用的影片工作流。你看到的不是單一指令，而是從 onboard、審稿到 analytics 都接在一起的一套系統。",
       durationInSeconds: 6,
     },
     {
@@ -390,7 +367,7 @@ export const epDemo: Episode = {
         session: onboardSession,
         lines: customizeScene,
       },
-      narration: "customize 不一定要把所有問題重答一遍。像這裡就是先沿用 template 既有設定，再補一份 Notion 人物誌，讓 agent 把新的系列脈絡寫回 SERIES_GUIDE.md。",
+      narration: "customize 不一定要把所有問題重答一遍。像這裡就是保留 demo 當參考，再補一份團隊背景資料，讓 agent 把新的系列脈絡寫回 SERIES_GUIDE.md。",
       durationInSeconds: 14,
     },
     {
@@ -463,7 +440,7 @@ export const epDemo: Episode = {
         ],
         showCta: true,
       },
-      narration: "ARS 不是做完一支片就結束。它把系列設定、製作、審稿和 analytics 接成一條會持續演進的 workflow。想了解更多，可以到 YouTube 搜尋 @ginsengtrycatch。",
+      narration: "ARS 不是做完一支片就結束。它把系列設定、製作、審稿和 analytics 接成一條會持續演進的 workflow。接下來你可以直接從自己的系列主題開始進入下一輪 plan。",
       durationInSeconds: 7,
     },
   ],

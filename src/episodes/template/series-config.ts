@@ -83,11 +83,12 @@ export const SERIES_CONFIG: SeriesConfig = {
     brandTag: 'Template Demo',
   },
   speech: {
+    enabled: false,
     provider: 'minimax',
     reviewRequiresNativeTiming: true,
     defaults: {
       model: 'speech-02-hd',
-      voice: 'female-shaonv', // MiniMax built-in voice; replace with your clone voice ID if needed
+      voice: 'female-shaonv', // Keep a sane default ready for when audio is explicitly enabled
       rate: 1,
       pitch: 0,
       volume: 1,

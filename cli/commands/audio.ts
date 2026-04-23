@@ -93,6 +93,11 @@ async function generate(args: string[]) {
     console.error(`❌ Missing speech config in src/episodes/${ctx.series}/series-config.ts`);
     process.exit(1);
   }
+  if (!seriesSpeech.enabled) {
+    console.error(`❌ Audio is disabled in src/episodes/${ctx.series}/series-config.ts (speech.enabled = false).`);
+    console.error('   Enable it there before running `npx ars audio generate`.');
+    process.exit(1);
+  }
 
   const knownFlags = new Set(['--speed', '--no-subtitle', '--steps', '--step']);
   for (let i = 1; i < args.length; i++) {

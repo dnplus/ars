@@ -397,6 +397,12 @@ function validateProviders(
         detail: `Missing speech.provider in src/episodes/${activeSeries}/series-config.ts.`,
         fixHint: 'Define SERIES_CONFIG.speech.provider and defaults in series-config.ts.',
       });
+    } else if (!speechConfig.enabled) {
+      results.push({
+        id: `provider.${speechConfig.provider}`,
+        status: 'pass',
+        detail: `${speechConfig.provider} is configured but disabled in series-config.ts.`,
+      });
     } else if (speechConfig.provider === 'elevenlabs') {
       results.push({
         id: 'provider.elevenlabs',
@@ -439,19 +445,27 @@ function validateProviders(
     }
 
     if (speechConfig.provider) {
-      const capabilities = getTTSProviderCapabilities(speechConfig.provider);
-      results.push({
-        id: 'provider.audio-review',
-        status: !speechConfig.reviewRequiresNativeTiming || capabilities.nativeTiming ? 'pass' : 'fail',
-        detail: speechConfig.reviewRequiresNativeTiming
-          ? capabilities.nativeTiming
-            ? `${speechConfig.provider} supports native timing for review.`
-            : `${speechConfig.provider} lacks native timing required by review workflow.`
-          : 'Review timing requirement disabled in series-config.ts.',
-        fixHint: !speechConfig.reviewRequiresNativeTiming || capabilities.nativeTiming
-          ? undefined
-          : 'Use a provider with native timing support, or disable reviewRequiresNativeTiming.',
-      });
+      if (!speechConfig.enabled) {
+        results.push({
+          id: 'provider.audio-review',
+          status: 'pass',
+          detail: 'Audio disabled in series-config.ts.',
+        });
+      } else {
+        const capabilities = getTTSProviderCapabilities(speechConfig.provider);
+        results.push({
+          id: 'provider.audio-review',
+          status: !speechConfig.reviewRequiresNativeTiming || capabilities.nativeTiming ? 'pass' : 'fail',
+          detail: speechConfig.reviewRequiresNativeTiming
+            ? capabilities.nativeTiming
+              ? `${speechConfig.provider} supports native timing for review.`
+              : `${speechConfig.provider} lacks native timing required by review workflow.`
+            : 'Review timing requirement disabled in series-config.ts.',
+          fixHint: !speechConfig.reviewRequiresNativeTiming || capabilities.nativeTiming
+            ? undefined
+            : 'Use a provider with native timing support, or disable reviewRequiresNativeTiming.',
+        });
+      }
     }
   }
 
@@ -499,6 +513,7 @@ function validateProviders(
 }
 
 function readSeriesSpeechSummary(root: string, series: string): {
+  enabled: boolean;
   provider: SpeechProviderId | null;
   hasDefaultVoice: boolean;
   reviewRequiresNativeTiming: boolean;
@@ -506,6 +521,7 @@ function readSeriesSpeechSummary(root: string, series: string): {
   const seriesConfigPath = path.join(root, 'src', 'episodes', series, 'series-config.ts');
   if (!fs.existsSync(seriesConfigPath)) {
     return {
+      enabled: true,
       provider: null,
       hasDefaultVoice: false,
       reviewRequiresNativeTiming: true,
@@ -514,15 +530,18 @@ function readSeriesSpeechSummary(root: string, series: string): {
 
   try {
     const content = fs.readFileSync(seriesConfigPath, 'utf-8');
-    const providerMatch = content.match(/provider:\s*['"](minimax|elevenlabs)['"]/);
-    const reviewMatch = content.match(/reviewRequiresNativeTiming:\s*(true|false)/);
+    const enabledMatch = content.match(/speech:\s*{[\s\S]*?enabled:\s*(true|false)/);
+    const providerMatch = content.match(/speech:\s*{[\s\S]*?provider:\s*['"](minimax|elevenlabs)['"]/);
+    const reviewMatch = content.match(/speech:\s*{[\s\S]*?reviewRequiresNativeTiming:\s*(true|false)/);
     return {
+      enabled: enabledMatch?.[1] !== 'false',
       provider: (providerMatch?.[1] as SpeechProviderId | undefined) ?? null,
       hasDefaultVoice: /voice:\s*['"][^'"]+['"]/.test(content),
       reviewRequiresNativeTiming: reviewMatch?.[1] !== 'false',
     };
   } catch {
     return {
+      enabled: true,
       provider: null,
       hasDefaultVoice: false,
       reviewRequiresNativeTiming: true,

@@ -207,6 +207,7 @@ export async function run(args: string[]) {
 
   // Root.tsx 現在自動掃描 src/episodes/，不需要手動註冊
   console.log(`ℹ️  Series will be auto-discovered by Root.tsx require.context`);
+  console.log(`ℹ️  Audio/TTS starts disabled by default in series-config.ts. Enable it when you're ready to wire MiniMax.`);
 
   console.log(`
 🎉 Series "${targetSeries}" initialized!

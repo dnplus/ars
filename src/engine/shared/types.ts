@@ -198,6 +198,7 @@ export type SeriesConfig = {
   shell: ShellConfig;
   episodeDefaults: Partial<EpisodeMetadata>;
   speech: {
+    enabled: boolean;
     provider: SpeechProviderId;
     defaults: SpeechSpec;
     reviewRequiresNativeTiming: boolean;
