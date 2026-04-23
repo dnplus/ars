@@ -18,7 +18,7 @@ public/episodes/<series>/
 
 ## series-config.ts Structure
 
-This is the only file that needs to be customized after init. It exports `SERIES_CONFIG: SeriesConfig`.
+This is the main file that needs to be customized after init. It exports `SERIES_CONFIG: SeriesConfig`.
 
 Notes:
 - In normal onboarding, `shell.layout` usually stays on a built-in key: `'streaming'` or `'shorts'`.
@@ -103,6 +103,7 @@ export const SERIES_CONFIG: SeriesConfig = {
     brandTag: 'EP· Tag',                // ← Fill from brand interview
   },
   speech: {
+    enabled: false,              // ← Default off; turn on only when audio is ready
     provider: 'minimax',
     reviewRequiresNativeTiming: true,
     defaults: {
@@ -123,6 +124,7 @@ export const SERIES_CONFIG: SeriesConfig = {
 |-------|-------|-------------|
 | `channelName` | `episodeDefaults` | Full channel display name |
 | `brandTag` | `episodeDefaults` | Short tag shown on cover cards (e.g. `"EP · Case Study"`) |
+| `speech.enabled` | `speech` | Turn audio on only when the series is ready to use TTS |
 | `speech.defaults.voice` | `speech.defaults` | MiniMax voice ID or clone ID |
 | `theme.colors.primary` | `theme.colors` | Brand primary hex color |
 | `fontFamily` | top of file | Google Font name or system font |

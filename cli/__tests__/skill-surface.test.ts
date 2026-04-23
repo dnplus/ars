@@ -46,6 +46,22 @@ describe('plugin skill surface', () => {
     expect(output).not.toContain('/ars:scene-fix');
   });
 
+  it('keyword detector recommends onboarding for first-run setup prompts', () => {
+    const scriptPath = path.join(repoRoot, 'plugin', 'scripts', 'keyword-detector.mjs');
+    const payload = JSON.stringify({
+      prompt: '第一次使用 ARS，幫我初始化這個 repo 跟系列設定',
+    });
+
+    const output = execFileSync('node', [scriptPath], {
+      cwd: repoRoot,
+      input: payload,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    expect(output).toContain('/ars:onboard');
+  });
+
   it('keyword detector does not fire on generic review/fix prompts', () => {
     const scriptPath = path.join(repoRoot, 'plugin', 'scripts', 'keyword-detector.mjs');
     const payload = JSON.stringify({
@@ -62,6 +78,23 @@ describe('plugin skill surface', () => {
     expect(output.trim()).toBe('');
   });
 
+  it('keyword detector recommends doctor and audio for readiness and pronunciation prompts', () => {
+    const scriptPath = path.join(repoRoot, 'plugin', 'scripts', 'keyword-detector.mjs');
+    const payload = JSON.stringify({
+      prompt: '先幫我檢查一下這個 repo 為什麼不能用，然後修一下這集的發音跟字幕',
+    });
+
+    const output = execFileSync('node', [scriptPath], {
+      cwd: repoRoot,
+      input: payload,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    expect(output).toContain('/ars:doctor');
+    expect(output).toContain('/ars:audio');
+  });
+
   it('keyword detector recommends reflect for analytics-driven retrospectives', () => {
     const scriptPath = path.join(repoRoot, 'plugin', 'scripts', 'keyword-detector.mjs');
     const payload = JSON.stringify({
@@ -76,5 +109,21 @@ describe('plugin skill surface', () => {
     });
 
     expect(output).toContain('/ars:reflect');
+  });
+
+  it('keyword detector recommends analytics for performance-report prompts', () => {
+    const scriptPath = path.join(repoRoot, 'plugin', 'scripts', 'keyword-detector.mjs');
+    const payload = JSON.stringify({
+      prompt: '幫我看一下最近 YouTube analytics 跟影片表現，做個數據報告',
+    });
+
+    const output = execFileSync('node', [scriptPath], {
+      cwd: repoRoot,
+      input: payload,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    expect(output).toContain('/ars:analytics');
   });
 });

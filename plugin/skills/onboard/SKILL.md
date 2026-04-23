@@ -59,22 +59,20 @@ Stage name: `onboard-walkthrough`
 
 1. Write workstate with stage `onboard-walkthrough`
 2. Give a 2-3 sentence intro to ARS
-3. Open the Studio **in the background** (use `run_in_background: true` on the Bash tool — do NOT wait for it to finish):
+3. Open the Studio in the background and do not wait for it to finish:
 
 ```bash
 npx ars studio ep-demo --phase review
 ```
 
+   Keep the process handle / terminal session for this background Studio launch. Onboard must explicitly stop this Studio process when the flow ends or is aborted.
+
 4. Immediately after launching, tell the user:
    - they are currently in **Phase 1 walkthrough**
    - this phase is **demo only** and will not modify their files
    - Watch the output for the localhost URL (e.g. `http://localhost:5174`) and share it
+   - Keep the Studio tab open; onboard should reuse this same Studio session through customize and verify
    - Browse the demo, then say **`next`** to continue to Phase 2, or **`skip`** to skip the walkthrough
-   - When they say `next` or `skip`, kill the Studio dev server before proceeding:
-
-```bash
-pkill -f "ars studio" 2>/dev/null || true
-```
 
 ## Phase 2 — customize
 
@@ -87,7 +85,7 @@ Stage name: `onboard-customize`
 npx ars init <series>
 ```
 
-   This will interactively prompt for YouTube publishing, layout, and channel name. TTS now lives in `series-config.ts` under `SERIES_CONFIG.speech`, so customize owns that part.
+   This will interactively prompt for YouTube publishing, layout, and channel name. TTS now lives in `series-config.ts` under `SERIES_CONFIG.speech`; it starts disabled by default, and customize owns whether/when to enable it.
 
    If `project.activeSeries` is already set, skip directly to step 3.
 
@@ -103,10 +101,47 @@ When presenting the three modes, explain the outcome of each one in one sentence
 - `from scratch` removes the demo episode and cards but keeps a clean series skeleton
 - `skip for now` leaves the repo unchanged and lets them come back later
 
+Before the interview begins, align Studio with the current series:
+
+- If `project.activeSeries` is already set, tell the user to switch the still-open Studio tab to `?series=<activeSeries>&ep=ep-demo&phase=review` and keep it open during customize.
+- If Phase 2 had to run `npx ars init <series>`, tell the user to refresh the existing Studio tab onto the new series URL once init finishes.
+- During customize, treat Studio as the live preview surface. Ask the user to leave comments/feedback there if they want visual tweaks while branding changes are being applied.
+
+Once the Phase 2 preview target is ready, start a Studio intent monitor in the background, using the same event-driven pattern as `/ars:review`:
+
+```bash
+node -e "
+const fs = require('fs');
+const dir = '.ars/studio-intents';
+fs.watch(dir, (event, filename) => {
+  if (filename && filename.endsWith('.json')) {
+    console.log(filename);
+  }
+});
+process.stdout.write('watching\n');
+"
+```
+
+Each stdout line is a notification. On every notification:
+
+1. **Stage guard**: Check `.ars/state/workstate.json`. If the current stage is neither `onboard-customize` nor `onboard-verify`, stop the monitor loop.
+2. Run `npx ars studio intent list --pending --json`.
+3. For each pending intent targeting the active preview episode:
+   - If it is a step-scoped preview fix, delegate to `/ars:apply-review <intent.id>` so the preview updates immediately.
+   - If it is a series-level branding/default request (theme, VTuber, copy defaults, SERIES_GUIDE guidance), patch the owning files directly (`series-config.ts`, `SERIES_GUIDE.md`, shared assets when needed), then run `npx ars studio intent clear <intent.id>`.
+4. After any series-level change, tell the user to refresh the still-open Studio tab and keep the monitor loop running.
+
+Monitor rules:
+
+- The monitor is proactive. Do not wait for the user to mention Studio comments in chat; drain pending intents whenever the watcher fires.
+- Before leaving Phase 2 customize, run `npx ars studio intent list --pending --json` one more time and clear the queue so verify does not inherit stale preview comments.
+- Keep the same monitor alive through Phase 3 verify unless the stage guard tells it to stop.
+
 ### from template
 - run a brand interview — see `references/branding-guide.md` for the full question set (visual identity AND series identity — audience, mission, tone, length, CTA). Do NOT skip the series identity questions; they drive SERIES_GUIDE.md.
 - update `series-config.ts` — see `references/series-structure.md` for the full file structure and key fields
 - write `SERIES_GUIDE.md` at repo root — use `references/series-guide-template.md` as the template. **Every field must map to an interview answer, an existing config value, or a documented minimal default.** If the user said "reuse defaults" for series identity questions, use the minimal defaults verbatim and announce which defaults were applied. Never infer audience/mission/takeaway from the channel name.
+- once the edits are in place, tell the user to refresh the still-open Studio tab and review the updated preview; if they leave Studio comments, address them before moving to Phase 3
 - mention the advanced extension points when relevant:
   - `shell.layout` can stay on built-in `'streaming'` / `'shorts'`, or advanced users can swap in a series custom layout component
   - series-scoped cards under `src/episodes/<series>/cards/` can add new card types or override built-in engine cards by reusing the same `type`
@@ -125,6 +160,7 @@ At the end of this path, summarize the concrete outputs:
   - remove `cards/` (series-scoped card overrides, if any)
 - keep `series-config.ts` and `episode.template.ts`
 - run the same brand interview and write SERIES_GUIDE.md as in "from template"
+- after writing the new series defaults, tell the user the existing Studio tab may no longer have `ep-demo`; point them at the next valid preview target if needed instead of leaving them on a stale URL
 
 At the end of this path, explicitly say that the demo content was removed, the series skeleton remains, and the next step is Phase 3 verify.
 
@@ -167,8 +203,12 @@ npx ars doctor
 4. Especially flag:
 - YouTube enabled but no auth
 - MiniMax selected but no API key
-5. If all checks pass, run `npx ars workstate clear --onboarded` — this clears the workstate AND stamps `project.onboardedAt` in `.ars/config.json`, which is the SSOT telling the statusline that onboard is complete
-6. Output next-step suggestions:
+- Any non-MiniMax speech provider — ARS beta audio support is MiniMax-only
+5. Keep the Studio tab open during verify as well. If the user leaves preview comments while verify is running, handle them before closing onboard.
+6. If all checks pass, run `npx ars workstate clear --onboarded` — this clears the workstate AND stamps `project.onboardedAt` in `.ars/config.json`, which is the SSOT telling the statusline that onboard is complete
+7. Before the final handoff, do a last `npx ars studio intent list --pending --json` drain. Then stop the background Studio intent monitor and stop the background `npx ars studio ...` process that onboard launched. Do not leave either one running after onboard ends.
+8. In the completion handoff, explicitly tell the user that the onboard preview session is closed and the Studio tab can be closed.
+9. Output next-step suggestions:
 - `/ars:plan <topic>`
 - `/ars:build <epId>`
 
@@ -189,6 +229,7 @@ For each failed item, say:
 If all checks pass, close with a completion handoff similar to:
 
 - `Onboarding is complete: series context, config, and provider readiness are all in place.`
+- `Studio comment monitor stopped, onboarding preview closed.`
 - `Next step: start from /ars:plan <topic>, or continue an existing idea with /ars:build <epId>.`
 
 ## Phase boundaries

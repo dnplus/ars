@@ -3,6 +3,36 @@ import process from 'process';
 const TRIGGER_RULES = [
   {
     patterns: [
+      /\bars:onboard\b/,
+      /\bonboard\b/,
+      /\bsetup ars\b/,
+      /\binitialize ars\b/,
+      /\binit this repo\b/,
+      /初始化.*ars/,
+      /初始化.*repo/,
+      /第一次使用/,
+      /設定.*系列/,
+    ],
+    suggestion:
+      'ARS: Detected first-run setup intent. Use /ars:onboard for the guided bootstrap flow, series setup, and Studio walkthrough.',
+  },
+  {
+    patterns: [
+      /\bars:doctor\b/,
+      /\bars doctor\b/,
+      /\bdoctor\b.*\b(ars|repo|setup|config)\b/,
+      /\bcheck setup\b/,
+      /\bcheck readiness\b/,
+      /\bwhy isn.t.*ready\b/,
+      /檢查.*(環境|設定|狀態|ready|readiness)/,
+      /看看.*(環境|設定|狀態|ready)/,
+      /為什麼.*不能用/,
+    ],
+    suggestion:
+      'ARS: Detected readiness/debug intent. Use /ars:doctor to check repo bootstrap, Studio, MiniMax, and YouTube readiness before changing config by hand.',
+  },
+  {
+    patterns: [
       /\bars:plan\b/,
       /\bscene plan\b/,
       /\bepisode plan\b/,
@@ -66,7 +96,25 @@ const TRIGGER_RULES = [
       /審稿這集/,
     ],
     suggestion:
-      'ARS: Detected review intent. Use /ars:review <epId> to open review UI, then /ars:apply-review latest after a review intent is created.',
+      'ARS: Detected review intent. Use /ars:review <epId> to open the Studio review phase, then /ars:apply-review latest after a Studio intent is created.',
+  },
+  {
+    patterns: [
+      /\bars:audio\b/,
+      /\baudio generate\b/,
+      /\bgenerate audio\b/,
+      /\btts\b/,
+      /\bsubtitle(s)?\b.*\b(generate|refresh|fix)\b/,
+      /\bpronunciation\b/,
+      /生成.*音訊/,
+      /生成.*配音/,
+      /生成.*字幕/,
+      /補.*字幕/,
+      /發音/,
+      /念錯/,
+    ],
+    suggestion:
+      'ARS: Detected audio intent. Use /ars:audio <epId> to generate MiniMax audio and subtitles, then validate the episode before the next review pass.',
   },
   {
     patterns: [
@@ -81,7 +129,23 @@ const TRIGGER_RULES = [
       /寫.*card.*spec/,
     ],
     suggestion:
-      'ARS: Detected new card intent. Use /ars:new-card <type> to scaffold spec.ts + component.tsx following the CardSpec contract. Series-scoped cards go under src/episodes/<series>/cards/<type>/.',
+      'ARS: Detected new card intent. Use /ars:new-card <card-name> [description] to scaffold a series-scoped card in the active series.',
+  },
+  {
+    patterns: [
+      /\bars:analytics\b/,
+      /\banalytics\b/,
+      /\byoutube analytics\b/,
+      /\bchannel performance\b/,
+      /\bvideo performance\b/,
+      /看.*analytics/,
+      /看.*表現/,
+      /分析.*頻道/,
+      /分析.*表現/,
+      /數據報告/,
+    ],
+    suggestion:
+      'ARS: Detected analytics intent. Use /ars:analytics [--days N] to fetch a YouTube analytics snapshot and turn it into a concise report.',
   },
   {
     patterns: [

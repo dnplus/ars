@@ -14,7 +14,7 @@ Tell the user the Studio URL printed in the output and that they can submit feed
 
 ## Intent watch loop
 
-After opening the Studio, start an event-driven watch using the `Monitor` tool:
+After opening the Studio, start an event-driven watch over `.ars/studio-intents/`:
 
 ```bash
 node -e "
@@ -29,9 +29,9 @@ process.stdout.write('watching\n');
 "
 ```
 
-Each stdout line from Monitor is a notification. On every notification:
+Each stdout line is a notification. On every notification:
 
-1. **Stage guard**: Check that the current stage is still `"review"` (read `.ars/state/workstate.json`). If not, stop — call `TaskStop` to end the monitor.
+1. **Stage guard**: Check that the current stage is still `"review"` (read `.ars/state/workstate.json`). If not, stop the watch loop.
 2. Run `npx ars studio intent list --pending --json` to get all pending intents.
 3. For each pending intent:
    - Read `src/episodes/<series>/<epId>.ts`
@@ -45,10 +45,11 @@ Each stdout line from Monitor is a notification. On every notification:
 - Always check the stage guard before processing intents on each notification.
 - Always use `npx ars studio intent list --pending --json` — never curl the vite server directly.
 - Run `npx ars studio` in the background so it doesn't block the watch loop.
+- `/ars:review` is the public Studio review entrypoint. The CLI alias `ars review ...` still exists for compatibility, but the review surface itself is Studio.
 - Apply fixes conservatively: only change what the feedback message describes, do not restructure unrelated steps.
 - If a fix is ambiguous, apply best-effort and surface what you changed so the user can verify in the Studio.
 - Review is an iterative loop, not a single pass. It commonly spans two rounds:
   1. **Visual round** — user checks visuals before audio is generated. Intents are usually content / layout fixes.
   2. **Audio round** — after the Studio's full-audio generation button or `/ars:audio <epId>` runs, the Studio plays TTS output while the episode is still in review. Intents at this point are often pronunciation fixes (see `/ars:apply-review` for how those route to `cli/pronunciation_dict.yaml` instead of `ep.ts`).
 - Do not push the user to `review close` just because visual intents are cleared. If audio has not been generated yet, suggest the Studio's full-audio generation button or `/ars:audio <epId>` and keep the watch loop running so they can come back and submit pronunciation intents against the generated audio.
-- When the user explicitly says review is done (or there is no audio round needed, e.g. a shorts with pre-approved voice), run `npx ars review close <epId>` (this is the only legacy `review` subcommand still handled natively by the CLI — `review open` / `review intent` forward to `ars studio`), tell them the next step is `/ars:prepare-youtube <epId>`, then call `TaskStop` to end the monitor.
+- When the user explicitly says review is done (or there is no audio round needed, e.g. a shorts with pre-approved voice), run `npx ars review close <epId>` (this legacy close command still exists for compatibility), tell them the next step is `/ars:prepare-youtube <epId>`, then stop the watch loop.

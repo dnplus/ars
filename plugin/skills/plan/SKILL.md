@@ -21,9 +21,46 @@ Skip both roles and you get a plan built on guesswork. Do one role's job twice a
 2. Parse the argument (see `references/interview.md`). If too thin, run the minimal interview covering only unanswered dimensions.
 3. Resolve the active series from `.ars/config.json` and pick the next epId.
 4. If `src/episodes/<active-series>/<epId>.ts` is missing, run `npx ars episode create <epId>`.
-5. Delegate to `ars:planner` via the Agent tool with `mode: "plan"`. Pass gathered context (see `references/interview.md` for the prompt contents).
-6. After the planner returns, use TodoWrite to add session todos: `/ars:build`, `/ars:review`, `/ars:audio`, `/ars:prepare-youtube`, `/ars:publish-youtube`.
-7. Direct the user to `/ars:build <epId>` as the next step.
+5. Hand off to the bundled `ars:planner` agent. Pass gathered context (see `references/interview.md` for the prompt contents).
+6. After the planner returns, **open Studio on the plan phase and start the intent watch loop** — see `## Studio handoff` below.
+7. Track the next workflow steps in your session notes or todo system: `/ars:build`, `/ars:review`, `/ars:audio`, `/ars:prepare-youtube`, `/ars:publish-youtube`.
+8. Direct the user to review the rendered plan in Studio and submit ✨ intents on any section that needs adjustment. Next step is `/ars:build <epId>` — the user triggers it from Studio's "觸發 Build" button, or by typing `/ars:build <epId>` in the TUI.
+
+## Studio handoff
+
+The plan is written to disk, but the user reads it in Studio. After the planner returns:
+
+1. Run `npx ars studio <epId> --phase plan` in the background (do not block on it). Tell the user the localhost URL printed in the output and that they can submit feedback on any section directly from the Plan view.
+2. Start an event-driven watch over `.ars/studio-intents/`:
+
+```bash
+node -e "
+const fs = require('fs');
+const dir = '.ars/studio-intents';
+fs.watch(dir, (event, filename) => {
+  if (filename && filename.endsWith('.json')) {
+    console.log(filename);
+  }
+});
+process.stdout.write('watching\n');
+"
+```
+
+Each stdout line is a notification. On every notification:
+
+- **Stop condition**: if the user has moved on (`/ars:build` ran, the episode source was generated, or they explicitly said plan is done), stop the watch loop. Otherwise:
+- Run `npx ars studio intent list --pending --json`. For each pending intent:
+  - **`feedback.kind === 'build-trigger'`** — delegate to `/ars:apply-review <intent.id>`, which handles the build trigger and marks the intent processed. After it returns, stop the watch — plan phase is complete.
+  - **`target.anchorType === 'markdown-section'` or `'plan'`** — this is a plan-section edit request. Read `.ars/episodes/<epId>/plan.md`, apply the change described in `feedback.message` to the anchored section (Studio sends `anchorMeta.title` + `anchorMeta.line`), save the file. Vite HMR re-renders the Plan view automatically. Then `npx ars studio intent clear <intent.id>`.
+  - **Other anchor types** — delegate to `/ars:apply-review <intent.id>`.
+
+Rules for plan-section edits:
+- Enforce the plan-shape contract on every edit — do not let a correction turn the plan into a script (see `references/plan-shape.md`).
+- Preserve the section ordering (`## Topic` → `## Structure` → `## New card` → `## References` → `## Reminders`).
+- Keep `## Structure` as a table. If the feedback asks for content that cannot fit in one-sentence cells, push it into a numbered block under the table instead of growing cells into paragraphs.
+- If the feedback conflicts with `SERIES_GUIDE.md`, surface the conflict in your reply rather than silently overriding the guide.
+
+The watch loop runs until `/ars:build` fires (via build-trigger intent or the user typing the command) or the user explicitly ends plan. Do not keep it running once the episode source has been generated — at that point the flow is in build / review phase.
 
 ## Principles
 

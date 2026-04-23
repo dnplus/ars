@@ -8,9 +8,9 @@ Detailed shape rules for the `plan.md` agenda. The `/ars:plan` skill enforces th
 
 If a draft reads like finished content (paragraphs, narration, timings, restated series rules), it is doing the build's job.
 
-## Format: ASCII list, NOT markdown tables
+## Format: markdown, reviewed in Studio
 
-Use plain text section-and-bullet format. Do **not** use markdown tables — `|`-aligned columns break in CLI (tmux / less / grep), get mangled by CJK wide characters, and hide reasoning behind tight cells.
+`plan.md` is read inside Studio's Plan phase, which renders markdown (including tables) with CJK-aware typography. Use tables where they fit — they are the most efficient shape for `## Structure`. Fall back to bullet lists when a row would need multiple sentences per cell.
 
 The shape below is the contract.
 
@@ -46,19 +46,24 @@ Do not repeat `Target length` per phase.
 
 ## `## Structure`
 
-One numbered block per step. No table. Each block:
+One row per step. Table format — Studio renders it cleanly and the scan-speed beats vertical blocks:
 
 ```
-[N] <Section name>                                        card: <card-name or (NEW) <proposed-name>>
-    Goal:    <one sentence of intent>
-    Visual:  <one phrase of visual direction — think this FIRST>
-    Notes:   <one phrase of direction or constraint>
+| #  | Section       | Goal                              | Visual                       | Card              | Notes                    |
+|----|---------------|-----------------------------------|------------------------------|-------------------|--------------------------|
+| 1  | <section>     | <one sentence of intent>          | <one phrase, think FIRST>    | <card-name>       | <one-phrase direction>   |
+| 2  | <section>     | ...                               | ...                          | (NEW) <proposed>  | ...                      |
 ```
 
+Column rules:
+- `#` — step index, starting at 1
+- `Section` — short label (`Hook`, `Problem`, `Demo`, `CTA`, …)
 - `Goal` — one sentence, what this step communicates
 - `Visual` — one phrase, the visual hook. Think visual first, then pick a card
-- `card:` — card name only. Must come from `npx ars card list`, OR be prefixed `(NEW)` with a matching entry in `## New card`
-- `Notes` — one phrase of direction. No narration, no timings
+- `Card` — card name only. Must come from `npx ars card list`, OR be prefixed `(NEW)` with a matching entry in `## New card`
+- `Notes` — one phrase of direction or constraint. No narration, no timings
+
+If a cell needs more than one sentence, either trim it or drop that row out of the table and write it as a numbered block under the table — don't pack paragraphs into cells.
 
 Structure step count roughly tracks target length: short 3-5 steps, medium 5-8, long 8-16.
 
@@ -129,12 +134,12 @@ Bullet list. Only non-obvious, episode-specific gotchas build would miss (sensit
 
 ## Reviewability budget
 
-Total lines (counting everything):
-- 1-3 min episode → ~30-60 lines
-- 3-6 min episode → ~50-90 lines
-- 6-30 min episode → ~80-140 lines
+Total lines (counting everything, table rows count as one line each):
+- 1-3 min episode → ~25-50 lines
+- 3-6 min episode → ~40-70 lines
+- 6-30 min episode → ~60-110 lines
 
-The block format is slightly more vertical than tables, so budgets are looser than the table era. Still, shorter is better when direction is clear.
+Tables pack rows tightly, so budgets are tighter than the block-format era. Shorter is better when direction is clear.
 
 ## Never include
 
@@ -142,5 +147,4 @@ The block format is slightly more vertical than tables, so budgets are looser th
 - Per-step second counts ("25 秒")
 - Full sign-off / outro copy — write "Sign-off per SERIES_GUIDE"
 - Anything already in `SERIES_GUIDE.md`
-- Paragraphs in `Goal` / `Visual` / `Notes` — one sentence max per line
-- Markdown tables — use the block format above
+- Paragraphs in `Goal` / `Visual` / `Notes` cells — one sentence max per cell
