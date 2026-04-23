@@ -46,6 +46,34 @@ const { theme, frame, fps, progress } = useCardContext();
 // progress: 0–1 across the step duration (useful for animations)
 ```
 
+**Gotcha — hook placement.** `useCardContext` is a React hook that reads from the context `BaseSlide` provides. It must run **inside** the `<BaseSlide>` element, which means **inside a child component**, not in the outer component that returns `<BaseSlide>`.
+
+```tsx
+// ❌ WRONG — hook runs BEFORE <BaseSlide> is mounted, context is empty
+export const MyCard: React.FC<CardRenderProps<MyData>> = ({ data }) => {
+  const { theme } = useCardContext(); // throws: "must be used inside BaseSlide"
+  return (
+    <BaseSlide>
+      <div style={{ color: theme.colors.primary }}>{data.title}</div>
+    </BaseSlide>
+  );
+};
+
+// ✅ RIGHT — split into a Body child so the hook runs inside BaseSlide
+const Body: React.FC<{ data: MyData }> = ({ data }) => {
+  const { theme } = useCardContext();
+  return <div style={{ color: theme.colors.primary }}>{data.title}</div>;
+};
+
+export const MyCard: React.FC<CardRenderProps<MyData>> = ({ data }) => (
+  <BaseSlide>
+    <Body data={data} />
+  </BaseSlide>
+);
+```
+
+This applies to **any** hook that reads card context: `useCardContext`, `useTheme` (from `ThemeContext`), `useCurrentFrame` from Remotion when used alongside card-specific theme, etc. If your card needs theme + remotion hooks, put them in a child, not in the wrapper.
+
 ---
 
 ## WindowSlide

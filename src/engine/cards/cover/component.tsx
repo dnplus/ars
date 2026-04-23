@@ -87,7 +87,11 @@ export const CoverCardComponent: React.FC<CardRenderProps<CoverCardData>> = ({
             textAlign: "center",
             textShadow: `0 4px 12px ${c.shadowDark}`,
             maxWidth: "100%",
-            wordBreak: "keep-all",
+            // Let CJK break between any two characters, and break long Latin
+            // words when they can't fit on one line. `keep-all` was refusing to
+            // wrap at all, causing long titles to overflow the slide.
+            wordBreak: "normal",
+            overflowWrap: "anywhere",
             letterSpacing: titleFontSize > 100 ? -2 : -1,
           }}
         >
