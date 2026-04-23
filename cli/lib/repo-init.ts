@@ -150,6 +150,10 @@ export async function ensureRepoInitialized(options: RepoInitOptions): Promise<R
 }
 
 function ensureRemotionSkillInstalled(root: string): boolean {
+  if (process.env.ARS_SKIP_REMOTION_SKILL_INSTALL === '1') {
+    return hasRemotionSkill(root);
+  }
+
   if (hasRemotionSkill(root)) {
     return true;
   }

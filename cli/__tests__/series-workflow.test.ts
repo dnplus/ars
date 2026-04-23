@@ -30,6 +30,10 @@ function runCli(repoDir: string, args: string[]): string {
   return execFileSync('node', ['--import', 'tsx', path.join(repoRoot, 'cli', 'index.ts'), ...args], {
     cwd: repoDir,
     encoding: 'utf-8',
+    env: {
+      ...process.env,
+      ARS_SKIP_REMOTION_SKILL_INSTALL: '1',
+    },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 }
@@ -51,10 +55,34 @@ describe('single-series workflow', () => {
     runCli(repoDir, ['episode', 'create', 'ep001']);
 
     const config = JSON.parse(fs.readFileSync(path.join(repoDir, '.ars', 'config.json'), 'utf-8'));
+    const seriesConfig = fs.readFileSync(path.join(repoDir, 'src', 'episodes', 'demo-series', 'series-config.ts'), 'utf-8');
+    const demoEpisode = fs.readFileSync(path.join(repoDir, 'src', 'episodes', 'demo-series', 'ep-demo.ts'), 'utf-8');
     expect(config.project.activeSeries).toBe('demo-series');
     expect(fs.existsSync(path.join(repoDir, 'src', 'engine', 'Composition.tsx'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'src', 'episodes', 'demo-series', 'ep001.ts'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'public', 'episodes', 'demo-series', 'ep001', 'audio'))).toBe(true);
+    expect(fs.existsSync(path.join(repoDir, 'eslint.config.mjs'))).toBe(true);
+    expect(fs.existsSync(path.join(repoDir, 'cli', 'lib', 'youtube-client.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(repoDir, 'cli', 'lib', 'youtube-upload.ts'))).toBe(true);
+    expect(seriesConfig).toContain('enabled: false');
+    expect(demoEpisode).not.toContain('episodes/template/shared/vtuber');
+    expect(demoEpisode).not.toContain('channelName: "人蔘 Try Catch"');
+  });
+
+  it('update restores repo-level support files that older installs may be missing', () => {
+    const repoDir = makeConsumerRepo();
+
+    runCli(repoDir, ['init', 'demo-series', '--yes']);
+
+    fs.rmSync(path.join(repoDir, 'eslint.config.mjs'), { force: true });
+    fs.rmSync(path.join(repoDir, 'cli', 'lib', 'youtube-client.ts'), { force: true });
+    fs.rmSync(path.join(repoDir, 'cli', 'lib', 'youtube-upload.ts'), { force: true });
+
+    runCli(repoDir, ['update']);
+
+    expect(fs.existsSync(path.join(repoDir, 'eslint.config.mjs'))).toBe(true);
+    expect(fs.existsSync(path.join(repoDir, 'cli', 'lib', 'youtube-client.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(repoDir, 'cli', 'lib', 'youtube-upload.ts'))).toBe(true);
   });
 
   it('rejects initializing a second series in the same repo', () => {
@@ -67,6 +95,10 @@ describe('single-series workflow', () => {
       {
         cwd: repoDir,
         encoding: 'utf-8',
+        env: {
+          ...process.env,
+          ARS_SKIP_REMOTION_SKILL_INSTALL: '1',
+        },
       },
     );
 

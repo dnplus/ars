@@ -83,5 +83,13 @@ describe('patchClaudeSettings', () => {
         { type: 'command', command: 'node "./keep-me.mjs"', timeout: 1 },
       ],
     });
+
+    const stopHooks = settings.Stop as Array<Record<string, unknown>>;
+    expect(stopHooks[0]).toEqual({
+      matcher: '*',
+      hooks: [
+        { type: 'command', command: 'node ".ars/hooks/scripts/studio-intent-stop.mjs"', timeout: 3 },
+      ],
+    });
   });
 });

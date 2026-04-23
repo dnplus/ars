@@ -2,11 +2,41 @@
   "name": "agentic-remotion-studio",
   "version": "1.0.0",
   "description": "Turn ideas into published video episodes — fully agentic, Claude Code native, Remotion-powered",
-  "repository": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dnplus/ars.git"
+  },
+  "homepage": "https://github.com/dnplus/ars#readme",
+  "bugs": {
+    "url": "https://github.com/dnplus/ars/issues"
+  },
   "license": "Apache-2.0",
   "engines": {
     "node": ">=22.12.0"
   },
+  "files": [
+    "README.md",
+    "LICENSE",
+    "persona.md",
+    ".env.example",
+    "cli/bin/",
+    "cli/commands/",
+    "cli/index.ts",
+    "cli/lib/",
+    "cli/pronunciation_dict.yaml",
+    "plugin/.claude-plugin/",
+    "plugin/agents/",
+    "plugin/hooks/",
+    "plugin/scripts/",
+    "plugin/skills/",
+    "src/",
+    "public/shared/",
+    "public/episodes/template/shared/",
+    "eslint.config.mjs",
+    "remotion.config.ts",
+    "vite.studio.config.ts",
+    "tsconfig.json"
+  ],
   "dependencies": {
     "@dagrejs/dagre": "^2.0.4",
     "@remotion/cli": "4.0.435",

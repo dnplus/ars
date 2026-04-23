@@ -82,7 +82,11 @@ Promise<{
     root,
     sourceRoot,
     overwriteEngine: true,
-    overwriteSupportFiles: options.force || options.forceEngine,
+    // Support files (src/studio-main.tsx, src/studio/**, vite.studio.config.ts,
+    // tsconfig.json, etc.) are ARS-owned. `update` always refreshes them —
+    // otherwise adding a new top-level file in src/ silently fails to land in
+    // consumer repos and StudioShell / studio-main signatures drift apart.
+    overwriteSupportFiles: true,
   });
 
   const installedSkills = syncSkills({ root, pluginRoot: runtime.pluginRoot, overwrite: true });

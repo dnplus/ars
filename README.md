@@ -15,6 +15,8 @@ ARS was shaped in part by ideas explored in [oh-my-claudecode](https://github.co
 - Primary surface: Claude Code skills
 - Backend surface: `npx ars ...`
 - Supported repo model: one repo = one series
+- Supported review shell in core: Studio (`ars studio`)
+- Supported TTS in core: MiniMax only (beta)
 - Supported publish surface in core: YouTube only
 - Deprecated and removed from core: repo-local `/ars-review`, social publish flows, production `pipeline`
 
@@ -22,7 +24,7 @@ ARS was shaped in part by ideas explored in [oh-my-claudecode](https://github.co
 
 - Scaffolds a single-series episode repo around the ARS Remotion engine
 - Lets Claude Code plan, build, review, and refine complete episodes
-- Opens a local review surface that writes review intents into `.ars/review-intents/`
+- Opens a Studio-first review surface that writes intents into `.ars/studio-intents/`
 - Prepares YouTube metadata artifacts for human review
 - Packages and uploads finished episodes to YouTube
 - Lets Claude Code generate optional YouTube analytics reports and reflect them back into the series guide
@@ -32,15 +34,23 @@ ARS was shaped in part by ideas explored in [oh-my-claudecode](https://github.co
 - Node.js `>= 22.12.0`
 - Claude Code CLI
 - A repo where you want ARS installed
+- MiniMax credentials if you want generated review audio
+- YouTube OAuth credentials if you want to publish from ARS
 
 ## Quick start
 
 ### 1. Install the CLI
 
+Install from npm if you want the `ars` command in PATH:
+
+```bash
+npm install -g agentic-remotion-studio
+```
+
 For local development of ARS itself:
 
 ```bash
-git clone https://github.com/<owner>/<repo>
+git clone https://github.com/dnplus/ars.git
 cd <repo>
 npm install
 npm link
@@ -51,10 +61,12 @@ npm link
 In your content repo directory:
 
 ```bash
-npx ars
+ars
 ```
 
-`npx ars` launches Claude Code with the ARS plugin pre-loaded (`--plugin-dir`). If tmux is available, it opens in a managed tmux session.
+`ars` launches Claude Code with the ARS plugin pre-loaded (`--plugin-dir`). If tmux is available, it opens in a managed tmux session.
+
+If you're working from a linked local checkout, `npx ars` from that checkout also works.
 
 ### 3. Onboard
 
@@ -107,8 +119,10 @@ Inside Claude Code:
 Or directly from the terminal:
 
 ```bash
-npx ars review open ep001
+ars studio ep001 --phase review
 ```
+
+`ars review open ep001` still works as a legacy compatibility alias, but Studio is the primary shell.
 
 ### 8. Apply review and polish
 
@@ -131,8 +145,8 @@ Inside Claude Code:
 Or directly from the terminal:
 
 ```bash
-npx ars prepare youtube ep001
-npx ars publish youtube ep001 --privacy private
+ars prepare youtube ep001
+ars publish youtube ep001 --privacy private
 ```
 
 ### 10. Optional analytics and reflection
@@ -153,7 +167,7 @@ Inside Claude Code:
 - `/ars:plan`: official planning entrypoint for a new or existing episode
 - `/ars:build`: implement `ep.ts` from the approved planning artifacts
 - `/ars:episode-create`: low-level scaffold primitive for manual use
-- `/ars:review`: launch the review surface
+- `/ars:review`: launch the Studio review phase
 - `/ars:apply-review`: apply review intents back into the episode source
 - `/ars:polish`: late-stage tier B refinement
 - `/ars:reflect`: turn recent episodes + analytics into series-level guide updates
@@ -165,23 +179,25 @@ Inside Claude Code:
 
 Stable backend commands:
 
-- `npx ars update`
-- `npx ars doctor`
-- `npx ars init <series>`
-- `npx ars card list [--json]`
-- `npx ars episode ...`
-- `npx ars review ...`
-- `npx ars audio ...`
-- `npx ars export ...`
-- `npx ars prepare youtube <epId>`
-- `npx ars publish package <epId>`
-- `npx ars publish youtube <epId>`
-- `npx ars upload youtube <epId>`
+- `ars update`
+- `ars doctor`
+- `ars init <series>`
+- `ars card list [--json]`
+- `ars episode ...`
+- `ars studio <epId> --phase plan|build|review`
+- `ars audio ...`
+- `ars export ...`
+- `ars prepare youtube <epId>`
+- `ars publish package <epId>`
+- `ars publish youtube <epId>`
+- `ars upload youtube <epId>`
 
 Notes:
 
 - `/ars:onboard` is the preferred first-run UX — it bootstraps the repo, guides branding and theme setup, and calls `npx ars init` when needed.
 - `npx ars init <series>` is the low-level alternative for non-interactive or scripted setup.
+- `ars review ...` remains as a legacy compatibility alias that forwards into Studio.
+- MiniMax is the only built-in TTS provider supported in this beta release. If you configure `elevenlabs`, doctor will fail and audio generation will stop.
 
 ## One repo = one series
 

@@ -35,7 +35,7 @@
 - Node.js >= 22.12.0
 - Claude Code CLI（plugin 是主要介面，沒裝就沒 skill 可用）
 - YouTube channel + OAuth（core 唯一的 publish target）
-- TTS provider API key（MiniMax、ElevenLabs…）
+- MiniMax TTS API key（目前 beta 只有這條語音路線）
 
 加分項（沒有也能起步，但 ARS 預設你會有）：
 

@@ -316,6 +316,33 @@ export function syncEngineFiles(options: SyncEngineOptions): string[] {
     copied,
   );
 
+  syncFileIfNeeded(
+    path.join(options.sourceRoot, 'eslint.config.mjs'),
+    path.join(options.root, 'eslint.config.mjs'),
+    options.overwriteSupportFiles,
+    'eslint.config.mjs',
+    copied,
+  );
+
+  // Consumer repos do not ship the full ARS CLI source tree, but the YouTube
+  // publish adapter is typechecked as part of src/. Keep its local helper
+  // surface in sync so `eslint src && tsc` works even when publish is disabled.
+  syncFileIfNeeded(
+    path.join(options.sourceRoot, 'cli', 'lib', 'youtube-client.ts'),
+    path.join(options.root, 'cli', 'lib', 'youtube-client.ts'),
+    options.overwriteSupportFiles,
+    'cli/lib/youtube-client.ts',
+    copied,
+  );
+
+  syncFileIfNeeded(
+    path.join(options.sourceRoot, 'cli', 'lib', 'youtube-upload.ts'),
+    path.join(options.root, 'cli', 'lib', 'youtube-upload.ts'),
+    options.overwriteSupportFiles,
+    'cli/lib/youtube-upload.ts',
+    copied,
+  );
+
   // Static assets: fonts and shared audio required by the studio
   syncDirectoryIfNeeded(
     path.join(options.sourceRoot, 'public', 'shared'),
@@ -545,11 +572,27 @@ function syncDirectoryIfNeeded(
   if (!fs.existsSync(sourcePath)) {
     return;
   }
-  if (fs.existsSync(targetPath) && !overwrite) {
+  // When overwrite is true, hand the whole directory to fs.cpSync in one shot
+  // (force: true replaces existing files and writes new ones in one call).
+  if (overwrite || !fs.existsSync(targetPath)) {
+    copyDirectory(sourcePath, targetPath, { overwrite });
+    copied.push(`${label} ← ${sourcePath}`);
     return;
   }
-  copyDirectory(sourcePath, targetPath, { overwrite });
-  copied.push(`${label} ← ${sourcePath}`);
+  // Target directory already exists and we're not overwriting. Still walk the
+  // source tree to land NEW files that don't exist at the target yet — this
+  // is the path that keeps `npx ars init` from clobbering user edits while
+  // still picking up newly-added ARS files on subsequent installs.
+  for (const entry of fs.readdirSync(sourcePath, { withFileTypes: true })) {
+    const nextSource = path.join(sourcePath, entry.name);
+    const nextTarget = path.join(targetPath, entry.name);
+    const nextLabel = `${label}${entry.name}${entry.isDirectory() ? '/' : ''}`;
+    if (entry.isDirectory()) {
+      syncDirectoryIfNeeded(nextSource, nextTarget, overwrite, nextLabel, copied);
+    } else if (entry.isFile()) {
+      syncFileIfNeeded(nextSource, nextTarget, overwrite, nextLabel, copied);
+    }
+  }
 }
 
 function syncFileIfNeeded(
@@ -690,7 +733,7 @@ export function patchClaudeSettings(options: {
       {
         matcher: '*',
         hooks: [
-          { type: 'command', command: 'node ".ars/hooks/scripts/review-intent-stop.mjs"', timeout: 3 },
+          { type: 'command', command: 'node ".ars/hooks/scripts/studio-intent-stop.mjs"', timeout: 3 },
         ],
       },
     ],
