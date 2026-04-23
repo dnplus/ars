@@ -8,6 +8,7 @@ dist/
 .cache/
 .omc/
 .playwright-mcp/
+.codex/
 build/
 !plugin/
 !plugin/skills/
