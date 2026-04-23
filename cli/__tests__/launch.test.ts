@@ -5,10 +5,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const execFileSync = vi.fn();
 const spawnSync = vi.fn(() => ({ status: 0 }));
+const spawn = vi.fn(() => ({
+  on: vi.fn(),
+  kill: vi.fn(),
+}));
 
 vi.mock('child_process', () => ({
   execFileSync,
   spawnSync,
+  spawn,
 }));
 
 const tempRoots: string[] = [];
@@ -27,6 +32,11 @@ function makePluginRoot(): string {
 beforeEach(() => {
   vi.resetModules();
   execFileSync.mockReset();
+  spawn.mockReset();
+  spawn.mockImplementation(() => ({
+    on: vi.fn(),
+    kill: vi.fn(),
+  }));
   execFileSync.mockImplementation((command: string, args?: string[]) => {
     if (command === 'tmux' && args?.[0] === '-V') {
       return 'tmux 3.4';
@@ -111,8 +121,9 @@ describe('launch command', () => {
     expect(execFileSync.mock.calls[0]?.[0]).toBe('tmux');
     expect(execFileSync).toHaveBeenCalledWith(
       'claude',
-      ['--plugin-dir', pluginRoot, 'hello'],
+      ['--plugin-dir', pluginRoot],
       expect.objectContaining({ stdio: 'inherit' }),
     );
+    expect(spawn).toHaveBeenCalled();
   });
 });

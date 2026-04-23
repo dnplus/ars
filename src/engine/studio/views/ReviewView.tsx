@@ -64,9 +64,38 @@ type AudioCapability = {
   reason?: string;
 };
 
+type PublishCapability = {
+  visible: boolean;
+  enabled: boolean;
+  reason?: string;
+};
+
 type AudioCapabilityResponse = {
   ok: boolean;
   capability?: AudioCapability;
+  error?: string;
+};
+
+type PublishCapabilityResponse = {
+  ok: boolean;
+  capability?: PublishCapability;
+  error?: string;
+};
+
+type OnboardStatus = {
+  active: boolean;
+  stage?: 'onboard-walkthrough' | 'onboard-customize' | 'onboard-verify';
+  phaseLabel?: string;
+  sessionActive: boolean;
+  sessionLastSeenAt?: string;
+  sessionEndedAt?: string;
+  pendingIntents: number;
+  previewFingerprint: string;
+};
+
+type OnboardStatusResponse = {
+  ok: boolean;
+  status?: OnboardStatus;
   error?: string;
 };
 
@@ -168,8 +197,21 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
     visible: false,
     enabled: false,
   });
+  const [publishCapability, setPublishCapability] = useState<PublishCapability>({
+    visible: false,
+    enabled: false,
+  });
+  const [onboardStatus, setOnboardStatus] = useState<OnboardStatus>({
+    active: false,
+    sessionActive: false,
+    pendingIntents: 0,
+    previewFingerprint: '',
+  });
+  const [onboardRefreshPending, setOnboardRefreshPending] = useState(false);
   const latestFixTimestampRef = useRef<string | null>(null);
   const fixInitializedRef = useRef(false);
+  const onboardFingerprintRef = useRef<string | null>(null);
+  const onboardReloadingRef = useRef(false);
 
   const pollAudioJob = useCallback(async () => {
     try {
@@ -218,6 +260,95 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
       setEpisodeSourceMap(null);
     }
   }, [fallbackEpId, fallbackSeries]);
+
+  const loadPublishCapability = useCallback(async () => {
+    try {
+      const res = await fetch('/__ars/publish-capability');
+      const payload = (await res.json()) as PublishCapabilityResponse;
+      if (!res.ok || !payload.capability) {
+        throw new Error(payload.error ?? `HTTP ${res.status}`);
+      }
+      setPublishCapability(payload.capability);
+    } catch (error) {
+      setPublishCapability({
+        visible: false,
+        enabled: false,
+        reason: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }, []);
+
+  const syncOnboardSession = useCallback(async (event: 'open' | 'heartbeat' | 'close') => {
+    try {
+      await fetch('/__ars/onboard-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event,
+          series: fallbackSeries,
+          epId: fallbackEpId,
+        }),
+        keepalive: event === 'close',
+      });
+    } catch {
+      // ignore transient session-sync failures
+    }
+  }, [fallbackEpId, fallbackSeries]);
+
+  const loadOnboardStatus = useCallback(async () => {
+    try {
+      const params = new URLSearchParams();
+      params.set('series', fallbackSeries);
+      params.set('ep', fallbackEpId);
+      const res = await fetch(`/__ars/onboard-status?${params.toString()}`);
+      const payload = (await res.json()) as OnboardStatusResponse;
+      if (!res.ok || !payload.status) {
+        throw new Error(payload.error ?? `HTTP ${res.status}`);
+      }
+
+      const nextStatus = payload.status;
+      setOnboardStatus(nextStatus);
+
+      if (!nextStatus.active) {
+        onboardFingerprintRef.current = nextStatus.previewFingerprint || null;
+        onboardReloadingRef.current = false;
+        setOnboardRefreshPending(false);
+        return;
+      }
+
+      const previousFingerprint = onboardFingerprintRef.current;
+      const nextFingerprint = nextStatus.previewFingerprint;
+      if (!previousFingerprint) {
+        onboardFingerprintRef.current = nextFingerprint;
+        return;
+      }
+
+      if (nextFingerprint && previousFingerprint !== nextFingerprint && !onboardReloadingRef.current) {
+        onboardFingerprintRef.current = nextFingerprint;
+        if (showStepEditor || selectModeActive) {
+          setOnboardRefreshPending(true);
+          return;
+        }
+
+        onboardReloadingRef.current = true;
+        setStatusState('applying');
+        setStatusDetail('series preview updated · reloading');
+        window.setTimeout(() => window.location.reload(), 250);
+        return;
+      }
+
+      onboardFingerprintRef.current = nextFingerprint;
+    } catch {
+      setOnboardStatus({
+        active: false,
+        sessionActive: false,
+        pendingIntents: 0,
+        previewFingerprint: '',
+      });
+      onboardFingerprintRef.current = null;
+      onboardReloadingRef.current = false;
+    }
+  }, [fallbackEpId, fallbackSeries, selectModeActive, showStepEditor]);
 
   const handleToggleFullscreen = useCallback(async () => {
     try {
@@ -321,9 +452,24 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
       setStatusDetail('narration ready · review when idle');
       return;
     }
+    if (onboardStatus.active) {
+      setStatusState('watching');
+      setStatusDetail(
+        `onboard ${onboardStatus.phaseLabel?.toLowerCase() ?? 'active'} · ${
+          onboardStatus.sessionActive ? 'monitor active' : 'session reconnecting'
+        } · ${onboardStatus.pendingIntents} pending`,
+      );
+      return;
+    }
     setStatusState('watching');
     setStatusDetail('watching .ars/studio-intents · idle');
-  }, [audioJob.status]);
+  }, [
+    audioJob.status,
+    onboardStatus.active,
+    onboardStatus.pendingIntents,
+    onboardStatus.phaseLabel,
+    onboardStatus.sessionActive,
+  ]);
 
   // Applying flash: whenever a new fix-applied banner arrives, flip to
   // 'applying' for ~2s so the user sees Claude Code acting.
@@ -378,6 +524,59 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
   useEffect(() => {
     void loadEpisodeSourceMap();
   }, [loadEpisodeSourceMap]);
+
+  useEffect(() => {
+    void loadPublishCapability();
+  }, [loadPublishCapability]);
+
+  useEffect(() => {
+    void loadOnboardStatus();
+    const timer = window.setInterval(() => void loadOnboardStatus(), 3000);
+    return () => window.clearInterval(timer);
+  }, [loadOnboardStatus]);
+
+  useEffect(() => {
+    if (!onboardStatus.active) {
+      return;
+    }
+
+    void syncOnboardSession('open');
+    const timer = window.setInterval(() => void syncOnboardSession('heartbeat'), 3000);
+    const closeSession = () => {
+      void fetch('/__ars/onboard-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event: 'close',
+          series: fallbackSeries,
+          epId: fallbackEpId,
+        }),
+        keepalive: true,
+      });
+    };
+
+    window.addEventListener('pagehide', closeSession);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('pagehide', closeSession);
+      void syncOnboardSession('close');
+    };
+  }, [fallbackEpId, fallbackSeries, onboardStatus.active, syncOnboardSession]);
+
+  useEffect(() => {
+    if (!onboardRefreshPending || !onboardStatus.active) {
+      return;
+    }
+    if (showStepEditor || selectModeActive || onboardReloadingRef.current) {
+      return;
+    }
+
+    onboardReloadingRef.current = true;
+    setStatusState('applying');
+    setStatusDetail('series preview updated · reloading');
+    const timer = window.setTimeout(() => window.location.reload(), 250);
+    return () => window.clearTimeout(timer);
+  }, [onboardRefreshPending, onboardStatus.active, selectModeActive, showStepEditor]);
 
   useEffect(() => {
     void pollAudioJob();
@@ -486,6 +685,12 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
       : audioCapability.enabled
         ? '為整集生成語音與字幕'
         : (audioCapability.reason ?? '目前無法生成音訊');
+  const audioCapabilitySummary = !audioCapability.visible
+    ? (audioCapability.reason ?? 'Audio / TTS hidden')
+    : (audioCapability.enabled ? 'Audio / TTS enabled' : `Audio / TTS unavailable: ${audioCapability.reason ?? 'disabled'}`);
+  const publishCapabilitySummary = !publishCapability.visible
+    ? (publishCapability.reason ?? 'Publish hidden')
+    : (publishCapability.enabled ? 'YouTube publish enabled' : `YouTube publish unavailable: ${publishCapability.reason ?? 'disabled'}`);
 
   return (
     <ThemeProvider theme={theme}>
@@ -561,20 +766,64 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
                   >
                     <span>TTS · 語音</span>
                   </div>
-                ) : (
+                ) : audioCapability.visible ? (
                   <div
                     className="studio-audio-chip muted"
                     title="此步驟尚未生成語音 — 使用導覽列的 🔊 生成音訊"
                   >
                     <span>🔇 無語音</span>
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
 
           </div>
 
           <StatusBar state={statusState} detail={statusDetail} />
+
+          {onboardStatus.active && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '10px 14px',
+                borderBottom: '1px solid var(--color-border-light)',
+                background: 'color-mix(in srgb, var(--color-card-header-bg) 82%, transparent)',
+                color: 'var(--color-text-on-dark)',
+              }}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-primary)' }}>
+                    Onboarding
+                  </span>
+                  <span style={{ fontSize: 12 }}>
+                    {onboardStatus.phaseLabel ?? 'Active'}
+                  </span>
+                  <span style={{ fontSize: 12, color: onboardStatus.sessionActive ? 'var(--color-positive)' : 'var(--color-warning)' }}>
+                    {onboardStatus.sessionActive ? 'monitor active' : 'session reconnecting'}
+                  </span>
+                  <span style={{ fontSize: 12, color: 'color-mix(in srgb, var(--color-text-on-dark) 72%, transparent)' }}>
+                    {onboardStatus.pendingIntents} pending comment{onboardStatus.pendingIntents === 1 ? '' : 's'}
+                  </span>
+                </div>
+                <div style={{ fontSize: 11, color: 'color-mix(in srgb, var(--color-text-on-dark) 70%, transparent)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {audioCapabilitySummary} · {publishCapabilitySummary} · series-level changes auto-refresh this preview
+                </div>
+              </div>
+              {onboardRefreshPending && (
+                <button
+                  type="button"
+                  className="studio-fix-banner-btn"
+                  onClick={() => window.location.reload()}
+                >
+                  重新載入預覽
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Narration lives as subtitles inside the canvas now; the nav-level
               preview was removed to avoid double display. */}
@@ -637,27 +886,33 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
             {/* Always openable: the modal surfaces capability problems in its
                 own preview so the user can see why they're blocked. Running
                 state is visually hinted via `active`. */}
-            <button
-              className={`nav-btn${audioJob.status === 'running' ? ' active' : ''}`}
-              onClick={() => setAudioModalOpen(true)}
-              title={audioButtonTitle}
-            >
-              {audioButtonLabel}
-            </button>
-            <button
-              className={`nav-btn${prepareModalOpen ? ' active' : ''}`}
-              onClick={() => setPrepareModalOpen(true)}
-              title="產生並挑選 YouTube metadata 候選"
-            >
-              📝 Prepare
-            </button>
-            <button
-              className={`nav-btn${publishModalOpen ? ' active' : ''}`}
-              onClick={() => setPublishModalOpen(true)}
-              title="依 prepare 結果執行 publish"
-            >
-              🚀 Publish
-            </button>
+            {audioCapability.visible && (
+              <button
+                className={`nav-btn${audioJob.status === 'running' ? ' active' : ''}`}
+                onClick={() => setAudioModalOpen(true)}
+                title={audioButtonTitle}
+              >
+                {audioButtonLabel}
+              </button>
+            )}
+            {publishCapability.visible && (
+              <button
+                className={`nav-btn${prepareModalOpen ? ' active' : ''}`}
+                onClick={() => setPrepareModalOpen(true)}
+                title="產生並挑選 YouTube metadata 候選"
+              >
+                📝 Prepare
+              </button>
+            )}
+            {publishCapability.visible && (
+              <button
+                className={`nav-btn${publishModalOpen ? ' active' : ''}`}
+                onClick={() => setPublishModalOpen(true)}
+                title="依 prepare 結果執行 publish"
+              >
+                🚀 Publish
+              </button>
+            )}
             <button
               className={`nav-btn${showStepEditor ? ' active' : ''}`}
               onClick={() => setShowStepEditor((v) => !v)}
@@ -715,6 +970,18 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
                 {audioCapability.reason && (
                   <div><span style={{ color: 'color-mix(in srgb, var(--color-text-on-dark) 62%, transparent)' }}>audio reason</span>　{audioCapability.reason}</div>
                 )}
+                <div><span style={{ color: 'color-mix(in srgb, var(--color-text-on-dark) 62%, transparent)' }}>publish capability</span>　{publishCapability.visible ? (publishCapability.enabled ? 'enabled' : 'disabled') : 'hidden'}</div>
+                {publishCapability.reason && (
+                  <div><span style={{ color: 'color-mix(in srgb, var(--color-text-on-dark) 62%, transparent)' }}>publish reason</span>　{publishCapability.reason}</div>
+                )}
+                {onboardStatus.active && (
+                  <>
+                    <div><span style={{ color: 'color-mix(in srgb, var(--color-text-on-dark) 62%, transparent)' }}>onboard phase</span>　{onboardStatus.phaseLabel ?? onboardStatus.stage ?? 'active'}</div>
+                    <div><span style={{ color: 'color-mix(in srgb, var(--color-text-on-dark) 62%, transparent)' }}>onboard session</span>　{onboardStatus.sessionActive ? 'active' : 'inactive'}</div>
+                    <div><span style={{ color: 'color-mix(in srgb, var(--color-text-on-dark) 62%, transparent)' }}>pending comments</span>　{onboardStatus.pendingIntents}</div>
+                    <div><span style={{ color: 'color-mix(in srgb, var(--color-text-on-dark) 62%, transparent)' }}>preview sync</span>　{onboardRefreshPending ? 'reload pending' : 'auto-reload enabled'}</div>
+                  </>
+                )}
                 <div><span style={{ color: 'color-mix(in srgb, var(--color-text-on-dark) 62%, transparent)' }}>audio job</span>　{audioJob.status}</div>
                 <div><span style={{ color: 'color-mix(in srgb, var(--color-text-on-dark) 62%, transparent)' }}>口播字數</span>　{step.narration ? `${step.narration.length} 字` : '—'}</div>
               </div>
@@ -760,25 +1027,31 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
           />
         )}
       </div>
-      <AudioRunner
-        open={audioModalOpen}
-        onClose={() => setAudioModalOpen(false)}
-        episode={draftEpisode}
-        series={fallbackSeries}
-        epId={fallbackEpId}
-      />
-      <PrepareRunner
-        open={prepareModalOpen}
-        onClose={() => setPrepareModalOpen(false)}
-        series={fallbackSeries}
-        epId={fallbackEpId}
-      />
-      <PublishRunner
-        open={publishModalOpen}
-        onClose={() => setPublishModalOpen(false)}
-        series={fallbackSeries}
-        epId={fallbackEpId}
-      />
+      {audioCapability.visible && (
+        <AudioRunner
+          open={audioModalOpen}
+          onClose={() => setAudioModalOpen(false)}
+          episode={draftEpisode}
+          series={fallbackSeries}
+          epId={fallbackEpId}
+        />
+      )}
+      {publishCapability.visible && (
+        <PrepareRunner
+          open={prepareModalOpen}
+          onClose={() => setPrepareModalOpen(false)}
+          series={fallbackSeries}
+          epId={fallbackEpId}
+        />
+      )}
+      {publishCapability.visible && (
+        <PublishRunner
+          open={publishModalOpen}
+          onClose={() => setPublishModalOpen(false)}
+          series={fallbackSeries}
+          epId={fallbackEpId}
+        />
+      )}
     </ThemeProvider>
   );
 };

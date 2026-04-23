@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Img } from 'remotion';
 import type {
   StudioIntentAnchorMeta,
   StudioIntentAnchorType,
@@ -263,7 +262,9 @@ export const ActionBar: React.FC<ActionBarProps> = ({
                 alignItems: 'center',
               }}
             >
-              <Img
+              {/* Native <img> is correct here — this thumbnail lives in a Studio DOM overlay, not a Remotion composition. */}
+              {/* eslint-disable-next-line @remotion/warn-native-media-tag */}
+              <img
                 src={attachment.dataUrl}
                 alt={attachment.name}
                 style={{

@@ -56,9 +56,11 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
   const series = process.env.SERIES || 'template';
   const targetEp = process.env.EP || '';
   const targetStep = process.env.STEP || '';
+  const targetPhase = process.env.PHASE || '';
   const openParams = new URLSearchParams();
   if (series) openParams.set('series', series);
   if (targetEp) openParams.set('ep', targetEp);
+  if (targetPhase) openParams.set('phase', targetPhase);
   if (targetStep) openParams.set('step', targetStep);
   const openPath = targetEp ? `/?${openParams.toString()}` : true;
 
@@ -188,6 +190,16 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
                   `${JSON.stringify(payload, null, 2)}\n`,
                   'utf-8',
                 );
+
+                const stage = readWorkstateStage(rootDir);
+                if (isOnboardStage(stage)) {
+                  updateOnboardSession(rootDir, {
+                    event: 'close',
+                    stage,
+                    series,
+                    epId: targetEp,
+                  });
+                }
 
                 writeJson(res, 200, { ok: true, intentCount });
               } catch (error) {
@@ -386,6 +398,70 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
               return;
             }
 
+            if (url.pathname === '/__ars/publish-capability') {
+              if (req.method !== 'GET') {
+                writeJson(res, 405, { ok: false, error: 'Method not allowed' });
+                return;
+              }
+
+              try {
+                const capability = resolvePublishCapability(rootDir);
+                writeJson(res, 200, { ok: true, capability });
+              } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                writeJson(res, 500, { ok: false, error: message });
+              }
+              return;
+            }
+
+            if (url.pathname === '/__ars/onboard-status') {
+              if (req.method !== 'GET') {
+                writeJson(res, 405, { ok: false, error: 'Method not allowed' });
+                return;
+              }
+
+              try {
+                const requestedSeries = asRequiredString(url.searchParams.get('series'), 'series');
+                const requestedEpId = asRequiredString(url.searchParams.get('ep'), 'ep');
+                const status = resolveOnboardStatus(rootDir, requestedSeries, requestedEpId);
+                writeJson(res, 200, { ok: true, status });
+              } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                writeJson(res, 400, { ok: false, error: message });
+              }
+              return;
+            }
+
+            if (url.pathname === '/__ars/onboard-session') {
+              if (req.method !== 'POST') {
+                writeJson(res, 405, { ok: false, error: 'Method not allowed' });
+                return;
+              }
+
+              try {
+                const body = await readJsonBody(req);
+                const event = asOptionalString(body.event);
+                if (event !== 'open' && event !== 'heartbeat' && event !== 'close') {
+                  throw new Error('event must be one of: open, heartbeat, close');
+                }
+
+                const seriesIn = asOptionalString(body.series);
+                const epIdIn = asOptionalString(body.epId);
+                const stage = readWorkstateStage(rootDir);
+                const session = updateOnboardSession(rootDir, {
+                  event,
+                  stage,
+                  series: seriesIn,
+                  epId: epIdIn,
+                });
+                writeJson(res, 200, { ok: true, session });
+              } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                writeJson(res, 400, { ok: false, error: message });
+              }
+              return;
+            }
+
             // Config preview for the Audio action. Lightweight by design:
             // returns CLI command + resolved provider/voice + capability state.
             // Step count / char totals are expected to come from the client's
@@ -449,6 +525,11 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
                 return;
               }
               try {
+                const capability = resolvePublishCapability(rootDir);
+                if (!capability.visible) {
+                  writeJson(res, 409, { ok: false, error: capability.reason ?? 'YouTube publish is disabled.' });
+                  return;
+                }
                 const series = asRequiredString(url.searchParams.get('series'), 'series');
                 const epId = asRequiredString(url.searchParams.get('ep'), 'ep');
                 const preparedArtifact = readPrepareArtifact(rootDir, series, epId);
@@ -492,6 +573,11 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
                 return;
               }
               try {
+                const capability = resolvePublishCapability(rootDir);
+                if (!capability.visible) {
+                  writeJson(res, 409, { ok: false, error: capability.reason ?? 'YouTube publish is disabled.' });
+                  return;
+                }
                 const series = asRequiredString(url.searchParams.get('series'), 'series');
                 const epId = asRequiredString(url.searchParams.get('ep'), 'ep');
                 const artifact = readPrepareArtifact(rootDir, series, epId);
@@ -522,6 +608,11 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
                 return;
               }
               try {
+                const capability = resolvePublishCapability(rootDir);
+                if (!capability.visible) {
+                  writeJson(res, 409, { ok: false, error: capability.reason ?? 'YouTube publish is disabled.' });
+                  return;
+                }
                 const body = await readJsonBody(req);
                 const series = asRequiredString(body.series, 'series');
                 const epId = asRequiredString(body.epId, 'epId');
@@ -592,6 +683,11 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
                 return;
               }
               try {
+                const capability = resolvePublishCapability(rootDir);
+                if (!capability.visible) {
+                  writeJson(res, 409, { ok: false, error: capability.reason ?? 'YouTube publish is disabled.' });
+                  return;
+                }
                 const body = await readJsonBody(req);
                 const series = asRequiredString(body.series, 'series');
                 const epId = asRequiredString(body.epId, 'epId');
@@ -627,6 +723,11 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
                 return;
               }
               try {
+                const capability = resolvePublishCapability(rootDir);
+                if (!capability.visible) {
+                  writeJson(res, 409, { ok: false, error: capability.reason ?? 'YouTube publish is disabled.' });
+                  return;
+                }
                 const body = await readJsonBody(req);
                 const series = asRequiredString(body.series, 'series');
                 const epId = asRequiredString(body.epId, 'epId');
@@ -653,6 +754,11 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
                 return;
               }
               try {
+                const capability = resolvePublishCapability(rootDir);
+                if (!capability.visible) {
+                  writeJson(res, 409, { ok: false, error: capability.reason ?? 'YouTube publish is disabled.' });
+                  return;
+                }
                 const series = asRequiredString(url.searchParams.get('series'), 'series');
                 const epId = asRequiredString(url.searchParams.get('ep'), 'ep');
                 const preparedArtifact = readPrepareArtifact(rootDir, series, epId);
@@ -695,6 +801,11 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
                 return;
               }
               try {
+                const capability = resolvePublishCapability(rootDir);
+                if (!capability.visible) {
+                  writeJson(res, 409, { ok: false, error: capability.reason ?? 'YouTube publish is disabled.' });
+                  return;
+                }
                 const body = await readJsonBody(req);
                 const series = asRequiredString(body.series, 'series');
                 const epId = asRequiredString(body.epId, 'epId');
@@ -997,6 +1108,35 @@ type AudioCapability = {
   reason?: string;
 };
 
+type PublishCapability = {
+  visible: boolean;
+  enabled: boolean;
+  reason?: string;
+};
+
+type OnboardStage = 'onboard-walkthrough' | 'onboard-customize' | 'onboard-verify';
+
+type OnboardSessionRecord = {
+  active: boolean;
+  stage?: OnboardStage;
+  series?: string;
+  epId?: string;
+  startedAt?: string;
+  lastSeenAt?: string;
+  endedAt?: string;
+};
+
+type OnboardStatusPayload = {
+  active: boolean;
+  stage?: OnboardStage;
+  phaseLabel?: string;
+  sessionActive: boolean;
+  sessionLastSeenAt?: string;
+  sessionEndedAt?: string;
+  pendingIntents: number;
+  previewFingerprint: string;
+};
+
 type StudioIntentRecord = {
   id?: string;
   processedAt?: string;
@@ -1286,6 +1426,172 @@ function readWorkstateStage(rootDir: string): string | undefined {
   return undefined;
 }
 
+function isOnboardStage(stage?: string): stage is OnboardStage {
+  return stage === 'onboard-walkthrough'
+    || stage === 'onboard-customize'
+    || stage === 'onboard-verify';
+}
+
+function getOnboardPhaseLabel(stage?: OnboardStage): string | undefined {
+  if (stage === 'onboard-walkthrough') return 'Walkthrough';
+  if (stage === 'onboard-customize') return 'Customize';
+  if (stage === 'onboard-verify') return 'Verify';
+  return undefined;
+}
+
+function getOnboardSessionPath(rootDir: string): string {
+  return path.join(rootDir, '.ars', 'state', 'onboard-studio-session.json');
+}
+
+function readOnboardSession(rootDir: string): OnboardSessionRecord | null {
+  try {
+    const raw = fs.readFileSync(getOnboardSessionPath(rootDir), 'utf-8');
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const stage = typeof parsed.stage === 'string' && isOnboardStage(parsed.stage)
+      ? parsed.stage
+      : undefined;
+    return {
+      active: parsed.active === true,
+      stage,
+      series: typeof parsed.series === 'string' ? parsed.series : undefined,
+      epId: typeof parsed.epId === 'string' ? parsed.epId : undefined,
+      startedAt: typeof parsed.startedAt === 'string' ? parsed.startedAt : undefined,
+      lastSeenAt: typeof parsed.lastSeenAt === 'string' ? parsed.lastSeenAt : undefined,
+      endedAt: typeof parsed.endedAt === 'string' ? parsed.endedAt : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeOnboardSession(rootDir: string, session: OnboardSessionRecord): OnboardSessionRecord {
+  const sessionPath = getOnboardSessionPath(rootDir);
+  fs.mkdirSync(path.dirname(sessionPath), { recursive: true });
+  fs.writeFileSync(sessionPath, `${JSON.stringify(session, null, 2)}\n`, 'utf-8');
+  return session;
+}
+
+function updateOnboardSession(
+  rootDir: string,
+  update: {
+    event: 'open' | 'heartbeat' | 'close';
+    stage?: string;
+    series?: string;
+    epId?: string;
+  },
+): OnboardSessionRecord {
+  const now = new Date().toISOString();
+  const current = readOnboardSession(rootDir);
+  const stage = isOnboardStage(update.stage) ? update.stage : current?.stage;
+
+  if (update.event === 'close') {
+    return writeOnboardSession(rootDir, {
+      active: false,
+      stage,
+      series: update.series ?? current?.series,
+      epId: update.epId ?? current?.epId,
+      startedAt: current?.startedAt,
+      lastSeenAt: current?.lastSeenAt ?? now,
+      endedAt: now,
+    });
+  }
+
+  return writeOnboardSession(rootDir, {
+    active: true,
+    stage,
+    series: update.series ?? current?.series,
+    epId: update.epId ?? current?.epId,
+    startedAt: current?.startedAt ?? now,
+    lastSeenAt: now,
+    endedAt: undefined,
+  });
+}
+
+function countPendingStudioIntents(rootDir: string, series: string, epId: string): number {
+  const studioDir = getStudioIntentsDir(rootDir);
+  if (!fs.existsSync(studioDir)) return 0;
+
+  return fs.readdirSync(studioDir)
+    .filter((fileName) => fileName.endsWith('.json'))
+    .reduce((count, fileName) => {
+      try {
+        const raw = fs.readFileSync(path.join(studioDir, fileName), 'utf-8');
+        const intent = JSON.parse(raw) as {
+          processedAt?: string;
+          target?: { series?: string; epId?: string };
+        };
+        if (intent.processedAt) return count;
+        if (intent.target?.series !== series) return count;
+        if (intent.target?.epId !== epId) return count;
+        return count + 1;
+      } catch {
+        return count;
+      }
+    }, 0);
+}
+
+function collectFingerprintEntries(basePath: string, prefix: string, entries: string[]): void {
+  if (!fs.existsSync(basePath)) {
+    entries.push(`${prefix}:missing`);
+    return;
+  }
+
+  const stat = fs.statSync(basePath);
+  if (stat.isFile()) {
+    entries.push(`${prefix}@${stat.mtimeMs}`);
+    return;
+  }
+
+  entries.push(`${prefix}/@${stat.mtimeMs}`);
+  for (const entry of fs.readdirSync(basePath, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    collectFingerprintEntries(path.join(basePath, entry.name), `${prefix}/${entry.name}`, entries);
+  }
+}
+
+function computeReviewPreviewFingerprint(rootDir: string, series: string, epId: string): string {
+  const entries: string[] = [];
+  collectFingerprintEntries(
+    path.join(rootDir, 'src', 'episodes', series, `${epId}.ts`),
+    `src/episodes/${series}/${epId}.ts`,
+    entries,
+  );
+  collectFingerprintEntries(
+    path.join(rootDir, 'src', 'episodes', series, 'series-config.ts'),
+    `src/episodes/${series}/series-config.ts`,
+    entries,
+  );
+  collectFingerprintEntries(path.join(rootDir, 'SERIES_GUIDE.md'), 'SERIES_GUIDE.md', entries);
+  collectFingerprintEntries(
+    path.join(rootDir, 'public', 'episodes', series, 'shared'),
+    `public/episodes/${series}/shared`,
+    entries,
+  );
+  return entries.join('|');
+}
+
+function resolveOnboardStatus(rootDir: string, series: string, epId: string): OnboardStatusPayload {
+  const stageRaw = readWorkstateStage(rootDir);
+  const stage = isOnboardStage(stageRaw) ? stageRaw : undefined;
+  const active = !!stage;
+  let session = readOnboardSession(rootDir);
+  const pendingIntents = active ? countPendingStudioIntents(rootDir, series, epId) : 0;
+
+  if (session?.active && !active) {
+    session = updateOnboardSession(rootDir, { event: 'close', series, epId, stage: stageRaw });
+  }
+
+  return {
+    active,
+    stage,
+    phaseLabel: getOnboardPhaseLabel(stage),
+    sessionActive: session?.active === true && active,
+    sessionLastSeenAt: session?.lastSeenAt,
+    sessionEndedAt: session?.endedAt,
+    pendingIntents,
+    previewFingerprint: active ? computeReviewPreviewFingerprint(rootDir, series, epId) : '',
+  };
+}
+
 function readLastBuildRecord(
   rootDir: string,
   epId: string,
@@ -1426,6 +1732,13 @@ function resolveAudioCapability(rootDir: string, series?: string): AudioCapabili
       reason: 'series-config.ts 缺少 speech.provider。',
     };
   }
+  if (!speechConfig.enabled) {
+    return {
+      visible: false,
+      enabled: false,
+      reason: 'Audio/TTS 已在 series-config.ts 停用。',
+    };
+  }
 
   if (speechConfig.provider === 'elevenlabs') {
     return {
@@ -1470,7 +1783,29 @@ function resolveAudioCapability(rootDir: string, series?: string): AudioCapabili
   return { visible: true, enabled: true };
 }
 
+function resolvePublishCapability(rootDir: string): PublishCapability {
+  const config = readLocalArsConfig(rootDir);
+  if (!config) {
+    return {
+      visible: false,
+      enabled: false,
+      reason: '尚未初始化 ARS 設定；先執行 ars init <series>。',
+    };
+  }
+
+  if (!config.publish.youtube.enabled) {
+    return {
+      visible: false,
+      enabled: false,
+      reason: 'YouTube publish 已在 init 設定中停用。',
+    };
+  }
+
+  return { visible: true, enabled: true };
+}
+
 function readSeriesSpeechSummary(rootDir: string, series: string): {
+  enabled: boolean;
   provider: SpeechProviderId | null;
   hasDefaultVoice: boolean;
   reviewRequiresNativeTiming: boolean;
@@ -1478,6 +1813,7 @@ function readSeriesSpeechSummary(rootDir: string, series: string): {
   const seriesConfigPath = path.join(rootDir, 'src', 'episodes', series, 'series-config.ts');
   if (!fs.existsSync(seriesConfigPath)) {
     return {
+      enabled: true,
       provider: null,
       hasDefaultVoice: false,
       reviewRequiresNativeTiming: true,
@@ -1486,15 +1822,18 @@ function readSeriesSpeechSummary(rootDir: string, series: string): {
 
   try {
     const content = fs.readFileSync(seriesConfigPath, 'utf-8');
-    const providerMatch = content.match(/provider:\s*['"](minimax|elevenlabs)['"]/);
-    const reviewMatch = content.match(/reviewRequiresNativeTiming:\s*(true|false)/);
+    const enabledMatch = content.match(/speech:\s*{[\s\S]*?enabled:\s*(true|false)/);
+    const providerMatch = content.match(/speech:\s*{[\s\S]*?provider:\s*['"](minimax|elevenlabs)['"]/);
+    const reviewMatch = content.match(/speech:\s*{[\s\S]*?reviewRequiresNativeTiming:\s*(true|false)/);
     return {
+      enabled: enabledMatch?.[1] !== 'false',
       provider: (providerMatch?.[1] as SpeechProviderId | undefined) ?? null,
       hasDefaultVoice: /voice:\s*['"][^'"]+['"]/.test(content),
       reviewRequiresNativeTiming: reviewMatch?.[1] !== 'false',
     };
   } catch {
     return {
+      enabled: true,
       provider: null,
       hasDefaultVoice: false,
       reviewRequiresNativeTiming: true,
@@ -1515,6 +1854,16 @@ function readLocalArsConfig(rootDir: string): LocalArsConfig | null {
     }
 
     const record = raw as Record<string, unknown>;
+    const publish = (
+      record.publish && typeof record.publish === 'object' && !Array.isArray(record.publish)
+        ? record.publish
+        : {}
+    ) as Record<string, unknown>;
+    const youtube = (
+      publish.youtube && typeof publish.youtube === 'object' && !Array.isArray(publish.youtube)
+        ? publish.youtube
+        : {}
+    ) as Record<string, unknown>;
     const project = (
       record.project && typeof record.project === 'object' && !Array.isArray(record.project)
         ? record.project
@@ -1522,6 +1871,11 @@ function readLocalArsConfig(rootDir: string): LocalArsConfig | null {
     ) as Record<string, unknown>;
 
     return {
+      publish: {
+        youtube: {
+          enabled: youtube.enabled === true,
+        },
+      },
       project: {
         activeSeries: typeof project.activeSeries === 'string' ? project.activeSeries : undefined,
       },
@@ -1852,6 +2206,11 @@ function getLineNumber(source: string, index: number): number {
 }
 
 type LocalArsConfig = {
+  publish: {
+    youtube: {
+      enabled: boolean;
+    };
+  };
   project: {
     activeSeries?: string;
   };
