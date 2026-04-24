@@ -642,13 +642,18 @@ function stageToStep(stage) {
 
 function onboardStageToStep(stage) {
   if (stage === 'onboard-walkthrough') return 0;
-  if (stage === 'onboard-customize') return 1;
-  if (stage === 'onboard-verify') return 2;
+  if (stage === 'onboard-bootstrap') return 1;
+  if (stage === 'onboard-customize') return 2;
+  if (stage === 'onboard-verify') return 3;
   return -1;
 }
 
+export function isOnboardStage(stage) {
+  return typeof stage === 'string' && stage.startsWith('onboard-');
+}
+
 function renderOnboardPipeline(currentStep) {
-  const steps = ['walkthrough', 'customize', 'verify'];
+  const steps = ['walkthrough', 'bootstrap', 'customize', 'verify'];
   return steps.map((label, i) => {
     if (i < currentStep) return `${GREEN}${label}${RESET}`;
     if (i === currentStep) return `${CYAN}${BOLD}▶${label}${RESET}`;

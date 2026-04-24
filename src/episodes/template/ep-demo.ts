@@ -7,7 +7,7 @@ import { Episode } from "../../engine/shared/types";
 
 const onboardSession = {
   appTitle: "ARS#1.0.0 template/ep-demo",
-  workflow: "walkthrough › customize › verify",
+  workflow: "walkthrough › bootstrap › customize › verify",
   version: "Claude Code v2.1.112",
   model: "Sonnet 4.6 with high effort · Claude Max",
   workspace: "~/cowork-workspace/template-series",
@@ -54,11 +54,54 @@ const walkthroughScene = [
   },
   {
     type: "success",
-    text: "walkthrough 完成：demo 看完，流程往 customize 前進。",
+    text: "walkthrough 完成：demo 看完，流程往 bootstrap 前進。",
   },
   {
     type: "assistant",
-    text: "下一步：進 Phase 2 customize，先選 from template / from scratch / skip for now。",
+    text: "下一步：進 Phase 2 bootstrap，先把 series name、TTS、YouTube 這些確定性設定搞定。",
+  },
+] as const;
+
+const bootstrapScene = [
+  { type: "section", text: "bootstrap" },
+  {
+    type: "assistant",
+    text: "bootstrap 只處理確定性設定，不需要思考品牌方向。三個問題搞定。",
+  },
+  {
+    type: "prompt",
+    text: "series name: my-channel",
+  },
+  {
+    type: "tool",
+    text: "Run npx ars init my-channel --skip-series -y",
+    meta: "repo init",
+    details: [
+      { text: "sync engine files + patch CLAUDE.md + install skills", tone: "positive" },
+      { text: "skip template copy (customize phase handles this)", tone: "muted" },
+    ],
+  },
+  {
+    type: "prompt",
+    text: "TTS: minimax, YouTube: disabled",
+  },
+  {
+    type: "tool",
+    text: "Update(.ars/config.json)",
+    meta: "bootstrap output",
+    details: [
+      { text: "tts.provider = minimax", tone: "positive" },
+      { text: "publish.youtube.enabled = false", tone: "muted" },
+      { text: "project.activeSeries = my-channel", tone: "positive" },
+    ],
+  },
+  {
+    type: "success",
+    text: "bootstrap 完成：repo 初始化 + config 寫入，接下來進 customize。",
+  },
+  {
+    type: "assistant",
+    text: "下一步：進 Phase 3 customize，選 from template 或 from scratch，再決定品牌細節。",
   },
 ] as const;
 
@@ -355,6 +398,19 @@ export const epDemo: Episode = {
         lines: walkthroughScene,
       },
       narration: "walkthrough 的目標很單純，就是先把 demo 開起來，讓使用者快速理解 ARS 的整體畫面和節奏。看完之後，流程才會往 customize 推進。",
+      durationInSeconds: 8,
+    },
+    {
+      id: "bootstrap",
+      contentType: "claude-code",
+      layoutMode: "card-only",
+      background: "minimal",
+      data: {
+        tag: "BOOTSTRAP",
+        session: onboardSession,
+        lines: bootstrapScene,
+      },
+      narration: "bootstrap 只問三件事：series name、TTS provider、YouTube 要不要開。這些都是確定性的設定，不需要想品牌方向。",
       durationInSeconds: 8,
     },
     {

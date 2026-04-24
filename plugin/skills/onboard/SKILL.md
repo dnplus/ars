@@ -1,11 +1,11 @@
 ---
 name: ars:onboard
-description: Plugin-first ARS onboarding. Interview the user, then orchestrate repo init, theme generation, and branding defaults.
+description: Four-phase ARS onboarding — walkthrough, bootstrap, customize, verify.
 model: claude-sonnet-4-6
 effort: medium
 ---
 
-`/ars:onboard` follows a strict 3-phase onboarding flow.
+`/ars:onboard` follows a strict 4-phase onboarding flow.
 
 At each phase transition, advance the workstate stage using:
 
@@ -33,7 +33,7 @@ For every phase:
 Keep the tone concrete and operational. Prefer:
 
 - `You are now in Phase 1 walkthrough: this is a demo-only pass to understand the workflow. It will not modify your series files.`
-- `Once this phase is done, the next step is customize: keep the template, start from scratch, or skip for now.`
+- `Once this phase is done, the next step is bootstrap: set up the deterministic config (series name, TTS, YouTube).`
 - `The goal of verify is to make sure this repo is actually ready for the first real episode.`
 
 Avoid:
@@ -49,11 +49,11 @@ Avoid:
 Read `.ars/config.json` and check `project.onboardedAt`.
 
 - If `onboardedAt` is **not set** → first onboard run, proceed normally from Phase 1
-- If `onboardedAt` **is set** → onboard already completed; **skip Phase 1 entirely**, write workstate `onboard-customize`, enter Phase 2 confirmation mode, then continue to Phase 3 normally
+- If `onboardedAt` **is set** → onboard already completed; **skip Phase 1 and Phase 2 entirely**, write workstate `onboard-customize`, enter Phase 3 confirmation mode, then continue to Phase 4 normally
 
 ## Phase 1 — walkthrough
 
-**Skip this entire phase if re-run detection determined the series is already customized. Go directly to Phase 2 confirmation mode.**
+**Skip this entire phase if re-run detection determined the series is already customized. Go directly to Phase 3 confirmation mode.**
 
 Stage name: `onboard-walkthrough`
 
@@ -71,43 +71,56 @@ npx ars studio ep-demo --phase review
    - they are currently in **Phase 1 walkthrough**
    - this phase is **demo only** and will not modify their files
    - Watch the output for the localhost URL (e.g. `http://localhost:5174`) and share it
-   - Keep the Studio tab open; onboard should reuse this same Studio session through customize and verify
-   - Browse the demo, then say **`next`** to continue to Phase 2, or **`skip`** to skip the walkthrough
+   - Keep the Studio tab open; onboard should reuse this same Studio session through bootstrap, customize and verify
+   - Browse the demo, then say **`next`** to continue to Phase 2 bootstrap, or **`skip`** to skip the walkthrough
 
-## Phase 2 — customize
+## Phase 2 — bootstrap
+
+Stage name: `onboard-bootstrap`
+
+Bootstrap handles **deterministic settings only** — things that don't require creative input.
+
+1. Write workstate with stage `onboard-bootstrap`
+2. Tell the user: this phase collects basic config (series name, TTS provider, YouTube). No creative decisions yet.
+3. If `.ars/config.json` is missing or has no `project.activeSeries`, ask for a **series name** (channel slug, lowercase, no spaces), then run:
+
+```bash
+npx ars init <series> --skip-series -y
+```
+
+   This initializes the repo (sync engine, patch CLAUDE.md, install skills) without copying the template series.
+
+4. Confirm **TTS provider** (minimax / none). If minimax, remind about `.env` keys (`MINIMAX_API_KEY`, `MINIMAX_GROUP_ID`).
+5. Confirm **YouTube publishing** (enabled / disabled). If enabled, remind about credential files.
+6. Write confirmed values to `.ars/config.json` using direct file edit (the config schema is documented in `cli/lib/ars-config.ts`).
+
+**Do NOT copy the template series here. Do NOT ask about theme, tone, or VTuber. Those belong in Phase 3.**
+
+End with handoff: bootstrap is done, config is written, next step is customize where the series content gets created.
+
+## Phase 3 — customize
 
 Stage name: `onboard-customize`
 
 1. Write workstate with stage `onboard-customize`
-2. Check `.ars/config.json` for `project.activeSeries`. If **not set**, the user hasn't run `npx ars init` yet — ask for a series name and run:
+2. Ask the user to pick one of three modes:
 
-```bash
-npx ars init <series>
-```
-
-   This will interactively prompt for YouTube publishing, layout, and channel name. TTS now lives in `series-config.ts` under `SERIES_CONFIG.speech`; it starts disabled by default, and customize owns whether/when to enable it.
-
-   If `project.activeSeries` is already set, skip directly to step 3.
-
-3. Ask the user to pick one of three modes:
-
-   - **from template** — keep the demo content (`ep-demo.ts`, series-scoped cards) as reference, run a brand interview to update theme/vtuber/STYLING
-   - **from scratch** — delete the demo content, keep a bare series skeleton, run a brand interview to update theme/vtuber/STYLING
-   - **skip for now** — do nothing, come back later with `/ars:onboard`
+   - **from template** — copy the template series as a starting point, then run a brand interview
+   - **from scratch** — create a minimal series skeleton (series-config.ts + empty episode dir) without template content
+   - **do it later** — copy the template series as-is (so the repo is immediately usable), skip the brand interview, come back later
 
 When presenting the three modes, explain the outcome of each one in one sentence:
 
-- `from template` keeps the demo content as working reference, then writes the new series identity on top
-- `from scratch` removes the demo episode and cards but keeps a clean series skeleton
-- `skip for now` leaves the repo unchanged and lets them come back later
+- `from template` copies the demo content as a working reference, then writes the new series identity on top
+- `from scratch` creates a clean series skeleton without demo episodes or cards
+- `do it later` copies the template as-is so you can start immediately, and you can customize later
 
 Before the interview begins, align Studio with the current series:
 
 - If `project.activeSeries` is already set, tell the user to switch the still-open Studio tab to `?series=<activeSeries>&ep=ep-demo&phase=review` and keep it open during customize.
-- If Phase 2 had to run `npx ars init <series>`, tell the user to refresh the existing Studio tab onto the new series URL once init finishes.
 - During customize, treat Studio as the live preview surface. Ask the user to leave comments/feedback there if they want visual tweaks while branding changes are being applied.
 
-Once the Phase 2 preview target is ready, start a Studio intent monitor in the background, using the same event-driven pattern as `/ars:review`:
+Once the Phase 3 preview target is ready, start a Studio intent monitor in the background, using the same event-driven pattern as `/ars:review`:
 
 ```bash
 node -e "
@@ -134,47 +147,56 @@ Each stdout line is a notification. On every notification:
 Monitor rules:
 
 - The monitor is proactive. Do not wait for the user to mention Studio comments in chat; drain pending intents whenever the watcher fires.
-- Before leaving Phase 2 customize, run `npx ars studio intent list --pending --json` one more time and clear the queue so verify does not inherit stale preview comments.
-- Keep the same monitor alive through Phase 3 verify unless the stage guard tells it to stop.
+- Before leaving Phase 3 customize, run `npx ars studio intent list --pending --json` one more time and clear the queue so verify does not inherit stale preview comments.
+- Keep the same monitor alive through Phase 4 verify unless the stage guard tells it to stop.
 
 ### from template
-- run a brand interview — see `references/branding-guide.md` for the full question set (visual identity AND series identity — audience, mission, tone, length, CTA). Do NOT skip the series identity questions; they drive SERIES_GUIDE.md.
-- update `series-config.ts` — see `references/series-structure.md` for the full file structure and key fields
-- write `SERIES_GUIDE.md` at repo root — use `references/series-guide-template.md` as the template. **Every field must map to an interview answer, an existing config value, or a documented minimal default.** If the user said "reuse defaults" for series identity questions, use the minimal defaults verbatim and announce which defaults were applied. Never infer audience/mission/takeaway from the channel name.
-- once the edits are in place, tell the user to refresh the still-open Studio tab and review the updated preview; if they leave Studio comments, address them before moving to Phase 3
-- mention the advanced extension points when relevant:
-  - `shell.layout` can stay on built-in `'streaming'` / `'shorts'`, or advanced users can swap in a series custom layout component
-  - series-scoped cards under `src/episodes/<series>/cards/` can add new card types or override built-in engine cards by reusing the same `type`
-- add optional custom skills if the user wants them
+
+1. Run `npx ars init <series>` (without `--skip-series`) to copy the template series
+2. Run a brand interview — see `references/branding-guide.md` for the full question set (visual identity AND series identity — audience, mission, tone, length, CTA). Do NOT skip the series identity questions; they drive SERIES_GUIDE.md.
+3. Update `series-config.ts` — see `references/series-structure.md` for the full file structure and key fields
+4. Write `SERIES_GUIDE.md` at repo root — use `references/series-guide-template.md` as the template. **Every field must map to an interview answer, an existing config value, or a documented minimal default.** If the user said "reuse defaults" for series identity questions, use the minimal defaults verbatim and announce which defaults were applied. Never infer audience/mission/takeaway from the channel name.
+5. Once the edits are in place, tell the user to refresh the still-open Studio tab and review the updated preview; if they leave Studio comments, address them before moving to Phase 4
+6. Mention the advanced extension points when relevant:
+   - `shell.layout` can stay on built-in `'streaming'` / `'shorts'`, or advanced users can swap in a series custom layout component
+   - series-scoped cards under `src/episodes/<series>/cards/` can add new card types or override built-in engine cards by reusing the same `type`
+7. Add optional custom skills if the user wants them
 
 At the end of this path, summarize the concrete outputs:
 
 - what changed in `series-config.ts`
 - whether VTuber / theme / fonts were updated
 - that `SERIES_GUIDE.md` now exists and will be read by later skills
-- that the next step is Phase 3 verify
+- that the next step is Phase 4 verify
 
 ### from scratch
-- delete demo content in `src/episodes/<series>/`:
-  - remove `ep-demo.ts`
-  - remove `cards/` (series-scoped card overrides, if any)
-- keep `series-config.ts` and `episode.template.ts`
-- run the same brand interview and write SERIES_GUIDE.md as in "from template"
-- after writing the new series defaults, tell the user the existing Studio tab may no longer have `ep-demo`; point them at the next valid preview target if needed instead of leaving them on a stale URL
 
-At the end of this path, explicitly say that the demo content was removed, the series skeleton remains, and the next step is Phase 3 verify.
+1. Create minimal series directory at `src/episodes/<series>/`:
+   - Create `series-config.ts` with default theme and episode defaults (use `references/series-structure.md` as reference)
+   - Create `episode.template.ts` (the boilerplate for new episodes)
+   - Do NOT copy `ep-demo.ts` or `cards/`
+2. Create `public/episodes/<series>/shared/` directory
+3. Set active series in `.ars/config.json`
+4. Run the same brand interview and write SERIES_GUIDE.md as in "from template"
+5. After writing the new series defaults, tell the user the existing Studio tab may no longer have `ep-demo`; point them at the next valid preview target if needed
 
-### skip for now
-- skip the interview
-- tell the user they can run `/ars:onboard` at any time to come back and customize
-- point them to these key files:
-  `series-config.ts` (brand + theme)
-  `SERIES_GUIDE.md` (series background knowledge, tone, and structure defaults)
-  `public/episodes/<series>/shared/vtuber/` (VTuber images)
+At the end of this path, explicitly say that a clean series skeleton was created (no demo content), and the next step is Phase 4 verify.
+
+### do it later
+
+1. Run `npx ars init <series>` (without `--skip-series`) to copy the full template series — this ensures the repo is immediately usable
+2. Skip the brand interview entirely
+3. Tell the user:
+   - 「之後跑 `/ars:onboard` 可以隨時回來客製化」
+   - 「或直接告訴我你想改什麼（頻道名、配色、風格），我就知道要改哪些檔案」
+4. Point them to the key files:
+   - `series-config.ts` (brand + theme)
+   - `SERIES_GUIDE.md` (series background knowledge, tone, and structure defaults)
+   - `public/episodes/<series>/shared/vtuber/` (VTuber images)
 
 Frame this as a deferred customize state, not a completed customize state.
 
-## Phase 2 confirmation mode
+## Phase 3 confirmation mode
 
 Use this mode only when re-run detection shows `project.onboardedAt` is already set.
 
@@ -184,11 +206,11 @@ Instead:
 - summarize the current customized state (channel name, primary color, layout, VTuber status, etc.)
 - ask whether they want to update branding now or leave it as-is
 - if they want changes, run the brand interview from `references/branding-guide.md` against the existing files (never delete `ep-demo.ts` / `cards/` in this mode)
-- if they do not want changes, continue directly to Phase 3
+- if they do not want changes, continue directly to Phase 4
 
 Make the summary concrete. Mention current artifacts and settings, not generic phrases like `already customized`.
 
-## Phase 3 — verify
+## Phase 4 — verify
 
 Stage name: `onboard-verify`
 
@@ -235,8 +257,7 @@ If all checks pass, close with a completion handoff similar to:
 ## Phase boundaries
 
 Keep the phases separate:
-- Phase 1 is demo walkthrough only
-- Phase 2 is series creation and branding customization
-- Phase 3 is verification only
-
-Bootstrap (TTS, YouTube, layout, channel name) is handled by `npx ars init` — do not re-ask these in onboard.
+- Phase 1 is demo walkthrough only — no file modifications
+- Phase 2 is deterministic config only — series name, TTS, YouTube
+- Phase 3 is series creation and branding customization
+- Phase 4 is verification only
