@@ -21,6 +21,12 @@ export const ep001: Episode = {
 
 ## Common properties (all steps)
 
+### Pacing contract
+
+For normal narrated long-form episodes, one `ep.ts` step is usually a 30-60 second beat, with about 45 seconds as the default mental model. This is an estimation range, not a rigid rule. If a plan section needs two or three different jobs to land, split it into multiple steps instead of writing one overloaded narration block or pretending a long `durationInSeconds` creates content depth.
+
+`durationInSeconds` is a placeholder for render timing. The real video duration follows generated audio/subtitles when available, so content depth must come from actual narration and beat count.
+
 | Property | Required | Description |
 |----------|----------|-------------|
 | `id` | ✅ | Unique step ID — used for audio filenames, must be stable |

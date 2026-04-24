@@ -38,7 +38,7 @@ Label-prefixed lines, one line per field (wrap continuations with indent):
 - CTA           <action, or "Per SERIES_GUIDE">
 - Hero visual   <one-phrase visual promise>
 - Source        <where the content comes from>
-- Target length <number + one-clause reason, e.g. "5 分鐘，新工具評測 + 場景判斷，6-7 steps">
+- Target length <number + one-clause reason, e.g. "5 分鐘，新工具評測 + 場景判斷，約 10 narrated beats">
 - Constraints   <episode-specific limits: sensitive-topic, legal, tone>
 ```
 
@@ -46,7 +46,7 @@ Do not repeat `Target length` per phase.
 
 ## `## Structure`
 
-One row per step. Table format — Studio renders it cleanly and the scan-speed beats vertical blocks:
+One row per **review section**, not necessarily one final `ep.ts` step. Table format — Studio renders it cleanly and the scan-speed beats vertical blocks:
 
 ```
 | #  | Section       | Goal                              | Visual                       | Card              | Notes                    |
@@ -56,16 +56,21 @@ One row per step. Table format — Studio renders it cleanly and the scan-speed 
 ```
 
 Column rules:
-- `#` — step index, starting at 1
+- `#` — section index, starting at 1
 - `Section` — short label (`Hook`, `Problem`, `Demo`, `CTA`, …)
 - `Goal` — one sentence, what this step communicates
 - `Visual` — one phrase, the visual hook. Think visual first, then pick a card
 - `Card` — card name only. Must come from `npx ars card list`, OR be prefixed `(NEW)` with a matching entry in `## New card`
-- `Notes` — one phrase of direction or constraint. No narration, no timings
+- `Notes` — one phrase of direction or constraint. No narration, no per-beat timings
 
 If a cell needs more than one sentence, either trim it or drop that row out of the table and write it as a numbered block under the table — don't pack paragraphs into cells.
 
-Structure step count roughly tracks target length: short 3-5 steps, medium 5-8, long 8-16.
+Structure row count roughly tracks review complexity, not final video length:
+- short 1-3 min episode → 3-5 review sections
+- medium 3-6 min episode → 5-8 review sections
+- long 6-30 min episode → 8-16 review sections
+
+`/ars:build` owns the final step expansion. A long review section may become 2-4 narrated `ep.ts` steps so the final video still lands near the Target length. Do not inflate `plan.md` just to encode every estimated narration beat.
 
 ## `## New card`
 
@@ -144,7 +149,7 @@ Tables pack rows tightly, so budgets are tighter than the block-format era. Shor
 ## Never include
 
 - Verbatim narration or opening lines ("第一句話必須是『…』")
-- Per-step second counts ("25 秒")
+- Per-beat second counts ("25 秒")
 - Full sign-off / outro copy — write "Sign-off per SERIES_GUIDE"
 - Anything already in `SERIES_GUIDE.md`
 - Paragraphs in `Goal` / `Visual` / `Notes` cells — one sentence max per cell

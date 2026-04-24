@@ -11,8 +11,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import type { Episode } from '../shared/types';
 import { ReviewView } from './views/ReviewView';
 import { PlanView } from './views/PlanView';
-import { BuildView } from './views/BuildView';
 import { SlideView } from './views/SlideView';
+import { BuildOverlay } from './components/BuildOverlay';
 
 export type StudioPhase = 'plan' | 'build' | 'review' | 'slide';
 

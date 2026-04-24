@@ -149,12 +149,12 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({
         data-annotatable="subtitle"
         data-annotatable-label="字幕"
         style={{
-          padding: "16px 32px",
-          borderRadius: 12,
+          padding: "10px 20px",
+          borderRadius: 10,
           color: "white",
           fontWeight: 600,
           textAlign: "center",
-          lineHeight: 1.4,
+          lineHeight: 1.32,
           boxSizing: "border-box",
           wordBreak: "keep-all",
           // Studio review mode needs clicks on subtitles; render output ignores

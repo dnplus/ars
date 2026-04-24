@@ -22,7 +22,7 @@ export const DEFAULT_VTUBER_CONFIG = {
 export const DEFAULT_SUBTITLE_CONFIG = {
   enabled: true,
   style: 'bottom-center' as const,
-  fontSize: 34,
+  fontSize: 46,
   // background 不在此定義 — 各 layout 會 fallback 到 theme.colors.surfaceOverlay
   // 讓各 series 自動跟隨自己的主題色系
 } as const;

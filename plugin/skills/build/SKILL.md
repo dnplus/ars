@@ -81,6 +81,28 @@ After all custom cards are built (or if none were needed):
 
 - Write the episode implementation into `src/episodes/<active-series>/<epId>.ts`.
 - Keep continuity fields aligned with the plan.
+- Treat `## Structure` rows as review sections, not a one-to-one final step list. Expand each section into as many concrete `ep.ts` steps as needed for a natural video.
+
+### Build density guidance
+
+The build should preserve the approved target length and content depth. Do not compress a long plan into one narrated step per Structure row.
+
+- Parse `## Topic` → `Target length`. If it names a concrete target such as `25 分鐘`, use that as a sizing signal for the script.
+- Use `SERIES_GUIDE.md` pacing rules for step size. For normal narrated long-form content, estimate **30-60 seconds per narrated step**, with about **45 seconds** as the default mental model. This is sizing guidance, not a rigid split rule. Short visual punches can be shorter; dense explanations can run longer when the narration stays natural, but split them if multiple ideas are competing inside one step.
+- Convert target length to a rough beat budget before writing:
+  - 3 min → roughly 4-6 narrated beats
+  - 6 min → roughly 8-12 narrated beats
+  - 10 min → roughly 13-20 narrated beats
+  - 20 min → roughly 27-40 narrated beats
+  - 25 min → roughly 33-50 narrated beats
+- A Structure row may become 1 step, 2-4 steps, or a short mini-sequence. Do not split mechanically; split when the viewer needs a new visual anchor or the narration changes job. Examples:
+  - "技巧1 Git 由來" → file-name chaos → Git as local history → GitHub as shared workspace
+  - "技巧3 Session + Diff" → why the sidebar matters → session grouping → diff indicator → what the user reviews
+  - "技巧5 Auto-fix 實戰" → intentionally failed CI → Claude reads the log → code fix → retry → pass / merge
+- For each expanded step, write real narration. Do not replace content depth with a longer `durationInSeconds`; duration is only a timing placeholder and subtitles/audio will override it later.
+- Keep card content lean while narration carries the explanation. Expansion should add beats and examples, not text walls on screen.
+- If the plan's target length and Structure feel contradictory (for example `25 分鐘` but only 5 tiny rows and no source depth), call that out and ask whether the target should shrink or the plan should expand.
+- Before Completion, run `npx ars episode stats <epId>` and compare declared/estimated duration against the target as a sanity check. If the output is much shorter than the plan implied, mention that explicitly and either expand the script or ask the user whether the shorter cut is intentional. Validation passing only means the file is structurally valid; it does not mean the episode has the intended depth.
 
 ## Phase 2.5 — Asset backfill (do this before Completion)
 
@@ -102,6 +124,7 @@ The plan lists visual references but rarely downloads them. Before declaring bui
 
 - Set workstate to `validating:<epId>` before running validate.
 - Run `npx ars episode validate <epId>` after writing `ep.ts`. Fix any validation errors before marking build done.
+- Run `npx ars episode stats <epId>` and apply the Build density guidance above. Use it as a script-depth sanity check, not a mechanical gate.
 - **Scan `ep.ts` for any `PLACEHOLDER_` src values.** Collect them into a `placeholders` list for `last-build.json`.
 - Write `.ars/episodes/<epId>/last-build.json` with the validation + asset result so Studio Build view and `/ars:review` have machine-readable state:
   ```json

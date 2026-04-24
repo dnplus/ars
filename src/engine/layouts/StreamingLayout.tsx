@@ -221,7 +221,7 @@ export const StreamingLayout: React.FC<StreamingLayoutProps> = ({
           }}
           style={{
             maxWidth: "90%",
-            fontSize: config.subtitle.fontSize || 43,
+            fontSize: config.subtitle.fontSize || 46,
             fontFamily: theme.fonts.main,
             background: config.subtitle.background || `${theme.colors.surfaceDark}88`,
           }}

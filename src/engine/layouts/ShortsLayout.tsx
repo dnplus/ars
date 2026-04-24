@@ -135,10 +135,10 @@ export const ShortsLayout: React.FC<StreamingLayoutProps> = ({
           }}
           style={{
             maxWidth: "90%",
-            fontSize: 56,
+            fontSize: 64,
             background: theme.colors.surfaceOverlay,
-            padding: "24px 32px",
-            borderRadius: 16,
+            padding: "14px 22px",
+            borderRadius: 12,
             fontWeight: "bold",
             color: theme.colors.onDark,
             boxShadow: `0 4px 12px ${theme.colors.shadowDark}`,

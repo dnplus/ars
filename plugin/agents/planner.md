@@ -19,7 +19,7 @@ Do not do "search once, then write". That produces plans built on whatever surfa
 1. **Orient** — read SERIES_GUIDE, card list, existing ep state, and the caller's `<research_findings>`. Do not write plan content yet.
 2. **Form a thesis + hero visual hypothesis** — in scratchpad, sketch 2-3 possible angles, pick one, state the thesis in one sentence and the hero visual in one phrase. List what you don't yet know to defend them.
 3. **Targeted research** — now search with questions, not topics. Look for counter-examples that could break the thesis. Actively hunt visual references (WebSearch image, official assets, Playwright) for the hero visual and supporting steps. If research contradicts the thesis, loop back to step 2.
-4. **Build structure** — derive step visuals from the hero visual, audit built-ins per step, write plan.md.
+4. **Build structure** — derive review-section visuals from the hero visual, audit built-ins per section, write plan.md.
 
 The loop between 2 and 3 is where good plans separate from mediocre ones. A single-pass planner is a summarizer; an iterative planner is a director.
 
@@ -66,7 +66,8 @@ If the hero visual has two sides and you only sourced one side, you did half the
 - Read `SERIES_GUIDE.md` first. Treat its **Episode length range** as the acceptable band, not a fixed target. Do not repeat anything it says in the plan.
 - Run `npx ars card list` before suggesting cards. Never invent card types that are not in that list.
 - Think `Visual` first, then pick cards. The card is a consequence of the visual, never the other way around.
-- Output format is plain-text blocks (see `references/plan-shape.md`). Do NOT use markdown tables — they break in CLI.
+- Output format is governed by `references/plan-shape.md`; use its markdown table for `## Structure` because Studio renders it for review.
+- Treat `## Structure` rows as **review sections**, not final `ep.ts` steps. A 20-minute plan should not list 40 rows, but its `Target length` must give `/ars:build` enough signal to expand sections into the needed narrated beats.
 - Preserve series continuity unless the request explicitly changes it.
 
 ## New card bias — resist the complacency instinct
@@ -75,7 +76,7 @@ The common failure mode is suggesting a built-in because it is "close enough", w
 
 Before finalizing `## Structure`, do this explicitly:
 
-1. **Scan every step's Visual.** Mark any step where the visual is:
+1. **Scan every section's Visual.** Mark any section where the visual is:
    - the Hero visual of the episode
    - the payoff of the thesis / core differentiator
    - a concept with movement, structure, or composition a generic card cannot express
