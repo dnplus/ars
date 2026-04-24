@@ -75,6 +75,13 @@ type StudioIntentResponse = {
   error?: string;
 };
 
+type AttachmentState = {
+  dataUrl: string;
+  name: string;
+};
+
+const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
+
 /**
  * Walk up from the cursor hit element, returning the nearest ancestor marked
  * with [data-annotatable]. Returns null when nothing annotatable is under the
@@ -136,6 +143,7 @@ export const SelectMode: React.FC<SelectModeProps> = ({
   const [hover, setHover] = useState<PickedElement | null>(null);
   const [frozen, setFrozen] = useState<PickedElement | null>(null);
   const [note, setNote] = useState('');
+  const [attachment, setAttachment] = useState<AttachmentState | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -146,12 +154,14 @@ export const SelectMode: React.FC<SelectModeProps> = ({
       setHover(null);
       setFrozen(null);
       setNote('');
+      setAttachment(null);
       setError(null);
     }
   }, [active]);
   useEffect(() => {
     setFrozen(null);
     setNote('');
+    setAttachment(null);
   }, [stepId]);
 
   // Esc to exit.
@@ -243,6 +253,7 @@ export const SelectMode: React.FC<SelectModeProps> = ({
           kind,
           severity: 'medium',
           message: fullMessage,
+          attachments: attachment ? { screenshotDataUrl: attachment.dataUrl } : undefined,
         }),
       });
       const payload = (await res.json()) as StudioIntentResponse;
@@ -250,13 +261,53 @@ export const SelectMode: React.FC<SelectModeProps> = ({
       window.dispatchEvent(new CustomEvent(INTENT_SUBMITTED_EVENT));
       setFrozen(null);
       setNote('');
+      setAttachment(null);
       onExit();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setSubmitting(false);
     }
-  }, [frozen, note, source, series, epId, stepId, onExit]);
+  }, [frozen, note, attachment, source, series, epId, stepId, onExit]);
+
+  const handlePaste = useCallback((event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = Array.from(event.clipboardData.items);
+    const imageItem = items.find((item) => item.type.startsWith('image/'));
+    if (!imageItem) {
+      return;
+    }
+
+    const file = imageItem.getAsFile();
+    if (!file) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (file.size > MAX_ATTACHMENT_BYTES) {
+      setError('貼上的圖片太大，請控制在 8MB 內。');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = typeof reader.result === 'string' ? reader.result : '';
+      if (!dataUrl) {
+        setError('無法讀取貼上的圖片。');
+        return;
+      }
+
+      setAttachment({
+        dataUrl,
+        name: file.name || `pasted-${Date.now()}.png`,
+      });
+      setError(null);
+    };
+    reader.onerror = () => {
+      setError('無法讀取貼上的圖片。');
+    };
+    reader.readAsDataURL(file);
+  }, []);
 
   if (!active) return null;
 
@@ -301,6 +352,7 @@ export const SelectMode: React.FC<SelectModeProps> = ({
           onClick={(e) => {
             setFrozen(null);
             setNote('');
+            setAttachment(null);
             if (!canvasEl) return;
             const picked = pickAnnotatable(e.clientX, e.clientY, canvasEl);
             // Only re-pick if the click landed on a *different* annotatable;
@@ -361,13 +413,32 @@ export const SelectMode: React.FC<SelectModeProps> = ({
             autoFocus
             value={note}
             onChange={(e) => setNote(e.target.value)}
+            onPaste={handlePaste}
             onKeyDown={(e) => {
               e.stopPropagation();
               if (e.key === 'Escape') setFrozen(null);
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void commit();
             }}
-            placeholder={`對「${frozen.label}」留言…（⌘↵ 送出）`}
+            placeholder={`對「${frozen.label}」留言… 可直接貼圖（⌘↵ 送出）`}
           />
+          {attachment && (
+            <div className="studio-select-attachment">
+              {/* Native <img> is correct here because this preview lives in the Studio DOM overlay, not a Remotion composition. */}
+              {/* eslint-disable-next-line @remotion/warn-native-media-tag */}
+              <img src={attachment.dataUrl} alt={attachment.name} />
+              <div className="studio-select-attachment-meta">
+                <strong>已附圖</strong>
+                <span>{attachment.name}</span>
+              </div>
+              <button
+                type="button"
+                className="studio-pin-popover-btn"
+                onClick={() => setAttachment(null)}
+              >
+                移除
+              </button>
+            </div>
+          )}
           <div className="studio-pin-popover-row">
             <button
               type="button"

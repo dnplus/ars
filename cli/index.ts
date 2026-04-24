@@ -1,8 +1,17 @@
 #!/usr/bin/env tsx
-import 'dotenv/config';
+import dotenv from 'dotenv';
+import path from 'path';
 import { getRuntimePackageInfo } from './lib/runtime-package';
 import { launchCommand } from './commands/launch';
 import { postinstallCommand } from './commands/postinstall';
+
+// Prefer repo-local .env over inherited shell exports so freshly re-authorized
+// credentials are used consistently by follow-up publish/upload commands.
+dotenv.config({
+  path: path.join(process.cwd(), '.env'),
+  override: true,
+  quiet: true,
+});
 
 type CommandModule = { run: (args: string[]) => Promise<void> };
 
