@@ -162,6 +162,21 @@ const TRIGGER_RULES = [
   },
   {
     patterns: [
+      /\bars:research\b/,
+      /\bcompetitor.{0,15}(analysis|research)\b/,
+      /\bcompeting (videos|channels|content)\b/,
+      /\btopic research\b/,
+      /競品/,
+      /對手.*(做過|做了|拍過)/,
+      /同樣?主題.*別.*(頻道|人)/,
+      /市場研究/,
+      /主題.{0,8}(優化|調整方向)/,
+    ],
+    suggestion:
+      'ARS: Detected competitive / topic research intent. Use /ars:research <topic> to gather competitor coverage and angle suggestions before /ars:plan, or /ars:research --series for market context before /ars:reflect.',
+  },
+  {
+    patterns: [
       /\bars:publish-youtube\b/,
       /\bpublish youtube\b/,
       /\bprepare youtube\b/,

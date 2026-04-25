@@ -64,6 +64,16 @@ Not fine:
 
 Anything heavier belongs in the planner's scope. If the source is genuinely thin and the user's angle needs research, note that in the delegation prompt so the planner does the research.
 
+## Optional research handoff
+
+Before the interview, scan `.ars/research/` for files modified in the last 7 days whose slug clearly matches the user's topic (per-topic files are named `<YYYY-MM-DD>-<slug>.md` or `<YYYY-MM-DD>-<epId>-<slug>.md`).
+
+- **If a recent matching file exists**: read its `## Angle landscape` and `## Topic direction suggestions  (suggested, low confidence)` sections. Pass them verbatim — including the `(suggested, low confidence)` tag — into the delegation prompt as a `<research_findings>` block. Tell the planner to build on the angle landscape and treat the suggested direction as a hypothesis to confirm or reject, not a directive.
+- **If no matching file exists** and the topic is genuinely complex (single-sentence description doesn't capture it, the user has not paid attention to who else covered the topic): at the end of the interview, **suggest** the user run `/ars:research <topic>` first to get a competitive landscape. Frame it as optional. If they decline or want to push through, hand off to the planner without research findings — the flow continues normally.
+- **If no matching file exists** and the topic is well-bounded or the user has clear angle conviction: skip the suggestion. Don't add friction to a confident user.
+
+Do not run `/ars:research` automatically inside the interview — it is a separate skill the user explicitly invokes. Only **read** existing research files here.
+
 ## Delegation prompt contents
 
 When delegating to `ars:planner`, pass:

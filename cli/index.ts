@@ -28,6 +28,7 @@ const KNOWN_COMMANDS = new Set([
   'postinstall',
   'prepare',
   'publish',
+  'research',
   'review',
   'studio',
   'update',
@@ -65,6 +66,7 @@ Commands:
   upload <subcommand> [...]        Upload to YouTube
   workstate <subcommand> [...]     Read or write workstate stage
   analytics <subcommand> [...]     Query YouTube analytics (JSON snapshot for tooling)
+  research <subcommand> [...]      YouTube competitive search and recent-topic listing for /ars:research
 
 Root options:
   -h, --help                       Show root help
@@ -95,6 +97,8 @@ async function loadCommandModule(command: string): Promise<CommandModule> {
       return import('./commands/prepare');
     case 'publish':
       return import('./commands/publish');
+    case 'research':
+      return import('./commands/research');
     case 'review':
       return import('./commands/review');
     case 'studio':

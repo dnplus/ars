@@ -98,6 +98,8 @@ Inside Claude Code:
 
 `/ars:plan` is the official episode planning entrypoint. It writes topic and plan artifacts under `.ars/episodes/ep001/` and decides whether custom cards are needed.
 
+If the topic is crowded or you want a competitive landscape before planning, run `/ars:research <topic>` first. It writes a competitor map and direction suggestions under `.ars/research/`, which the plan interview reads automatically when present.
+
 ### 6. Build the episode
 
 Inside Claude Code:
@@ -149,17 +151,19 @@ ars prepare youtube ep001
 ars publish youtube ep001 --privacy private
 ```
 
-### 10. Optional analytics and reflection
+### 10. Optional analytics, research, and reflection
 
 Inside Claude Code:
 
 ```text
 /ars:analytics --days 28
+/ars:research --series
 /ars:reflect --days 28
 ```
 
 `/ars:analytics` uses the existing YouTube analytics helpers to produce a concise report under `.ars/analytics/`.
-`/ars:reflect` reads recent episodes plus analytics findings, writes a reflection memo under `.ars/reflect/`, and tightens `SERIES_GUIDE.md` when the evidence is strong enough.
+`/ars:research --series` scans recent episode topics for competitor coverage and writes a market-landscape file under `.ars/research/`.
+`/ars:reflect` reads recent episodes, analytics, research files, and Studio intents; writes a reflection memo under `.ars/reflect/`; and tightens `SERIES_GUIDE.md` when the evidence is strong enough.
 
 ## Core skills
 
@@ -170,10 +174,11 @@ Inside Claude Code:
 - `/ars:review`: launch the Studio review phase
 - `/ars:apply-review`: apply review intents back into the episode source
 - `/ars:polish`: late-stage tier B refinement
-- `/ars:reflect`: turn recent episodes + analytics into series-level guide updates
+- `/ars:reflect`: turn recent episodes + analytics + research into series-level guide updates
 - `/ars:prepare-youtube`: fill the prepare artifact with title, description, and tags
 - `/ars:publish-youtube`: confirmed YouTube publish flow
 - `/ars:analytics`: optional Claude Code report for recent YouTube channel performance
+- `/ars:research`: optional competitor scan for a topic (or recent series topics) — feeds plan and reflect
 
 ## CLI surface
 
@@ -191,6 +196,7 @@ Stable backend commands:
 - `ars publish package <epId>`
 - `ars publish youtube <epId>`
 - `ars upload youtube <epId>`
+- `ars research search <query>` / `ars research list-recent-topics`
 
 Notes:
 
