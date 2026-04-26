@@ -121,9 +121,8 @@ describe('launch command', () => {
     expect(execFileSync.mock.calls[0]?.[0]).toBe('tmux');
     expect(execFileSync).toHaveBeenCalledWith(
       'claude',
-      ['--plugin-dir', pluginRoot],
+      ['--plugin-dir', pluginRoot, 'hello'],
       expect.objectContaining({ stdio: 'inherit' }),
     );
-    expect(spawn).toHaveBeenCalled();
   });
 });

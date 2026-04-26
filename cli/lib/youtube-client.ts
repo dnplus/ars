@@ -331,6 +331,126 @@ export async function getVideoDetails(
   return results;
 }
 
+// ── Data API: Search ──
+
+export interface SearchVideosOptions {
+  maxResults?: number;
+  publishedAfter?: string;
+  regionCode?: string;
+  relevanceLanguage?: string;
+  order?: 'relevance' | 'date' | 'viewCount' | 'rating';
+}
+
+export interface SearchVideoResult {
+  videoId: string;
+  channelId: string;
+  channelTitle: string;
+  title: string;
+  description: string;
+  publishedAt: string;
+  thumbnailUrl: string;
+  duration: string;
+  viewCount: number;
+  likeCount: number;
+  commentCount: number;
+}
+
+export async function searchVideos(
+  creds: YouTubeCredentials,
+  query: string,
+  options: SearchVideosOptions = {},
+  fresh = false,
+): Promise<SearchVideoResult[]> {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+
+  const maxResults = Math.min(Math.max(options.maxResults ?? 10, 1), 50);
+  const ck = cacheKey('search', {
+    q: trimmed,
+    maxResults,
+    publishedAfter: options.publishedAfter,
+    regionCode: options.regionCode,
+    relevanceLanguage: options.relevanceLanguage,
+    order: options.order ?? 'relevance',
+  });
+
+  if (!fresh) {
+    const cached = readCache<SearchVideoResult[]>(ck);
+    if (cached) return cached;
+  }
+
+  const token = await getAccessToken(creds);
+  const url = new URL(`${DATA_API_BASE}/search`);
+  url.searchParams.set('part', 'snippet');
+  url.searchParams.set('type', 'video');
+  url.searchParams.set('q', trimmed);
+  url.searchParams.set('maxResults', String(maxResults));
+  url.searchParams.set('order', options.order ?? 'relevance');
+  if (options.publishedAfter) url.searchParams.set('publishedAfter', options.publishedAfter);
+  if (options.regionCode) url.searchParams.set('regionCode', options.regionCode);
+  if (options.relevanceLanguage) url.searchParams.set('relevanceLanguage', options.relevanceLanguage);
+
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    const errBody = await res.text();
+    throw new Error(`Search API error (${res.status}): ${errBody}`);
+  }
+
+  const data = (await res.json()) as {
+    items?: Array<{
+      id: { videoId: string };
+      snippet: {
+        title: string;
+        description: string;
+        publishedAt: string;
+        channelId: string;
+        channelTitle: string;
+        thumbnails?: { medium?: { url: string }; high?: { url: string } };
+      };
+    }>;
+  };
+
+  const hits = data.items ?? [];
+  const videoIds = hits.map((item) => item.id.videoId).filter(Boolean);
+
+  if (videoIds.length === 0) {
+    writeCache(ck, []);
+    return [];
+  }
+
+  const details = await getVideoDetails(creds, videoIds, fresh);
+  const detailById = new Map(details.map((video) => [video.videoId, video]));
+
+  const results: SearchVideoResult[] = hits
+    .map((item) => {
+      const detail = detailById.get(item.id.videoId);
+      return {
+        videoId: item.id.videoId,
+        channelId: item.snippet.channelId,
+        channelTitle: item.snippet.channelTitle,
+        title: item.snippet.title,
+        description: item.snippet.description,
+        publishedAt: item.snippet.publishedAt,
+        thumbnailUrl:
+          item.snippet.thumbnails?.high?.url ??
+          item.snippet.thumbnails?.medium?.url ??
+          detail?.thumbnailUrl ??
+          '',
+        duration: detail?.duration ?? '',
+        viewCount: detail?.viewCount ?? 0,
+        likeCount: detail?.likeCount ?? 0,
+        commentCount: detail?.commentCount ?? 0,
+      };
+    })
+    .filter((row) => row.videoId);
+
+  writeCache(ck, results);
+  return results;
+}
+
 // ── Data API: Channel Info ──
 
 export async function getChannelInfo(

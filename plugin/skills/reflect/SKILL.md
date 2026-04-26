@@ -21,6 +21,7 @@ Behavior:
 - Prefer a recent analytics report from `.ars/analytics/`. If none exists and the repo has YouTube analytics configured, run `/ars:analytics` first using the requested `--days` window (default 28). If analytics is unavailable, continue with an episode-only reflection and say so clearly.
 - Inspect recent processed Studio intents in `.ars/studio-intents/` as production-feedback evidence. Group them by `target.epId`, `target.anchorType`, `feedback.kind`, `feedback.severity`, and repeated message themes. Exclude `feedback.kind === 'build-trigger'` from heuristic analysis.
 - When the latest episodes are not enough to explain a pattern, sample the corresponding `.ars/episodes/<epId>/plan.md` files to understand intended audience, angle, and CTA.
+- Inspect `.ars/research/` for market / competitive evidence. Read both per-topic files (linked to specific epIds) and any series-mode landscape files. Group by topic-angle clusters and date so you can see whether the series keeps walking into the same crowded angle space.
 
 Outputs:
 - Write a reflection memo to `.ars/reflect/<YYYY-MM-DD>-<days>d.md`
@@ -40,6 +41,7 @@ Evidence expectations:
 - Treat episode stats as structure and visual-rhythm evidence.
 - Treat plans as intent and packaging evidence.
 - Treat Studio intents as production-friction evidence: what repeatedly required human correction before publish.
+- Treat research files in `.ars/research/` as market / competitive evidence: where the series differentiated successfully and where it landed in crowded angle clusters. **Always discount `## Topic direction suggestions  (suggested, low confidence)` blocks — those are research-time guesses, not evidence. The `## Angle landscape` and `## Competitors` sections are the usable signal.**
 - In `## Evidence`, include any repeated Studio intent patterns that affected the reflection, such as "3 content intents across recent Claude Code episodes asked for workflow clarification" or "multiple visual intents were one-off screenshot cleanups and were not used for guide updates."
 
 Guide-update rules:
@@ -64,6 +66,7 @@ Reflection heuristics:
 - If an existing rule in `SERIES_GUIDE.md` is contradicted by repeated evidence, revise that rule directly instead of appending a duplicate note.
 - When proposing a new heuristic, tie it to concrete evidence from episode structure, card usage, or analytics movement.
 - Repeated medium/high severity Studio intents can justify guide updates when they point to the same planning, narration, pacing, card, or CTA failure mode across multiple steps or episodes.
+- Do **not** chase competitor patterns blindly. Differentiation evidence from `.ars/research/` is one signal — combine with audience-response (analytics) before re-pointing the series. If multiple recent research files flag the same crowded cluster the series keeps walking into, that is a stronger signal than a single landscape; if a research file is the only evidence pointing toward a guide change, leave the guide alone and capture the observation in the memo instead.
 
 Examples of valid outcomes:
 - "Open more quickly; the strongest episodes land the thesis within the first 2 steps."

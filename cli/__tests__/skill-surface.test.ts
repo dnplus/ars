@@ -18,6 +18,7 @@ describe('plugin skill surface', () => {
       'apply-review',
       'polish',
       'reflect',
+      'research',
       'review',
       'new-card',
       'prepare-youtube',
@@ -125,5 +126,48 @@ describe('plugin skill surface', () => {
     });
 
     expect(output).toContain('/ars:analytics');
+  });
+
+  it('keyword detector recommends research for competitor and topic-direction prompts', () => {
+    const scriptPath = path.join(repoRoot, 'plugin', 'scripts', 'keyword-detector.mjs');
+
+    const competitorPrompt = JSON.stringify({
+      prompt: '幫我看一下這個主題的競品有誰做過，順便優化一下方向',
+    });
+    const competitorOutput = execFileSync('node', [scriptPath], {
+      cwd: repoRoot,
+      input: competitorPrompt,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    expect(competitorOutput).toContain('/ars:research');
+
+    const englishPrompt = JSON.stringify({
+      prompt: 'do a competitor analysis on this topic before we plan',
+    });
+    const englishOutput = execFileSync('node', [scriptPath], {
+      cwd: repoRoot,
+      input: englishPrompt,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    expect(englishOutput).toContain('/ars:research');
+  });
+
+  it('keyword detector keeps reflect and research separate on overlapping prompts', () => {
+    const scriptPath = path.join(repoRoot, 'plugin', 'scripts', 'keyword-detector.mjs');
+    const payload = JSON.stringify({
+      prompt: '根據最近 analytics 跟 episodes 的表現幫我復盤',
+    });
+
+    const output = execFileSync('node', [scriptPath], {
+      cwd: repoRoot,
+      input: payload,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    expect(output).toContain('/ars:reflect');
+    expect(output).not.toContain('/ars:research');
   });
 });
