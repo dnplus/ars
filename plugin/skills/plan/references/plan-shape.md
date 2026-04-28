@@ -60,7 +60,7 @@ Column rules:
 - `Section` — short label (`Hook`, `Problem`, `Demo`, `CTA`, …)
 - `Goal` — one sentence, what this step communicates
 - `Visual` — one phrase, the visual hook. Think visual first, then pick a card
-- `Card` — card name only. Must come from `npx ars card list`, OR be prefixed `(NEW)` with a matching entry in `## New card`
+- `Card` — card name only. Must come from `ars card list`, OR be prefixed `(NEW)` with a matching entry in `## New card`
 - `Notes` — one phrase of direction or constraint. No narration, no per-beat timings
 
 If a cell needs more than one sentence, either trim it or drop that row out of the table and write it as a numbered block under the table — don't pack paragraphs into cells.

@@ -34,7 +34,7 @@ References:
 4. **Understand the card purpose**: If no description, first look at the relevant episode `plan.md`, especially the `## New card` section. Only ask one focused question if the concept is still unclear.
 
 5. **Check for reuse before scaffolding**:
-   - Run `npx ars card list` to see all built-in and series-scoped cards with agentHints and live examples.
+   - Run `ars card list` to see all built-in and series-scoped cards with agentHints and live examples.
    - If an existing series-scoped card already solves the need, tell the user to reuse it instead of generating a redundant sibling card.
    - If an existing card is close, prefer extending it or recommending a small follow-up patch over creating a near-duplicate.
 

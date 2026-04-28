@@ -3,7 +3,7 @@
  * @description Card catalog: list all registered card types with metadata
  *
  * Usage:
- *   npx ars card list [--series <name>] [--json]
+ *   ars card list [target-root] [--series <name>] [--json]
  */
 
 import fs from 'fs';
@@ -12,18 +12,19 @@ import ts from 'typescript';
 import { getActiveSeries } from '../lib/context';
 import { getRepoRoot } from '../lib/ars-config';
 
-const ROOT = getRepoRoot();
+let ROOT = getRepoRoot();
 
 const HELP = `
-Usage: npx ars card <subcommand> [options]
+Usage: ars card <subcommand> [options]
 
 Subcommands:
   list          List all card types with agentHints and live examples
   list --json   Output as JSON (for agent consumption)
 
 Examples:
-  npx ars card list
-  npx ars card list --json
+  ars card list
+  ars card list ../gss-slides
+  ars card list --root ../gss-slides --json
 `;
 
 // ── Types ─────────────────────────────────────────────────
@@ -171,6 +172,71 @@ type EpisodeStats = {
   usageCounts: Map<string, number>;
 };
 
+type ListOptions = {
+  asJson: boolean;
+  root: string;
+  series?: string;
+};
+
+function readOptionValue(args: string[], index: number, option: string): string {
+  const value = args[index + 1];
+  if (!value || value.startsWith('-')) {
+    throw new Error(`${option} requires a value.`);
+  }
+  return value;
+}
+
+function parseListOptions(args: string[]): ListOptions {
+  const defaultRoot = getRepoRoot();
+  let root = defaultRoot;
+  let rootSet = false;
+  let series: string | undefined;
+  let asJson = false;
+
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (arg === '--json') {
+      asJson = true;
+      continue;
+    }
+
+    if (arg === '--root' || arg === '--cwd') {
+      root = path.resolve(defaultRoot, readOptionValue(args, i, arg));
+      rootSet = true;
+      i += 1;
+      continue;
+    }
+
+    if (arg === '--series') {
+      series = readOptionValue(args, i, arg);
+      i += 1;
+      continue;
+    }
+
+    if (arg.startsWith('-')) {
+      throw new Error(`Unknown card list option: ${arg}`);
+    }
+
+    if (rootSet) {
+      throw new Error(`Unexpected extra card list argument: ${arg}`);
+    }
+
+    root = path.resolve(defaultRoot, arg);
+    rootSet = true;
+  }
+
+  return { asJson, root, series };
+}
+
+function assertRepoRoot(root: string): void {
+  if (!fs.existsSync(root) || !fs.statSync(root).isDirectory()) {
+    throw new Error(`Card list target does not exist or is not a directory: ${root}`);
+  }
+  if (!fs.existsSync(path.join(root, 'src', 'engine', 'cards'))) {
+    throw new Error(`Missing src/engine/cards under ${root}. Run this inside an ARS repo or pass a valid target root.`);
+  }
+}
+
 /**
  * Build usage stats from all episodes in the active series.
  * liveExamples: contentType → full step (with _sourceEp) from most recent episode
@@ -287,10 +353,12 @@ export async function run(args: string[]): Promise<void> {
   }
 
   if (sub === 'list') {
-    const asJson = rest.includes('--json');
+    const options = parseListOptions(rest);
+    assertRepoRoot(options.root);
+    ROOT = options.root;
 
     const engineCards = discoverEngineCards();
-    const seriesCards = discoverSeriesCards();
+    const seriesCards = discoverSeriesCards(options.series);
     const all = [...engineCards, ...seriesCards];
 
     if (all.length === 0) {
@@ -300,7 +368,7 @@ export async function run(args: string[]): Promise<void> {
 
     // Enrich with live examples and usage counts from the active series
     // Fallback: if no active series configured, use the first available series directory
-    const activeSeries = getActiveSeries(ROOT) ?? (() => {
+    const activeSeries = options.series ?? getActiveSeries(ROOT) ?? (() => {
       const episodesDir = path.join(ROOT, 'src/episodes');
       if (!fs.existsSync(episodesDir)) return null;
       const allSeries = fs.readdirSync(episodesDir).filter(
@@ -319,7 +387,7 @@ export async function run(args: string[]): Promise<void> {
       }
     }
 
-    if (asJson) {
+    if (options.asJson) {
       console.log(JSON.stringify(all, null, 2));
       return;
     }

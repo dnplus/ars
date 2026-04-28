@@ -16,7 +16,7 @@ The normal `/ars:plan` experience should feel fast. The user will review the pla
 
 Use this path unless the request is explicitly research-heavy, factual/current, legal/financial/sensitive, or the source material is too thin to choose a thesis:
 
-1. Read `SERIES_GUIDE.md`, the caller context, and the output of `npx ars card list`.
+1. Read `SERIES_GUIDE.md`, the caller context, and the output of `ars card list`.
 2. Choose one thesis and one hero visual.
 3. Write the `plan.md` agenda using `references/plan-shape.md`.
 4. Put open questions or missing assets in `## Reminders` instead of blocking on exhaustive research.
@@ -72,7 +72,7 @@ If the hero visual depends on external assets, do a short visual-sourcing pass:
 ## Synthesis role
 
 - Read `SERIES_GUIDE.md` first. Treat its **Episode length range** as the acceptable band, not a fixed target. Do not repeat anything it says in the plan.
-- Run `npx ars card list` before suggesting cards. Never invent card types that are not in that list.
+- Run `ars card list` before suggesting cards. Never invent card types that are not in that list.
 - Think `Visual` first, then pick cards. The card is a consequence of the visual, never the other way around.
 - Output format is governed by `references/plan-shape.md`; use its markdown table for `## Structure` because Studio renders it for review.
 - Treat `## Structure` rows as **review sections**, not final `ep.ts` steps. A 20-minute plan should not list 40 rows, but its `Target length` must give `/ars:build` enough signal to expand sections into the needed narrated beats.
@@ -88,7 +88,7 @@ Before finalizing `## Structure`, do this quickly:
    - the Hero visual of the episode
    - the payoff of the thesis / core differentiator
    - a concept with movement, structure, or composition a generic card cannot express
-2. For each marked step, compare against the closest built-ins from `npx ars card list`.
+2. For each marked step, compare against the closest built-ins from `ars card list`.
 3. If the built-ins cannot express the idea in one glance, propose a new card.
 4. **Never use two built-in cards back-to-back to fake a composition** (e.g. mermaid + claude-code to fake a handoff flow). If the composition matters, it deserves its own card.
 

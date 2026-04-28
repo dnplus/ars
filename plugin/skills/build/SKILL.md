@@ -42,7 +42,7 @@ For each new-card row:
 
 1. **Read the row** to understand the card name, why existing cards are insufficient, and the concept it must deliver at a glance.
 2. **Read series theme**: Check `src/episodes/<series>/series-config.ts` for theme seed / channel name.
-3. **Check for reuse**: Run `npx ars card list` first. If an existing card already covers the need, skip creation and update the plan reference. If creating, verify the differentiation check from `references/custom-card-guide.md`.
+3. **Check for reuse**: Run `ars card list` first. If an existing card already covers the need, skip creation and update the plan reference. If creating, verify the differentiation check from `references/custom-card-guide.md`.
 4. **Choose the right primitive**:
    - `BaseSlide` — fullscreen content, no chrome (default for most cards)
    - `WindowSlide` — content inside a mac/terminal/browser window frame

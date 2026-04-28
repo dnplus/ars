@@ -84,6 +84,17 @@ describe('single-series workflow', () => {
     expect(demoEpisode).not.toContain('channelName: "人蔘 Try Catch"');
   });
 
+  it('lists card metadata for an explicit target repo root', () => {
+    const repoDir = makeConsumerRepo();
+
+    runCli(repoDir, ['init', 'demo-series', '--yes']);
+    const output = runCli(repoRoot, ['card', 'list', repoDir, '--json']);
+    const cards = JSON.parse(output) as Array<{ type: string; scope: string; specPath: string }>;
+
+    expect(cards.some((card) => card.type === 'markdown' && card.scope === 'engine')).toBe(true);
+    expect(cards.some((card) => card.specPath.startsWith(repoDir))).toBe(true);
+  });
+
   it('update restores repo-level support files that older installs may be missing', () => {
     const repoDir = makeConsumerRepo();
 

@@ -71,7 +71,7 @@ When delegating to `ars:planner`, pass:
 - topic / source material (include fetched URL content)
 - interview answers + which fields came from SERIES_GUIDE.md
 - SERIES_GUIDE.md summary
-- output of `npx ars card list`
+- output of `ars card list`
 - existing episode state (if revising)
 - **Research status**: either "Research not yet done — please research as needed" OR, if you did light research during the interview, paste what you found under `<research_findings>` and tell the planner to build on it rather than repeat it.
 
