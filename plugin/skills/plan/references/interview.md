@@ -75,4 +75,4 @@ When delegating to `ars:planner`, pass:
 - existing episode state (if revising)
 - **Research status**: either "Research not yet done — please research as needed" OR, if you did light research during the interview, paste what you found under `<research_findings>` and tell the planner to build on it rather than repeat it.
 
-Pass `mode: "plan"` so the planner must call `ExitPlanMode` before writing.
+Do **not** pass Claude Code Plan Mode options. ARS already has a Studio Plan phase; adding Claude's plan-mode gate makes the user wait through an extra approval loop before the real artifact exists. The planner should write `.ars/episodes/<epId>/plan.md` directly.

@@ -2,8 +2,8 @@
 name: ars:plan
 description: Official episode planning entrypoint. Create plan.md under .ars/episodes/<epId>/.
 argument-hint: "[topic...]"
-model: claude-opus-4-6
-effort: high
+model: claude-sonnet-4-6
+effort: medium
 ---
 
 `/ars:plan` is the official entrypoint for planning a new or existing episode. Its job is to **clarify intent with the user and hand off to `ars:planner`** — not to research or draft.
@@ -21,7 +21,7 @@ Skip both roles and you get a plan built on guesswork. Do one role's job twice a
 2. Parse the argument (see `references/interview.md`). If too thin, run the minimal interview covering only unanswered dimensions.
 3. Resolve the active series from `.ars/config.json` and pick the next epId.
 4. If `src/episodes/<active-series>/<epId>.ts` is missing, run `npx ars episode create <epId>`.
-5. Hand off to the bundled `ars:planner` agent. Pass gathered context (see `references/interview.md` for the prompt contents).
+5. Hand off to the bundled `ars:planner` agent. Pass gathered context (see `references/interview.md` for the prompt contents). Do not use Claude Code Plan Mode for this handoff; the deliverable is the `plan.md` file itself.
 6. After the planner returns, **open Studio on the plan phase and start the intent watch loop** — see `## Studio handoff` below.
 7. Track the next workflow steps in your session notes or todo system: `/ars:build`, `/ars:review`, `/ars:audio`, `/ars:prepare-youtube`, `/ars:publish-youtube`.
 8. Direct the user to review the rendered plan in Studio and submit ✨ intents on any section that needs adjustment. Next step is `/ars:build <epId>` — the user triggers it from Studio's "觸發 Build" button, or by typing `/ars:build <epId>` in the TUI.
@@ -65,6 +65,7 @@ The watch loop runs until `/ars:build` fires (via build-trigger intent or the us
 ## Principles
 
 - `plan.md` is an **agenda the user reviews in 1-3 minutes**, not a script. When delegating, enforce this intent — the planner will over-elaborate otherwise.
+- Optimize for a fast first agenda. If the user pasted enough source material, the planner should write the short Studio-reviewable plan directly and leave deeper research gaps in `## Reminders` instead of blocking on exhaustive sourcing.
 - Planning is read-only with respect to episode implementation. No `ep.ts` content, no step payloads, no narration.
 - Custom cards are encouraged when a built-in cannot express the core visual in one glance. See `references/custom-card-guide.md`.
 - Do not create a repo-level `todo.json`. Session todos only.

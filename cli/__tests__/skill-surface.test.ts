@@ -126,4 +126,27 @@ describe('plugin skill surface', () => {
 
     expect(output).toContain('/ars:analytics');
   });
+
+  it('keeps planning prompts on the Studio-first fast agenda path', () => {
+    const planSkill = fs.readFileSync(
+      path.join(repoRoot, 'plugin', 'skills', 'plan', 'SKILL.md'),
+      'utf-8',
+    );
+    const interviewRef = fs.readFileSync(
+      path.join(repoRoot, 'plugin', 'skills', 'plan', 'references', 'interview.md'),
+      'utf-8',
+    );
+    const plannerAgent = fs.readFileSync(
+      path.join(repoRoot, 'plugin', 'agents', 'planner.md'),
+      'utf-8',
+    );
+
+    expect(planSkill).toContain('model: claude-sonnet-4-6');
+    expect(planSkill).toContain('effort: medium');
+    expect(plannerAgent).toContain('model: claude-sonnet-4-6');
+    expect(plannerAgent).toContain('Default path: fast Studio agenda');
+    expect(`${planSkill}\n${plannerAgent}`).not.toContain('claude-opus-4-6');
+    expect(`${planSkill}\n${interviewRef}\n${plannerAgent}`).not.toContain('mode: "plan"');
+    expect(`${planSkill}\n${interviewRef}\n${plannerAgent}`).not.toContain('ExitPlanMode');
+  });
 });
