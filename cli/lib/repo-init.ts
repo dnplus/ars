@@ -48,6 +48,11 @@ export interface RepoInitResult {
   usedDefaults: boolean;
   npmInstalled: boolean;
   remotionSkillInstalled: boolean;
+  git: {
+    available: boolean;
+    initialized: boolean;
+    alreadyRepo: boolean;
+  };
   shellLayout: 'streaming' | 'shorts';
 }
 
@@ -107,6 +112,7 @@ export async function ensureRepoInitialized(options: RepoInitOptions): Promise<R
     overwrite: overwriteEverything,
   });
   patchClaudeSettings({ root, pluginRoot: runtime.pluginRoot });
+  const git = ensureGitInitialized(root);
   const versionPath = writeVersionMetadata({
     root,
     sourceRoot,
@@ -145,8 +151,52 @@ export async function ensureRepoInitialized(options: RepoInitOptions): Promise<R
     usedDefaults: !interactive && overwriteConfig,
     npmInstalled,
     remotionSkillInstalled,
+    git,
     shellLayout,
   };
+}
+
+function ensureGitInitialized(root: string): RepoInitResult['git'] {
+  if (!isGitAvailable(root)) {
+    return { available: false, initialized: false, alreadyRepo: false };
+  }
+
+  if (isGitRepository(root)) {
+    return { available: true, initialized: false, alreadyRepo: true };
+  }
+
+  const result = spawnSync('git', ['init'], {
+    cwd: root,
+    stdio: 'ignore',
+    shell: false,
+  });
+
+  if (result.status !== 0) {
+    console.warn('[ars] git init exited with non-zero status — skipping git bootstrap');
+    return { available: true, initialized: false, alreadyRepo: false };
+  }
+
+  return { available: true, initialized: true, alreadyRepo: false };
+}
+
+function isGitAvailable(root: string): boolean {
+  const result = spawnSync('git', ['--version'], {
+    cwd: root,
+    stdio: 'ignore',
+    shell: false,
+  });
+
+  return result.status === 0;
+}
+
+function isGitRepository(root: string): boolean {
+  const result = spawnSync('git', ['rev-parse', '--is-inside-work-tree'], {
+    cwd: root,
+    stdio: 'ignore',
+    shell: false,
+  });
+
+  return result.status === 0;
 }
 
 function ensureRemotionSkillInstalled(root: string): boolean {

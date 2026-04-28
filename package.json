@@ -29,6 +29,7 @@
     "plugin/hooks/",
     "plugin/scripts/",
     "plugin/skills/",
+    ".github/workflows/",
     "src/",
     "public/shared/",
     "public/episodes/template/shared/",
