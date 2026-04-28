@@ -60,6 +60,8 @@ describe('single-series workflow', () => {
     const workflow = fs.readFileSync(path.join(repoDir, '.github', 'workflows', 'ci.yml'), 'utf-8');
     const seriesConfig = fs.readFileSync(path.join(repoDir, 'src', 'episodes', 'demo-series', 'series-config.ts'), 'utf-8');
     const demoEpisode = fs.readFileSync(path.join(repoDir, 'src', 'episodes', 'demo-series', 'ep-demo.ts'), 'utf-8');
+    const createdEpisode = fs.readFileSync(path.join(repoDir, 'src', 'episodes', 'demo-series', 'ep001.ts'), 'utf-8');
+    const createdSubtitles = fs.readFileSync(path.join(repoDir, 'src', 'episodes', 'demo-series', 'ep001.subtitles.ts'), 'utf-8');
     expect(config.project.activeSeries).toBe('demo-series');
     expect(fs.existsSync(path.join(repoDir, '.git'))).toBe(true);
     expect(gitignore).toContain('node_modules/');
@@ -75,6 +77,7 @@ describe('single-series workflow', () => {
     expect(fs.existsSync(path.join(repoDir, 'cli', 'pronunciation_dict.yaml'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'src', 'engine', 'Composition.tsx'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'src', 'episodes', 'demo-series', 'ep001.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(repoDir, 'src', 'episodes', 'demo-series', 'ep001.subtitles.ts'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'public', 'episodes', 'demo-series', 'ep001', 'audio'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'eslint.config.mjs'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'cli', 'lib', 'youtube-client.ts'))).toBe(true);
@@ -82,6 +85,10 @@ describe('single-series workflow', () => {
     expect(seriesConfig).toContain('enabled: false');
     expect(demoEpisode).not.toContain('episodes/template/shared/vtuber');
     expect(demoEpisode).not.toContain('channelName: "人蔘 Try Catch"');
+    expect(createdEpisode).toContain('import { subtitles } from "./ep001.subtitles";');
+    expect(createdEpisode).toContain('  subtitles,');
+    expect(createdSubtitles).toContain('export const subtitles: Record<string, SubtitlePhrase[]> = {};');
+    runCli(repoDir, ['episode', 'validate', 'ep001']);
   });
 
   it('lists card metadata for an explicit target repo root', () => {

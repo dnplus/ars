@@ -4,6 +4,8 @@
  */
 
 import { Episode } from "../../engine/shared/types";
+// `ars episode create` uncomments this import and creates an empty
+// <epId>.subtitles.ts file so audio generation can update it in place.
 // import { subtitles } from "./ep999.subtitles";
 
 export const epTemplate: Episode = {
@@ -45,6 +47,7 @@ export const epTemplate: Episode = {
   },
 
   // shell 由 series-config.ts 自動注入，不需要手動設定
+  // `ars episode create` enables this field in generated episodes.
   // subtitles,
 
   steps: [
