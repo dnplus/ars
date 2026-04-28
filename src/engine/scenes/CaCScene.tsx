@@ -90,8 +90,6 @@ const buildRegistryCardData = (
         ...data,
         cardTitle:
           typeof data.cardTitle === "string" ? data.cardTitle : "",
-        cardTag: typeof data.cardTag === "string" ? data.cardTag : "",
-        tagColor: typeof data.tagColor === "string" ? data.tagColor : "blue",
         content: typeof data.content === "string" ? data.content : "",
         frame: data.frame ?? frame,
       };

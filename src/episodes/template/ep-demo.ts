@@ -372,8 +372,6 @@ export const epDemo: Episode = {
       background: "minimal",
       data: {
         cardTitle: "Why ARS",
-        cardTag: "Feature Set",
-        tagColor: "info",
         content: [
           "# ARS 的功能特點",
           "",

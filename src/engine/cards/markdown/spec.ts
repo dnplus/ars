@@ -1,18 +1,18 @@
-import { MarkdownCardComponent, type MarkdownCardData } from "./component";
+import { MarkdownCardComponent } from "./component";
+import { MarkdownCardSchema, type MarkdownCardData } from "./schema";
 import type { CardSpec } from "../types";
 
 export const cardSpec = {
   type: "markdown",
   title: "Markdown",
   description: "Scrollable rich-text card with GitHub-flavored Markdown support.",
+  schema: MarkdownCardSchema,
   component: MarkdownCardComponent,
   agentHints: {
-    whenToUse: "Use for structured notes, tables, bullet lists, or explanatory prose.",
-    notForUseCases: "Not for large diagrams or syntax-sensitive code snippets.",
+    whenToUse: "Use for structured notes, tables, bullet lists, or explanatory prose. Do not set cardTag/tagColor; those fields are deprecated and ignored.",
+    notForUseCases: "Not for large diagrams, syntax-sensitive code snippets, or visual categories that rely on a right-side card tag.",
     exampleData: {
       cardTitle: "Checklist",
-      cardTag: "Guide",
-      tagColor: "info",
       content: "- Point A\n- Point B\n- Point C",
     },
   },

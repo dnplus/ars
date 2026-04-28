@@ -67,8 +67,6 @@ export const epTemplate: Episode = {
       description: '內容描述',
       data: {
         cardTitle: '卡片標題',
-        cardTag: 'MARKDOWN',
-        tagColor: 'blue',
         content: '卡片內容\n\n- 第一點\n- 第二點',
       },
       narration: '旁白內容...',
