@@ -229,35 +229,53 @@ export const CaCScene: React.FC<CaCSceneProps> = ({
             opacity: titleOpacity,
           }}
         >
-          {step.phase ? (
+          {step.title || step.phase ? (
             <div
               style={{
-                display: "inline-block",
-                padding: "8px 16px",
-                background: theme.colors.gradientGold,
-                color: theme.colors.onPrimary,
-                fontSize: 14,
-                fontWeight: 700,
-                borderRadius: 8,
-                marginBottom: 12,
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                gap: 20,
+                marginBottom: step.description ? 8 : 0,
               }}
             >
-              {step.phase}
-            </div>
-          ) : null}
+              {step.title ? (
+                <h2
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    fontSize: 36,
+                    fontWeight: 700,
+                    color: theme.colors.onLight,
+                    margin: 0,
+                    lineHeight: 1.18,
+                  }}
+                >
+                  {step.title}
+                </h2>
+              ) : null}
 
-          {step.title ? (
-            <h2
-              style={{
-                fontSize: 36,
-                fontWeight: 700,
-                color: theme.colors.onLight,
-                margin: 0,
-                marginBottom: 8,
-              }}
-            >
-              {step.title}
-            </h2>
+              {step.phase ? (
+                <div
+                  style={{
+                    flexShrink: 0,
+                    marginLeft: "auto",
+                    maxWidth: "28%",
+                    padding: "8px 16px",
+                    background: theme.colors.gradientGold,
+                    color: theme.colors.onPrimary,
+                    fontSize: 14,
+                    fontWeight: 700,
+                    lineHeight: 1.2,
+                    textAlign: "center",
+                    borderRadius: 8,
+                    whiteSpace: "normal",
+                  }}
+                >
+                  {step.phase}
+                </div>
+              ) : null}
+            </div>
           ) : null}
 
           {step.description ? (
