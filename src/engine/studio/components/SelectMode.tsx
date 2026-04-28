@@ -178,7 +178,10 @@ export const SelectMode: React.FC<SelectModeProps> = ({
     return () => window.removeEventListener('keydown', onKey);
   }, [active, frozen, onExit]);
 
-  // Mouse tracking across the whole canvas.
+  // Track hover in capture phase at the window level. Remotion Player internals
+  // can intercept bubbling mouse events, while click picking already uses
+  // capture; keeping hover on the same side makes the outline appear before
+  // the user clicks.
   useEffect(() => {
     if (!active || !canvasEl || frozen) return;
 
@@ -190,13 +193,9 @@ export const SelectMode: React.FC<SelectModeProps> = ({
       });
     };
 
-    const onLeave = () => setHover(null);
-
-    canvasEl.addEventListener('mousemove', onMove);
-    canvasEl.addEventListener('mouseleave', onLeave);
+    window.addEventListener('mousemove', onMove, { capture: true });
     return () => {
-      canvasEl.removeEventListener('mousemove', onMove);
-      canvasEl.removeEventListener('mouseleave', onLeave);
+      window.removeEventListener('mousemove', onMove, { capture: true });
       if (rafRef.current !== null) {
         window.cancelAnimationFrame(rafRef.current);
         rafRef.current = null;

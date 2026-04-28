@@ -122,11 +122,13 @@ export async function ensureRepoInitialized(options: RepoInitOptions): Promise<R
     installMethod: detectInstallMethod(sourceRoot),
   });
 
-  // Run npm install if package.json was just generated (node_modules absent)
+  // Run npm install when init created or materially updated the package surface.
+  // Local dependency installs may leave node_modules present before init adds
+  // ARS dev tooling to package.json, so also check whether required bins exist.
   const nodeModulesPath = path.join(root, 'node_modules');
   const packageJsonPath = path.join(root, 'package.json');
   let npmInstalled = false;
-  if (fs.existsSync(packageJsonPath) && !fs.existsSync(nodeModulesPath)) {
+  if (shouldRunNpmInstall(root, packageJsonPath, nodeModulesPath, copiedFiles)) {
     const result = spawnSync('npm', ['install'], {
       cwd: root,
       stdio: 'inherit',
@@ -154,6 +156,29 @@ export async function ensureRepoInitialized(options: RepoInitOptions): Promise<R
     git,
     shellLayout,
   };
+}
+
+function shouldRunNpmInstall(
+  root: string,
+  packageJsonPath: string,
+  nodeModulesPath: string,
+  copiedFiles: string[],
+): boolean {
+  if (!fs.existsSync(packageJsonPath)) {
+    return false;
+  }
+
+  if (!fs.existsSync(nodeModulesPath)) {
+    return true;
+  }
+
+  const packageJsonChanged = copiedFiles.some((entry) => entry.startsWith('package.json'));
+  return packageJsonChanged && !hasConsumerDevTooling(root);
+}
+
+function hasConsumerDevTooling(root: string): boolean {
+  const binDir = path.join(root, 'node_modules', '.bin');
+  return ['eslint', 'tsc', 'vite'].every((bin) => fs.existsSync(path.join(binDir, bin)));
 }
 
 function ensureGitInitialized(root: string): RepoInitResult['git'] {
