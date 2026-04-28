@@ -270,7 +270,15 @@ export const CaCScene: React.FC<CaCSceneProps> = ({
         </div>
       ) : null}
 
-      <div style={{ opacity: cardOpacity, minHeight: 0, height: "100%" }}>
+      <div
+        style={{
+          opacity: cardOpacity,
+          minHeight: 0,
+          height: "100%",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
         {renderCard(step, layoutMode, episode)}
       </div>
     </AbsoluteFill>
