@@ -131,14 +131,14 @@ export const ShortsLayout: React.FC<StreamingLayoutProps> = ({
           text={narration}
           subtitles={subtitles}
           containerStyle={{
-            paddingBottom: isFullscreen ? '10%' : '19%',
+            paddingBottom: isFullscreen ? 24 : 28,
           }}
           style={{
-            maxWidth: "90%",
+            maxWidth: "94%",
             fontSize: 64,
             background: theme.colors.surfaceOverlay,
-            padding: "14px 22px",
-            borderRadius: 12,
+            padding: "8px 16px",
+            borderRadius: 8,
             fontWeight: "bold",
             color: theme.colors.onDark,
             boxShadow: `0 4px 12px ${theme.colors.shadowDark}`,

@@ -216,11 +216,8 @@ export const StreamingLayout: React.FC<StreamingLayoutProps> = ({
         <SubtitleOverlay
           text={narration}
           subtitles={subtitles}
-          containerStyle={{
-            paddingBottom: '2%',
-          }}
           style={{
-            maxWidth: "90%",
+            maxWidth: "96%",
             fontSize: config.subtitle.fontSize || 46,
             fontFamily: theme.fonts.main,
             background: config.subtitle.background || `${theme.colors.surfaceDark}88`,

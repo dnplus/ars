@@ -138,6 +138,8 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({
       style={{
         justifyContent: "flex-end",
         alignItems: "center",
+        padding: "0 18px 12px",
+        boxSizing: "border-box",
         pointerEvents: "none",
         zIndex: 100,
         ...containerStyle,
@@ -149,12 +151,12 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({
         data-annotatable="subtitle"
         data-annotatable-label="字幕"
         style={{
-          padding: "10px 20px",
-          borderRadius: 10,
+          padding: "6px 14px",
+          borderRadius: 8,
           color: "white",
           fontWeight: 600,
           textAlign: "center",
-          lineHeight: 1.32,
+          lineHeight: 1.22,
           boxSizing: "border-box",
           wordBreak: "keep-all",
           // Studio review mode needs clicks on subtitles; render output ignores
