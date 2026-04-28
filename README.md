@@ -86,7 +86,7 @@ If you prefer to initialize without the guided flow:
 npx ars init <series-name>
 ```
 
-This bootstraps `.ars/config.json`, syncs the ARS engine, installs skills, and scaffolds your series from the template. Then run `/ars:onboard` to fill in brand and theme settings.
+This bootstraps `.ars/config.json`, syncs the ARS engine, installs skills, updates repo support files such as `package.json`, and scaffolds your series from the template. If the generated scripts need dependencies that are not installed yet, `ars init` runs `npm install` for you. Then run `/ars:onboard` to fill in brand and theme settings.
 
 ### 5. Plan the first episode
 
