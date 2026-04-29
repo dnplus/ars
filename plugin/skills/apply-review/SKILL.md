@@ -11,6 +11,7 @@ review intents in `.ars/review-intents/` are migrated automatically on the next
 Studio launch — do not read the legacy directory.
 
 Behavior:
+- Read `SERIES_GUIDE.md` at the repo root before applying any content / narration change. If the intent rewrites narration or card text, the rewrite must obey the series guide's banned phrases, contrast examples, and tone rules. If a legacy `STYLING.md` (or `VOICE.md`, `persona.md`) exists at repo root, also read it. Pure pronunciation fixes and build-trigger intents do not need the guide.
 - Resolve the requested intent by id, or choose the latest unprocessed intent when the argument is `latest` or omitted.
 - When the argument is `all`, confirm `.ars/studio-intents/_session-end.flag` exists before proceeding. Treat it as the signal that the review pass is closed and the remaining intents should be batch-applied.
 - Read exactly one Studio intent from `.ars/studio-intents/` and inspect its `target`, `source`, `feedback`, and optional `attachments`.
