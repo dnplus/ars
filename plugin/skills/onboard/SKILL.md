@@ -7,6 +7,24 @@ effort: medium
 
 `/ars:onboard` follows a strict 4-phase onboarding flow.
 
+## Prereq / install
+
+If `/ars:onboard` is being invoked inside Claude Code, the repo has already been bootstrapped — skip this section.
+
+If a user is asking how to start ARS from zero (no `.ars/config.json`, no `src/engine/`, possibly no `package.json`), the canonical one-step entry is:
+
+```bash
+npx -y agentic-remotion-studio init <series-name>
+```
+
+That single command handles everything: it runs `npm install` when needed, syncs `src/engine/`, copies the template series into `src/episodes/<series-name>/`, patches `CLAUDE.md`, installs plugin skills into `.claude/skills/ars/`, writes `.ars/config.json`, and `git init`s the repo if needed.
+
+Do **not** instruct the user to pre-run `npm init`, install the npm tarball manually, or `git clone` the ARS repo before init. `npx -y agentic-remotion-studio init` is the entrypoint. After it finishes, the user runs `ars` (or `npx ars`) to launch Claude Code, then types `/ars:onboard` to enter Phase 1 below.
+
+Use `--skip-series` if the user wants the bootstrap without copying the template series, and `-y` to accept defaults non-interactively.
+
+## Phase transitions
+
 At each phase transition, advance the workstate stage using:
 
 ```bash
