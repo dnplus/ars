@@ -6,7 +6,7 @@
  *              specific section without leaving the browser.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { MarkdownSection } from '../../shared/markdown-anchor';
 import { extractSections } from '../../shared/markdown-anchor';
@@ -174,7 +174,27 @@ export const PlanView: React.FC<PlanViewProps> = ({
     [plan],
   );
 
-  const headingComponents = useMemo(() => makeHeadingComponents(sections, series, epId), [sections, series, epId]);
+  const markdownComponents = useMemo<Components>(
+    () => ({
+      ...makeHeadingComponents(sections, series, epId),
+      table: ({ children }) => (
+        <table style={planTableStyle}>
+          {children}
+        </table>
+      ),
+      th: ({ children }) => (
+        <th style={planTableHeaderCellStyle}>
+          {children}
+        </th>
+      ),
+      td: ({ children }) => (
+        <td style={planTableCellStyle}>
+          {children}
+        </td>
+      ),
+    }),
+    [sections, series, epId],
+  );
 
   if (error && !plan) {
     return <PlanMessage tone="error">無法讀取 plan：{error}</PlanMessage>;
@@ -224,7 +244,7 @@ export const PlanView: React.FC<PlanViewProps> = ({
       </header>
 
       <article style={planArticleStyle}>
-        <ReactMarkdown remarkPlugins={[remarkGfm]} components={headingComponents}>
+        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
           {plan.markdown}
         </ReactMarkdown>
 
@@ -331,10 +351,33 @@ const planHeaderStyle: React.CSSProperties = {
 const planArticleStyle: React.CSSProperties = {
   flex: 1,
   overflow: 'auto',
-  padding: '24px 32px 80px',
+  padding: '32px 40px 96px',
   fontFamily: 'var(--font-main, system-ui, sans-serif)',
-  fontSize: 15,
-  lineHeight: 1.7,
+  fontSize: 28,
+  lineHeight: 1.6,
+};
+
+const planTableStyle: React.CSSProperties = {
+  width: '100%',
+  borderCollapse: 'collapse',
+  margin: '18px 0 24px',
+  border: '1px solid var(--color-border-light, rgba(255,255,255,0.18))',
+};
+
+const planTableHeaderCellStyle: React.CSSProperties = {
+  padding: '10px 14px',
+  border: '1px solid var(--color-border-light, rgba(255,255,255,0.18))',
+  background: 'color-mix(in srgb, var(--color-text-on-dark, #e2e8f0) 8%, transparent)',
+  color: 'var(--color-text-on-dark, #e2e8f0)',
+  fontWeight: 800,
+  textAlign: 'left',
+  verticalAlign: 'top',
+};
+
+const planTableCellStyle: React.CSSProperties = {
+  padding: '10px 14px',
+  border: '1px solid var(--color-border-light, rgba(255,255,255,0.16))',
+  verticalAlign: 'top',
 };
 
 const refreshButtonStyle: React.CSSProperties = {

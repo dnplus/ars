@@ -7,6 +7,24 @@ effort: medium
 
 `/ars:onboard` follows a strict 4-phase onboarding flow.
 
+## Prereq / install
+
+If `/ars:onboard` is being invoked inside Claude Code, the repo has already been bootstrapped — skip this section.
+
+If a user is asking how to start ARS from zero (no `.ars/config.json`, no `src/engine/`, possibly no `package.json`), the canonical one-step entry is:
+
+```bash
+npx -y agentic-remotion-studio init <series-name>
+```
+
+That single command handles everything: it runs `npm install` when needed, syncs `src/engine/`, copies the template series into `src/episodes/<series-name>/`, patches `CLAUDE.md`, installs plugin skills into `.claude/skills/ars/`, writes `.ars/config.json`, and `git init`s the repo if needed.
+
+Do **not** instruct the user to pre-run `npm init`, install the npm tarball manually, or `git clone` the ARS repo before init. `npx -y agentic-remotion-studio init` is the entrypoint. After it finishes, the user runs `ars` (or `npx ars`) to launch Claude Code, then types `/ars:onboard` to enter Phase 1 below.
+
+Use `--skip-series` if the user wants the bootstrap without copying the template series, and `-y` to accept defaults non-interactively.
+
+## Phase transitions
+
 At each phase transition, advance the workstate stage using:
 
 ```bash
@@ -153,14 +171,15 @@ Monitor rules:
 ### from template
 
 1. Run `npx ars init <series>` (without `--skip-series`) to copy the template series
-2. Run a brand interview — see `references/branding-guide.md` for the full question set (visual identity AND series identity — audience, mission, tone, length, CTA). Do NOT skip the series identity questions; they drive SERIES_GUIDE.md.
+2. Run **Stage 1** of the brand interview — see `references/branding-guide.md` (visual identity AND series identity — audience, mission, tone, length, CTA). Do NOT skip the series identity questions; they drive SERIES_GUIDE.md.
 3. Update `series-config.ts` — see `references/series-structure.md` for the full file structure and key fields
-4. Write `SERIES_GUIDE.md` at repo root — use `references/series-guide-template.md` as the template. **Every field must map to an interview answer, an existing config value, or a documented minimal default.** If the user said "reuse defaults" for series identity questions, use the minimal defaults verbatim and announce which defaults were applied. Never infer audience/mission/takeaway from the channel name.
-5. Once the edits are in place, tell the user to refresh the still-open Studio tab and review the updated preview; if they leave Studio comments, address them before moving to Phase 4
-6. Mention the advanced extension points when relevant:
+4. Write `SERIES_GUIDE.md` at repo root using the **basic sections** of `references/series-guide-template.md`. **Every field must map to an interview answer, an existing config value, or a documented minimal default.** If the user said "reuse defaults" for series identity questions, use the minimal defaults verbatim and announce which defaults were applied. Never infer audience/mission/takeaway from the channel name.
+5. **Offer Stage 2 voice deep-dive** (see `## Stage 2 voice deep-dive` below). Run it if the user opts in; append the optional sections to the same `SERIES_GUIDE.md`.
+6. Once the edits are in place, tell the user to refresh the still-open Studio tab and review the updated preview; if they leave Studio comments, address them before moving to Phase 4
+7. Mention the advanced extension points when relevant:
    - `shell.layout` can stay on built-in `'streaming'` / `'shorts'`, or advanced users can swap in a series custom layout component
    - series-scoped cards under `src/episodes/<series>/cards/` can add new card types or override built-in engine cards by reusing the same `type`
-7. Add optional custom skills if the user wants them
+8. Add optional custom skills if the user wants them
 
 At the end of this path, summarize the concrete outputs:
 
@@ -177,8 +196,9 @@ At the end of this path, summarize the concrete outputs:
    - Do NOT copy `ep-demo.ts` or `cards/`
 2. Create `public/episodes/<series>/shared/` directory
 3. Set active series in `.ars/config.json`
-4. Run the same brand interview and write SERIES_GUIDE.md as in "from template"
-5. After writing the new series defaults, tell the user the existing Studio tab may no longer have `ep-demo`; point them at the next valid preview target if needed
+4. Run the same Stage 1 brand interview and write SERIES_GUIDE.md basic sections as in "from template"
+5. Offer Stage 2 voice deep-dive (see `## Stage 2 voice deep-dive` below); append to SERIES_GUIDE.md if the user opts in
+6. After writing the new series defaults, tell the user the existing Studio tab may no longer have `ep-demo`; point them at the next valid preview target if needed
 
 At the end of this path, explicitly say that a clean series skeleton was created (no demo content), and the next step is Phase 4 verify.
 
@@ -196,6 +216,42 @@ At the end of this path, explicitly say that a clean series skeleton was created
 
 Frame this as a deferred customize state, not a completed customize state.
 
+## Stage 2 voice deep-dive
+
+After Stage 1 finishes (basic SERIES_GUIDE.md is written), offer Stage 2 with this prompt:
+
+```
+你的 SERIES_GUIDE 已生成（基本版）。
+
+如果你願意再花 5 分鐘把語氣、用詞、卡片偏好設下來，我可以把
+SERIES_GUIDE 補成「有靈魂版」——包含 slogan、常用開場、禁用詞、
+卡片選擇優先序、對照範例。
+
+這對未來 /ars:build 的產出品質影響很大，因為 build 會直接讀
+SERIES_GUIDE 來決定 narration 風格、卡片選型和 step 長度。
+
+要繼續嗎？(y / n / later)
+```
+
+Behavior by reply:
+- `y` / `yes` / `好` / `繼續` → run the Stage 2 question set in `references/branding-guide.md` (the `Stage 2 — voice deep-dive` section), then append the corresponding sections to `SERIES_GUIDE.md`.
+- `n` / `no` / `跳過` → leave SERIES_GUIDE at basic version, move on. Tell the user they can run `/ars:onboard` again later or edit SERIES_GUIDE manually.
+- `later` / `稍後` → same as `n` but explicitly mention this is recoverable.
+
+When running Stage 2, ask **one question at a time**, same as Stage 1. Accept short answers, accept "skip" per question. After all answers come in, append these sections to SERIES_GUIDE.md (drop sections the user skipped):
+
+```markdown
+## Slogan & Persona
+## Common Openers
+## Signature Sign-off
+## Banned Phrases & Replacements
+## Card Preferences (Authoring Heuristics)
+## Step Duration Cap
+## Contrast Examples
+```
+
+After writing, tell the user which sections were added and that `/ars:build` will now follow the stricter voice rules.
+
 ## Phase 3 confirmation mode
 
 Use this mode only when re-run detection shows `project.onboardedAt` is already set.
@@ -206,6 +262,7 @@ Instead:
 - summarize the current customized state (channel name, primary color, layout, VTuber status, etc.)
 - ask whether they want to update branding now or leave it as-is
 - if they want changes, run the brand interview from `references/branding-guide.md` against the existing files (never delete `ep-demo.ts` / `cards/` in this mode)
+- check whether `SERIES_GUIDE.md` already has Stage 2 sections (`## Slogan & Persona`, `## Banned Phrases & Replacements`, `## Contrast Examples`, etc.). If not, offer Stage 2 voice deep-dive — same prompt as the first-time flow. This is the typical re-run reason for users who originally skipped Stage 2.
 - if they do not want changes, continue directly to Phase 4
 
 Make the summary concrete. Mention current artifacts and settings, not generic phrases like `already customized`.

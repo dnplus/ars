@@ -31,7 +31,7 @@ Before adding a row under `## New card`:
 **Reject the new card if the blank is filled with:**
 - "different colors" → use theme tokens on the existing card
 - "different data shape but same layout" → extend the existing card's schema
-- "I couldn't find a good fit" → run `npx ars card list` again and re-read `agentHints`
+- "I couldn't find a good fit" → run `ars card list` again and re-read `agentHints`
 
 **Accept the new card if the blank is filled with:**
 - "it animates a spatial relationship that no grid/flow card can show"
@@ -100,7 +100,7 @@ This is an advanced pattern. Don't override unless the built-in genuinely can't 
 
 ## Checklist before adding `## New card`
 
-- [ ] Ran `npx ars card list` and confirmed no existing card covers this need
+- [ ] Ran `ars card list` and confirmed no existing card covers this need
 - [ ] Wrote the differentiation sentence — it names a structural difference, not cosmetic
 - [ ] Wrote a crisp card ask — one-glance promise, not implementation details
 - [ ] Card name is a specific noun phrase

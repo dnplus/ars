@@ -4,17 +4,8 @@ import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import { ScrollSlide } from "../../primitives/ScrollSlide";
 import { useCardContext } from "../../primitives/BaseSlide";
-import type { Theme } from "../../shared/theme";
-import type { WindowFrameKind } from "../../primitives/types";
 import type { CardRenderProps } from "../types";
-
-export type MarkdownCardData = {
-  cardTitle: string;
-  cardTag: string;
-  tagColor?: keyof Theme["colors"];
-  content: string;
-  frame?: WindowFrameKind;
-};
+import type { MarkdownCardData } from "./schema";
 
 function computeFontScale(content: string): number {
   const lines = content.split("\n").filter((line) => line.trim().length > 0);
@@ -315,8 +306,6 @@ export const MarkdownCardComponent: React.FC<CardRenderProps<MarkdownCardData>> 
     <ScrollSlide
       frame={data.frame ?? "mac"}
       title={data.cardTitle}
-      tag={data.cardTag}
-      tagColor={data.tagColor ?? "info"}
       innerPadding="none"
     >
       <MarkdownContent content={data.content} fontScale={fontScale} />

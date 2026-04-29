@@ -51,8 +51,13 @@ ${ARS_MARKER_END}`;
 
 interface PackageJsonLike {
   name?: unknown;
+  version?: unknown;
+  private?: unknown;
+  engines?: Record<string, string>;
+  scripts?: Record<string, string>;
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
+  sideEffects?: unknown;
 }
 
 export interface InstallState {
@@ -324,6 +329,24 @@ export function syncEngineFiles(options: SyncEngineOptions): string[] {
     copied,
   );
 
+  syncFileIfNeeded(
+    path.join(options.sourceRoot, '.env.example'),
+    path.join(options.root, '.env.example'),
+    options.overwriteSupportFiles,
+    '.env.example',
+    copied,
+  );
+
+  syncGitIgnore(options.root, copied);
+
+  syncFileIfNeeded(
+    path.join(options.sourceRoot, '.github', 'workflows', 'ci.yml'),
+    path.join(options.root, '.github', 'workflows', 'ci.yml'),
+    options.overwriteSupportFiles,
+    '.github/workflows/ci.yml',
+    copied,
+  );
+
   // Consumer repos do not ship the full ARS CLI source tree, but the YouTube
   // publish adapter is typechecked as part of src/. Keep its local helper
   // surface in sync so `eslint src && tsc` works even when publish is disabled.
@@ -340,6 +363,14 @@ export function syncEngineFiles(options: SyncEngineOptions): string[] {
     path.join(options.root, 'cli', 'lib', 'youtube-upload.ts'),
     options.overwriteSupportFiles,
     'cli/lib/youtube-upload.ts',
+    copied,
+  );
+
+  syncFileIfNeeded(
+    path.join(options.sourceRoot, 'cli', 'pronunciation_dict.yaml'),
+    path.join(options.root, 'cli', 'pronunciation_dict.yaml'),
+    options.overwriteSupportFiles,
+    'cli/pronunciation_dict.yaml',
     copied,
   );
 
@@ -361,18 +392,12 @@ export function syncEngineFiles(options: SyncEngineOptions): string[] {
     copied,
   );
 
-  // Bootstrap package.json if not present
-  const consumerPkgPath = path.join(options.root, 'package.json');
-  if (!fs.existsSync(consumerPkgPath)) {
-    const generated = generateConsumerPackageJson(options.sourceRoot);
-    fs.writeFileSync(consumerPkgPath, JSON.stringify(generated, null, 2) + '\n', 'utf-8');
-    copied.push('package.json (generated)');
-  }
+  syncPackageJson(options.sourceRoot, options.root, copied);
 
   return copied;
 }
 
-function generateConsumerPackageJson(sourceRoot: string): Record<string, unknown> {
+function generateConsumerPackageJson(sourceRoot: string): PackageJsonLike {
   // Extract deps from ARS source package.json to avoid hardcoding versions
   let dependencies: Record<string, string> = {};
   let devDependencies: Record<string, string> = {};
@@ -385,10 +410,6 @@ function generateConsumerPackageJson(sourceRoot: string): Record<string, unknown
     } catch { /* ignore */ }
   }
 
-  // Remove ARS-internal-only entries not needed in consumer repos
-  const { tsx: _tsx, ...consumerDeps } = dependencies as Record<string, string>;
-  void _tsx;
-
   return {
     name: 'my-ars-channel',
     version: '1.0.0',
@@ -398,14 +419,126 @@ function generateConsumerPackageJson(sourceRoot: string): Record<string, unknown
       dev: 'remotion studio',
       build: 'remotion bundle',
       lint: 'eslint src && tsc',
-      test: 'vitest run',
+      test: 'vitest run --passWithNoTests',
       'dev:studio': 'vite --config vite.studio.config.ts',
       'build:studio': 'vite build --config vite.studio.config.ts',
     },
-    dependencies: consumerDeps,
+    dependencies,
     devDependencies,
     sideEffects: ['*.css'],
   };
+}
+
+function syncPackageJson(sourceRoot: string, root: string, copied: string[]): void {
+  const consumerPkgPath = path.join(root, 'package.json');
+  const generated = generateConsumerPackageJson(sourceRoot);
+
+  if (!fs.existsSync(consumerPkgPath)) {
+    fs.writeFileSync(consumerPkgPath, `${JSON.stringify(generated, null, 2)}\n`, 'utf-8');
+    copied.push('package.json (generated)');
+    return;
+  }
+
+  let current: PackageJsonLike;
+  try {
+    current = JSON.parse(fs.readFileSync(consumerPkgPath, 'utf-8')) as PackageJsonLike;
+  } catch {
+    return;
+  }
+
+  const next: PackageJsonLike = { ...current };
+  let changed = false;
+
+  if (!next.engines) {
+    next.engines = generated.engines;
+    changed = true;
+  }
+
+  const requiredScripts = generated.scripts ?? {};
+  const existingScripts = isRecord(next.scripts) ? next.scripts : {};
+  const mergedScripts = { ...existingScripts };
+  for (const [name, command] of Object.entries(requiredScripts)) {
+    if (typeof mergedScripts[name] !== 'string') {
+      mergedScripts[name] = command;
+      changed = true;
+    }
+  }
+  if (changed || next.scripts !== mergedScripts) {
+    next.scripts = mergedScripts;
+  }
+
+  const dependencyFields = ['dependencies', 'devDependencies'] as const;
+  for (const field of dependencyFields) {
+    const required = generated[field] ?? {};
+    const existing = isRecord(next[field]) ? next[field] : {};
+    const merged = { ...existing };
+    let fieldChanged = false;
+    for (const [name, version] of Object.entries(required)) {
+      if (typeof merged[name] !== 'string') {
+        merged[name] = version;
+        fieldChanged = true;
+      }
+    }
+    if (fieldChanged || next[field] !== merged) {
+      next[field] = merged;
+    }
+    if (fieldChanged) {
+      changed = true;
+    }
+  }
+
+  if (next.sideEffects === undefined) {
+    next.sideEffects = generated.sideEffects;
+    changed = true;
+  }
+
+  if (!changed) {
+    return;
+  }
+
+  fs.writeFileSync(consumerPkgPath, `${JSON.stringify(next, null, 2)}\n`, 'utf-8');
+  copied.push('package.json (updated)');
+}
+
+function syncGitIgnore(root: string, copied: string[]): void {
+  const targetPath = path.join(root, '.gitignore');
+  const requiredEntries = [
+    '.env',
+    '.ars/config.json',
+    '.ars/state/',
+    '.ars/review-intents/',
+    'node_modules/',
+    'output/',
+    'dist/',
+    '.cache/',
+    '.omc/',
+    '.playwright-mcp/',
+    '.codex/',
+    'build/',
+    '.claude/',
+    '.DS_Store',
+  ];
+  const existing = fs.existsSync(targetPath)
+    ? fs.readFileSync(targetPath, 'utf-8')
+    : '';
+  const lines = existing.split(/\r?\n/);
+  const normalized = new Set(lines.map((line) => line.trim()).filter(Boolean));
+  const missing = requiredEntries.filter((entry) => !normalized.has(entry));
+
+  if (missing.length === 0) {
+    return;
+  }
+
+  const next = [
+    existing.trimEnd(),
+    ...missing,
+  ].filter(Boolean).join('\n');
+  fs.writeFileSync(targetPath, `${next}\n`, 'utf-8');
+  copied.push('.gitignore');
+}
+
+function isRecord(value: unknown): value is Record<string, string> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 export function backupEngine(root = getTargetRepoRoot()): string {

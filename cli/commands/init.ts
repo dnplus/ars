@@ -10,7 +10,6 @@ import path from 'path';
 import { getRepoRoot } from '../lib/ars-config';
 import { ensureRepoInitialized } from '../lib/repo-init';
 import { getActiveSeries, listAvailableSeries, setActiveSeries, validateSeriesName } from '../lib/context';
-import { getRuntimePackageInfo } from '../lib/runtime-package';
 
 const HELP = `
 Usage: npx ars init [series-name] [options]
@@ -66,6 +65,7 @@ export async function run(args: string[]) {
       if (result.npmInstalled) {
         console.log('✅ Ran npm install');
       }
+      logGitBootstrap(result.git);
       if (result.remotionSkillInstalled) {
         console.log('✅ Installed project-scoped Remotion skill for Claude Code');
       } else {
@@ -142,6 +142,7 @@ export async function run(args: string[]) {
     if (result.npmInstalled) {
       console.log('✅ Ran npm install');
     }
+    logGitBootstrap(result.git);
     if (result.remotionSkillInstalled) {
       console.log('✅ Installed project-scoped Remotion skill for Claude Code');
     } else {
@@ -170,18 +171,6 @@ export async function run(args: string[]) {
   }
   if (!options.quiet) {
     console.log(`✅ Created: src/episodes/${targetSeries}/`);
-  }
-
-  // 複製 pronunciation_dict.yaml 範本（TTS 破音字字典）
-  const runtime = getRuntimePackageInfo(import.meta.url);
-  const pronunciationSrc = path.join(runtime.packageRoot, 'cli', 'pronunciation_dict.yaml');
-  const pronunciationDest = path.join(root, 'cli', 'pronunciation_dict.yaml');
-  if (fs.existsSync(pronunciationSrc) && !fs.existsSync(pronunciationDest)) {
-    fs.mkdirSync(path.join(root, 'cli'), { recursive: true });
-    fs.copyFileSync(pronunciationSrc, pronunciationDest);
-    if (!options.quiet) {
-      console.log(`✅ Created: cli/pronunciation_dict.yaml`);
-    }
   }
 
   // 建立 public dirs
@@ -217,6 +206,26 @@ Next steps:
   2. Run /ars:onboard — interview-driven setup for theme, brand, and VTuber
   3. Run /ars:plan <topic> — paste URLs, notes, or ideas to plan your first episode
 `);
+}
+
+function logGitBootstrap(git: {
+  available: boolean;
+  initialized: boolean;
+  alreadyRepo: boolean;
+}): void {
+  if (!git.available) {
+    console.log('ℹ️  Git command not found; skipped git init.');
+    return;
+  }
+
+  if (git.initialized) {
+    console.log('✅ Initialized git repository');
+    return;
+  }
+
+  if (git.alreadyRepo) {
+    console.log('✅ Git repository already initialized');
+  }
 }
 
 function parseArgs(args: string[]): {

@@ -12,6 +12,7 @@ export type StudioCompositionProps = {
   episodeInfo: EpisodeInfo;
   audioSrc?: string;
   subtitles?: SubtitlePhrase[];
+  disableSubtitles?: boolean;
 };
 
 export const StudioComposition: React.FC<StudioCompositionProps> = ({
@@ -21,6 +22,7 @@ export const StudioComposition: React.FC<StudioCompositionProps> = ({
   episodeInfo,
   audioSrc,
   subtitles,
+  disableSubtitles,
 }) => {
   const shell = episode.shell!;
   const theme = shell.theme!;
@@ -35,6 +37,7 @@ export const StudioComposition: React.FC<StudioCompositionProps> = ({
           prevLayoutMode={prevLayoutMode}
           audioSrc={audioSrc}
           subtitles={subtitles}
+          disableSubtitles={disableSubtitles}
           silentAudioFallback="shared/silence.mp3"
         />
       </AbsoluteFill>

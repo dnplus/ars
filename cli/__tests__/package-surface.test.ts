@@ -15,6 +15,7 @@ describe('npm package surface', () => {
 
     expect(output).toContain('cli/bin/ars.js');
     expect(output).toContain('plugin/skills/review/SKILL.md');
+    expect(output).toContain('.github/workflows/ci.yml');
     expect(output).toContain('src/engine/Composition.tsx');
     expect(output).toContain('public/shared/fonts/NotoSansTC-Regular.otf');
     expect(output).toContain('public/episodes/template/shared/vtuber/ginseng_open.png');

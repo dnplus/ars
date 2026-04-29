@@ -55,11 +55,29 @@ describe('single-series workflow', () => {
     runCli(repoDir, ['episode', 'create', 'ep001']);
 
     const config = JSON.parse(fs.readFileSync(path.join(repoDir, '.ars', 'config.json'), 'utf-8'));
+    const packageJson = JSON.parse(fs.readFileSync(path.join(repoDir, 'package.json'), 'utf-8'));
+    const gitignore = fs.readFileSync(path.join(repoDir, '.gitignore'), 'utf-8');
+    const workflow = fs.readFileSync(path.join(repoDir, '.github', 'workflows', 'ci.yml'), 'utf-8');
     const seriesConfig = fs.readFileSync(path.join(repoDir, 'src', 'episodes', 'demo-series', 'series-config.ts'), 'utf-8');
     const demoEpisode = fs.readFileSync(path.join(repoDir, 'src', 'episodes', 'demo-series', 'ep-demo.ts'), 'utf-8');
+    const createdEpisode = fs.readFileSync(path.join(repoDir, 'src', 'episodes', 'demo-series', 'ep001.ts'), 'utf-8');
+    const createdSubtitles = fs.readFileSync(path.join(repoDir, 'src', 'episodes', 'demo-series', 'ep001.subtitles.ts'), 'utf-8');
     expect(config.project.activeSeries).toBe('demo-series');
+    expect(fs.existsSync(path.join(repoDir, '.git'))).toBe(true);
+    expect(gitignore).toContain('node_modules/');
+    expect(gitignore).toContain('.ars/config.json');
+    expect(workflow).toContain('npm run lint');
+    expect(workflow).toContain('npx ars episode validate template/ep-demo');
+    expect(packageJson.scripts.lint).toBe('eslint src && tsc');
+    expect(packageJson.scripts.test).toBe('vitest run --passWithNoTests');
+    expect(packageJson.dependencies.remotion).toBeDefined();
+    expect(packageJson.dependencies.tsx).toBeDefined();
+    expect(packageJson.devDependencies.eslint).toBeDefined();
+    expect(fs.existsSync(path.join(repoDir, '.env.example'))).toBe(true);
+    expect(fs.existsSync(path.join(repoDir, 'cli', 'pronunciation_dict.yaml'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'src', 'engine', 'Composition.tsx'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'src', 'episodes', 'demo-series', 'ep001.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(repoDir, 'src', 'episodes', 'demo-series', 'ep001.subtitles.ts'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'public', 'episodes', 'demo-series', 'ep001', 'audio'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'eslint.config.mjs'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'cli', 'lib', 'youtube-client.ts'))).toBe(true);
@@ -67,6 +85,21 @@ describe('single-series workflow', () => {
     expect(seriesConfig).toContain('enabled: false');
     expect(demoEpisode).not.toContain('episodes/template/shared/vtuber');
     expect(demoEpisode).not.toContain('channelName: "人蔘 Try Catch"');
+    expect(createdEpisode).toContain('import { subtitles } from "./ep001.subtitles";');
+    expect(createdEpisode).toContain('  subtitles,');
+    expect(createdSubtitles).toContain('export const subtitles: Record<string, SubtitlePhrase[]> = {};');
+    runCli(repoDir, ['episode', 'validate', 'ep001']);
+  });
+
+  it('lists card metadata for an explicit target repo root', () => {
+    const repoDir = makeConsumerRepo();
+
+    runCli(repoDir, ['init', 'demo-series', '--yes']);
+    const output = runCli(repoRoot, ['card', 'list', repoDir, '--json']);
+    const cards = JSON.parse(output) as Array<{ type: string; scope: string; specPath: string }>;
+
+    expect(cards.some((card) => card.type === 'markdown' && card.scope === 'engine')).toBe(true);
+    expect(cards.some((card) => card.specPath.startsWith(repoDir))).toBe(true);
   });
 
   it('update restores repo-level support files that older installs may be missing', () => {
@@ -75,12 +108,18 @@ describe('single-series workflow', () => {
     runCli(repoDir, ['init', 'demo-series', '--yes']);
 
     fs.rmSync(path.join(repoDir, 'eslint.config.mjs'), { force: true });
+    fs.rmSync(path.join(repoDir, '.github'), { recursive: true, force: true });
+    fs.rmSync(path.join(repoDir, '.env.example'), { force: true });
+    fs.rmSync(path.join(repoDir, 'cli', 'pronunciation_dict.yaml'), { force: true });
     fs.rmSync(path.join(repoDir, 'cli', 'lib', 'youtube-client.ts'), { force: true });
     fs.rmSync(path.join(repoDir, 'cli', 'lib', 'youtube-upload.ts'), { force: true });
 
     runCli(repoDir, ['update']);
 
     expect(fs.existsSync(path.join(repoDir, 'eslint.config.mjs'))).toBe(true);
+    expect(fs.existsSync(path.join(repoDir, '.github', 'workflows', 'ci.yml'))).toBe(true);
+    expect(fs.existsSync(path.join(repoDir, '.env.example'))).toBe(true);
+    expect(fs.existsSync(path.join(repoDir, 'cli', 'pronunciation_dict.yaml'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'cli', 'lib', 'youtube-client.ts'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'cli', 'lib', 'youtube-upload.ts'))).toBe(true);
   });

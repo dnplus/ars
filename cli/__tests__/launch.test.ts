@@ -114,16 +114,28 @@ describe('launch command', () => {
         pluginRoot,
       }),
     }));
+    // Force the episode path so we can also assert Studio was spawned.
+    vi.doMock('../lib/context', async () => {
+      const actual = await vi.importActual<typeof import('../lib/context')>('../lib/context');
+      return {
+        ...actual,
+        resolveEpisodeTarget: () => ({ series: 'template', epId: 'ep-demo' }),
+      };
+    });
+    vi.doMock('../lib/studio-launcher', () => ({
+      openStudio: () => ({
+        child: { on: vi.fn(), kill: vi.fn() },
+        url: 'http://localhost:5174',
+      }),
+    }));
 
     const { launchCommand } = await import('../commands/launch');
-    await launchCommand(['hello']);
+    await launchCommand(['ep-demo']);
 
     expect(execFileSync.mock.calls[0]?.[0]).toBe('tmux');
-    expect(execFileSync).toHaveBeenCalledWith(
-      'claude',
-      ['--plugin-dir', pluginRoot],
-      expect.objectContaining({ stdio: 'inherit' }),
-    );
-    expect(spawn).toHaveBeenCalled();
+    expect(execFileSync.mock.calls[0]?.[1]).toEqual(['set-option', 'mouse', 'on']);
+    expect(execFileSync.mock.calls[1]?.[0]).toBe('claude');
+    expect(execFileSync.mock.calls[1]?.[1]).toEqual(['--plugin-dir', pluginRoot]);
+    expect(execFileSync.mock.calls[1]?.[2]).toEqual(expect.objectContaining({ stdio: 'inherit' }));
   });
 });

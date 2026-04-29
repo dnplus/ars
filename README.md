@@ -39,9 +39,27 @@ ARS was shaped in part by ideas explored in [oh-my-claudecode](https://github.co
 
 ## Quick start
 
-### 1. Install the CLI
+### 1. Bootstrap a new repo (one step)
 
-Install from npm if you want the `ars` command in PATH:
+In an empty directory where you want the series to live:
+
+```bash
+npx -y agentic-remotion-studio init <series-name>
+```
+
+That single command does everything a fresh repo needs:
+
+- Creates `.ars/config.json` and writes `package.json` if missing
+- Runs `npm install` for you when generated scripts need dependencies
+- Syncs the ARS Remotion engine into `src/engine/`
+- Copies the template series into `src/episodes/<series-name>/`
+- Patches `CLAUDE.md` with the ARS instructions block
+- Installs plugin skills into `.claude/skills/ars/`
+- Initializes git if the directory is not already a repo
+
+Do **not** pre-run `npm init` or install the package yourself — `npx -y agentic-remotion-studio init` is the entrypoint, and it handles all of that. Use `--skip-series` if you want the bootstrap without copying the template series, or `-y` to accept defaults non-interactively.
+
+If you want the `ars` command in PATH afterwards:
 
 ```bash
 npm install -g agentic-remotion-studio
@@ -80,13 +98,13 @@ Inside Claude Code:
 
 ### 4. (Optional) Manual init
 
-If you prefer to initialize without the guided flow:
+If you skipped step 1 and want to initialize without the guided onboarding flow:
 
 ```bash
 npx ars init <series-name>
 ```
 
-This bootstraps `.ars/config.json`, syncs the ARS engine, installs skills, and scaffolds your series from the template. Then run `/ars:onboard` to fill in brand and theme settings.
+Same behavior as `npx -y agentic-remotion-studio init` (see step 1). After it finishes, run `/ars:onboard` to fill in brand and theme settings.
 
 ### 5. Plan the first episode
 
@@ -174,6 +192,7 @@ Inside Claude Code:
 - `/ars:prepare-youtube`: fill the prepare artifact with title, description, and tags
 - `/ars:publish-youtube`: confirmed YouTube publish flow
 - `/ars:analytics`: optional Claude Code report for recent YouTube channel performance
+- `/ars:update`: refresh engine, skills, agents, and hook scripts from the installed ARS package, with timestamped backups and rollback instructions
 
 ## CLI surface
 
@@ -196,6 +215,7 @@ Notes:
 
 - `/ars:onboard` is the preferred first-run UX — it bootstraps the repo, guides branding and theme setup, and calls `npx ars init` when needed.
 - `npx ars init <series>` is the low-level alternative for non-interactive or scripted setup.
+- `npx ars update` upgrades an already-bootstrapped repo to the installed ARS package version: it backs up `src/engine/` to `.ars/backups/<timestamp>/engine` (last 3 retained), then refreshes engine, skills, agents, hook scripts, and version metadata. Run it after `npm i agentic-remotion-studio@latest`. See `/ars:update` for usage and rollback steps.
 - `ars review ...` remains as a legacy compatibility alias that forwards into Studio.
 - MiniMax is the only built-in TTS provider supported in this beta release. If you configure `elevenlabs`, doctor will fail and audio generation will stop.
 

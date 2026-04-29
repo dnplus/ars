@@ -99,7 +99,8 @@ export const SlideView: React.FC<SlideViewProps> = ({ episode, episodeId, series
   const viewportRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<PlayerRef>(null);
 
-  const [subtitlesVisible, setSubtitlesVisible] = useState(true);
+  const [subtitlesVisible, setSubtitlesVisible] = useState(false);
+  const [canvasScale, setCanvasScale] = useState(1);
   const [showOverview, setShowOverview] = useState(false);
   const [chromeVisible, setChromeVisible] = useState(true);
   const [timerStart, setTimerStart] = useState(() => Date.now());
@@ -152,19 +153,41 @@ export const SlideView: React.FC<SlideViewProps> = ({ episode, episodeId, series
 
   // Scale canvas to fit viewport
   useEffect(() => {
+    let frame = 0;
     const updateScale = () => {
       const pane = viewportRef.current;
       const canvas = canvasRef.current;
       if (!pane || !canvas) return;
+      if (pane.clientWidth <= 0 || pane.clientHeight <= 0) return;
       const scale = Math.min(
         pane.clientWidth / compositionWidth,
         pane.clientHeight / compositionHeight,
       );
+      if (!Number.isFinite(scale) || scale <= 0) return;
       canvas.style.transform = `scale(${scale})`;
+      setCanvasScale((current) => (Math.abs(current - scale) < 0.001 ? current : scale));
     };
-    updateScale();
-    window.addEventListener('resize', updateScale);
-    return () => window.removeEventListener('resize', updateScale);
+
+    const scheduleUpdate = () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(updateScale);
+    };
+
+    scheduleUpdate();
+    window.addEventListener('resize', scheduleUpdate);
+
+    const pane = viewportRef.current;
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined' && pane) {
+      observer = new ResizeObserver(scheduleUpdate);
+      observer.observe(pane);
+    }
+
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      window.removeEventListener('resize', scheduleUpdate);
+      observer?.disconnect();
+    };
   }, [compositionWidth, compositionHeight, showNotes, chromeVisible]);
 
   // Seek to 0 and play on slide change
@@ -284,7 +307,14 @@ export const SlideView: React.FC<SlideViewProps> = ({ episode, episodeId, series
       >
         <div className="studio-main-column" style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
           <div ref={viewportRef} className="studio-viewport">
-            <div className="studio-scale-wrapper">
+            <div
+              className="studio-scale-wrapper"
+              style={{
+                width: compositionWidth * canvasScale,
+                height: compositionHeight * canvasScale,
+                flexShrink: 0,
+              }}
+            >
               <div
                 ref={canvasRef}
                 className="studio-canvas"
@@ -300,6 +330,7 @@ export const SlideView: React.FC<SlideViewProps> = ({ episode, episodeId, series
                     episodeInfo,
                     audioSrc: currentStudioStep.audioSrc,
                     subtitles: subtitlesVisible ? currentStudioStep.subtitles : undefined,
+                    disableSubtitles: !subtitlesVisible,
                   } satisfies StudioCompositionProps}
                   durationInFrames={durationInFrames}
                   compositionWidth={compositionWidth}

@@ -1,20 +1,26 @@
 # Branding Interview Guide
 
-Use this guide during Phase 2 customize to collect brand information and derive theme tokens.
+Use this guide during Phase 3 customize to collect brand information, derive theme tokens, and shape SERIES_GUIDE.md.
+
+The interview has **two stages**:
+
+- **Stage 1** (always run) — visual identity + series identity (10 questions). Produces basic SERIES_GUIDE.md.
+- **Stage 2** (opt-in, recommended) — voice deep-dive (slogan, persona, common openers, banned phrases, card preferences, step duration cap, contrast examples). Appends optional sections to SERIES_GUIDE.md and dramatically improves `/ars:build` output quality.
 
 Channel name, YouTube publishing, and layout are already handled by `npx ars init` — do not re-ask them here. TTS settings now live in `series-config.ts` under `SERIES_CONFIG.speech`; audio starts disabled by default until the user explicitly enables it.
 
-## Interview Questions
+## Interview Rules
 
-Ask these in order, **one question at a time**. Wait for the user's reply before asking the next question.
+Ask each question **one at a time**. Wait for the user's reply before asking the next question.
 
-Interview rules:
 - Default to a conversational flow, not a form dump.
 - If the user answers multiple questions in one reply, capture the answered fields and skip them.
 - Do not re-ask information the user already gave clearly.
 - Accept "reuse defaults" / "same" / "default" / "skip" as an answer — record it as "use template default" for that field, do NOT silently invent richer content.
 - Stop as soon as the user says "do it later."
 - If the user is lazy or says "just do your best", stop the interview and fall back to the minimal defaults in `references/series-guide-template.md`.
+
+## Stage 1 — Visual + Series Identity (always run)
 
 ### Visual identity (→ `series-config.ts`)
 
@@ -35,6 +41,80 @@ These drive `SERIES_GUIDE.md` and are **required** — do NOT invent them from c
 10. **CTA policy** — Soft (description link / subscribe) / Direct (call out action) / Mixed / None
 
 `brandTag` is derived — default to `EP`. Offer to set it only if the user spontaneously mentions episode-type labeling (e.g. "I want each episode tagged as Tutorial / Deep Dive"). Don't ask proactively.
+
+## Stage 2 — Voice Deep-dive (opt-in, recommended)
+
+Run this **only after Stage 1 finishes** and the user opts in (see onboard SKILL's `## Stage 2 voice deep-dive` section for the opt-in prompt).
+
+These answers fill the optional sections in SERIES_GUIDE.md (`## Slogan & Persona`, `## Common Openers`, `## Signature Sign-off`, `## Banned Phrases & Replacements`, `## Card Preferences`, `## Step Duration Cap`, `## Contrast Examples`). They are read directly by `/ars:build` to drive narration style, card selection, and step pacing.
+
+Same interview rules as Stage 1 — ask one at a time, accept "skip" per question. Each skipped question simply means that section won't be added to SERIES_GUIDE.md.
+
+### Voice & Persona
+
+11. **Slogan / signature phrase** — One line you want viewers to remember. Example for 人蔘Try Catch: "人生就像 Try…Catch，反正 Catch 住就對了。" Skip if no slogan.
+
+12. **Persona one-liner** — Who is the host? In one line — role, age range or vibe, signature attitude. Example: "37 歲技術部門主管（人蔘擬人），冷面笑匠、苦中帶甘"; or "資深 ServiceNow 顧問，務實派"; or "indie hacker, plays dumb on purpose to teach better." Skip if persona = host's real bio (Stage 1 已答).
+
+13. **Common openers** — Up to 3 phrases you actually say at the top of segments. Example: "講白了" / "老實說" / "唉……（推眼鏡）" / "It's worth noting" → 否定樣本，不是真實口頭禪. Skip if you don't have stock openers.
+
+14. **Signature sign-off** — How does every episode end? Example: "人蔘好難，但 Catch 住就對了。我是人蔘，我們下次見。" Skip if you prefer it to vary per episode.
+
+### Forbidden Patterns
+
+15. **Banned words / phrases** — 3-5 words or phrases you don't want to see in your narration, ever. These are personal language allergies the writer should grep for and rewrite. Example for 人蔘: `手感`, `戰場`, `拆`, `味道`, `炫技`. Provide 1-2 replacement directions per banned word if natural (e.g. `拆 → 分解 / 講清楚`). Skip if no personal allergies.
+
+16. **AI 套路句 baseline** — apply the built-in AI cliché blacklist by default? (yes / no / extend)
+    - The built-in list: 「真正難的不是 X 而是 Y」、「不僅是 X 更是 Y」、「值得注意的是」、「總結來說」、「在這個 X 時代」、「讓我們一起來看看」、「批評者認為」
+    - `yes` → use it as-is (default)
+    - `no` → skip the AI cliché filter (rare; only for series with intentional formal tone)
+    - `extend` → add the user's own additions on top
+
+### Card Preferences
+
+These three questions set the default card ordering for `/ars:build`. The series guide overrides the defaults in `references/card-selection.md`. Use compact options:
+
+17. **App-like content priority** — when a segment is about a product surface, prefer:
+    - `mockApp > image > timeline` (default — product texture wins)
+    - `image > mockApp > timeline` (real screenshots preferred)
+    - `mixed / depends` (let build decide per segment)
+
+18. **Diagram default** — when showing static structure or process:
+    - `mermaid > flowchart` (default — static structure first, animation only when reveal matters)
+    - `flowchart > mermaid` (you favor the spring-animated reveals)
+    - `mixed / depends`
+
+19. **`compare` density** — for A vs B segments:
+    - 用得勤 (use compare aggressively for any 2-sided contrast)
+    - 用得省 (default — only true head-to-head; multi-column → markdown table)
+    - `mixed`
+
+### Pacing
+
+20. **Step duration cap** — when a single narrated step's narration runs longer than this, build should split it into two beats. Pick:
+    - 20s (tight, ginseng-style)
+    - 30s (balanced)
+    - 45s (long-form, GSS-style or formal training content)
+    - other — user-specified number
+
+This number directly overrides the build SKILL's 30-60s default.
+
+### Contrast Examples
+
+21. **Contrast pair (optional but high-value)** — give 1-2 example sentences in two versions:
+
+    ```
+    ❌ 太書面 / 不像我:
+    ✅ 我的風格:
+    ```
+
+    Example for 人蔘:
+    ```
+    ❌ 這種架構設計體現了系統性思考的重要性，值得注意的是其擴展性問題。
+    ✅ 問題在這裡。你把整個系統塞進一個 service，乍看沒問題，但流量一上來就炸。不是因為程式寫錯，是因為它從一開始就沒準備好被這樣用。
+    ```
+
+    Build reads these as tone calibration data — they're worth more than any rule when judging "does this narration sound like me?". Skip if user can't think of one (offer to revisit later in `/ars:onboard` re-run).
 
 ## Color Derivation Rules
 
@@ -73,7 +153,7 @@ shadow        → primary hex + alpha 0.2
 
 ## What to Write Back
 
-After the interview, update `series-config.ts`:
+After Stage 1, update `series-config.ts`:
 - Replace all placeholder colors in `theme.colors`
 - Set `fontFamily` to chosen font (use Google Fonts via `@remotion/google-fonts/<FontName>` if available)
 - Update `vtuber.closedImg` / `openImg` paths if user provided images
@@ -86,4 +166,18 @@ For `shell.layout`:
 - In normal onboarding, leave the built-in layout choice from `npx ars init` as-is.
 - Only change it if the user explicitly wants to switch between built-in `'streaming'` / `'shorts'`, or they are intentionally setting up a series custom layout override.
 
-Then write `SERIES_GUIDE.md` — see `references/series-guide-template.md`.
+Then write `SERIES_GUIDE.md` — see `references/series-guide-template.md`. Use only the basic sections at this point.
+
+After Stage 2 (if the user opted in), append the optional sections to the same `SERIES_GUIDE.md`:
+
+| Stage 2 question | SERIES_GUIDE section |
+|---|---|
+| Q11 (slogan) + Q12 (persona) | `## Slogan & Persona` |
+| Q13 (common openers) | `## Common Openers` |
+| Q14 (signature sign-off) | `## Signature Sign-off` |
+| Q15 (banned words) + Q16 (AI cliché policy) | `## Banned Phrases & Replacements` |
+| Q17 / Q18 / Q19 (card preferences) | `## Card Preferences (Authoring Heuristics)` |
+| Q20 (step duration) | `## Step Duration Cap` |
+| Q21 (contrast pair) | `## Contrast Examples` |
+
+Sections corresponding to skipped questions are simply omitted — don't write empty placeholder sections. After writing, tell the user which sections were added so they can verify the file matches their answers.
