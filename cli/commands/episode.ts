@@ -12,7 +12,7 @@ import fs from 'fs';
 import path from 'path';
 import {
   getActiveSeries,
-  listAvailableSeries,
+  listUserSeries,
   resolveEpisodeTarget,
   resolveSeriesArgument,
   resolveSeriesContext,
@@ -136,7 +136,7 @@ async function list(args: string[]) {
       return list([activeSeries]);
     }
 
-    const allSeries = listAvailableSeries(root).filter((series) => series !== 'template');
+    const allSeries = listUserSeries(root);
     console.log(allSeries.length === 0
       ? '📭 No user series found in src/episodes/'
       : `📋 Available series: ${allSeries.join(', ')}`);
@@ -571,7 +571,9 @@ function listEpisodeIdsInSeries(series: string): string[] {
 
 async function loadEpisodesForStats(target?: string, allMode?: boolean) {
   if (allMode) {
-    const seriesList = target ? [target] : listAvailableSeries(getRepoRoot());
+    // Without an explicit target, aggregate only user series. Explicit
+    // `template` (e.g. `npx ars episode stats template --all`) still works.
+    const seriesList = target ? [target] : listUserSeries(getRepoRoot());
     const loaded = [];
     for (const series of seriesList) {
       for (const epId of listEpisodeIdsInSeries(series)) {

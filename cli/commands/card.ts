@@ -9,7 +9,7 @@
 import fs from 'fs';
 import path from 'path';
 import ts from 'typescript';
-import { getActiveSeries } from '../lib/context';
+import { getActiveSeries, isReservedSeriesName } from '../lib/context';
 import { getRepoRoot } from '../lib/ars-config';
 
 let ROOT = getRepoRoot();
@@ -286,8 +286,8 @@ function discoverSeriesCards(filterSeries?: string): CardMeta[] {
   const allSeries = fs.readdirSync(episodesDir)
     .filter(name => fs.statSync(path.join(episodesDir, name)).isDirectory())
     .filter(name => !filterSeries || name === filterSeries);
-  const hasUserSeries = allSeries.some((series) => series !== 'template');
-  const seriesList = allSeries.filter((series) => !(hasUserSeries && series === 'template'));
+  const hasUserSeries = allSeries.some((series) => !isReservedSeriesName(series));
+  const seriesList = allSeries.filter((series) => !(hasUserSeries && isReservedSeriesName(series)));
 
   for (const series of seriesList) {
     const cardsDir = path.join(episodesDir, series, 'cards');

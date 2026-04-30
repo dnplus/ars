@@ -9,7 +9,7 @@ import fs from 'fs';
 import path from 'path';
 import { getRepoRoot } from '../lib/ars-config';
 import { ensureRepoInitialized } from '../lib/repo-init';
-import { getActiveSeries, listAvailableSeries, setActiveSeries, validateSeriesName } from '../lib/context';
+import { getActiveSeries, listUserSeries, setActiveSeries, validateSeriesName } from '../lib/context';
 
 const HELP = `
 Usage: npx ars init [series-name] [options]
@@ -82,7 +82,7 @@ export async function run(args: string[]) {
   }
   validateSeriesName(targetSeries);
   const activeSeries = getActiveSeries(root);
-  const existingUserSeries = listAvailableSeries(root).filter((series) => series !== 'template');
+  const existingUserSeries = listUserSeries(root);
 
   if (activeSeries && activeSeries !== targetSeries) {
     console.error(`❌ This repo is already initialized for series "${activeSeries}".`);
