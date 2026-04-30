@@ -541,7 +541,29 @@ function isRecord(value: unknown): value is Record<string, string> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-export function backupEngine(root = getTargetRepoRoot()): string {
+export interface ArsAssetBackup {
+  /** Top-level timestamp directory under .ars/backups/. */
+  timestampDir: string;
+  /** Full path of the engine snapshot. Always present. */
+  engineDir: string;
+  /** Snapshots of ARS-owned assets that are otherwise unreachable for rollback. */
+  claudeSkillsDir?: string;
+  claudeAgentsDir?: string;
+  hookScriptsDir?: string;
+}
+
+/**
+ * Snapshot every ARS-owned asset that `npx ars update` is about to overwrite.
+ *
+ * `src/engine/` is the historical backup target, but update also overwrites
+ *   - `.claude/skills/ars/`
+ *   - `.claude/agents/`
+ *   - `.ars/hooks/scripts/`
+ * with `overwrite: true`, and `.claude/` is in the consumer-repo .gitignore so
+ * `git restore` cannot recover user customizations either. Backing them up
+ * alongside the engine is the only way an `update` is actually reversible.
+ */
+export function backupArsAssets(root = getTargetRepoRoot()): ArsAssetBackup {
   const targetEngineDir = path.join(root, 'src', 'engine');
   if (!fs.existsSync(targetEngineDir)) {
     throw new Error(`Missing ${targetEngineDir}. Run "npx ars init <series>" first.`);
@@ -549,19 +571,53 @@ export function backupEngine(root = getTargetRepoRoot()): string {
 
   const backupsRoot = path.join(getArsDir(root), 'backups');
   const backupTimestamp = new Date().toISOString().replace(/:/g, '-');
-  const backupEngineDir = path.join(
-    backupsRoot,
-    backupTimestamp,
-    'engine',
-  );
-  copyDirectory(targetEngineDir, backupEngineDir, { overwrite: false });
-  pruneOldEngineBackups(backupsRoot);
-  return backupEngineDir;
+  const timestampDir = path.join(backupsRoot, backupTimestamp);
+
+  const engineDir = path.join(timestampDir, 'engine');
+  copyDirectory(targetEngineDir, engineDir, { overwrite: false });
+
+  const claudeSkillsSrc = path.join(root, '.claude', 'skills', 'ars');
+  const claudeSkillsDir = fs.existsSync(claudeSkillsSrc)
+    ? snapshotDir(claudeSkillsSrc, path.join(timestampDir, 'claude-skills'))
+    : undefined;
+
+  const claudeAgentsSrc = path.join(root, '.claude', 'agents');
+  const claudeAgentsDir = fs.existsSync(claudeAgentsSrc)
+    ? snapshotDir(claudeAgentsSrc, path.join(timestampDir, 'claude-agents'))
+    : undefined;
+
+  const hookScriptsSrc = path.join(root, '.ars', 'hooks', 'scripts');
+  const hookScriptsDir = fs.existsSync(hookScriptsSrc)
+    ? snapshotDir(hookScriptsSrc, path.join(timestampDir, 'hook-scripts'))
+    : undefined;
+
+  pruneOldArsAssetBackups(backupsRoot);
+  return {
+    timestampDir,
+    engineDir,
+    claudeSkillsDir,
+    claudeAgentsDir,
+    hookScriptsDir,
+  };
+}
+
+/**
+ * @deprecated Use {@link backupArsAssets}, which also snapshots `.claude/`
+ * skills/agents and `.ars/hooks/scripts/`. Kept as a thin alias so any
+ * downstream caller still importing `backupEngine` keeps working.
+ */
+export function backupEngine(root = getTargetRepoRoot()): string {
+  return backupArsAssets(root).engineDir;
+}
+
+function snapshotDir(sourceDir: string, targetDir: string): string {
+  copyDirectory(sourceDir, targetDir, { overwrite: false });
+  return targetDir;
 }
 
 const ENGINE_BACKUP_RETENTION_COUNT = 3;
 
-function pruneOldEngineBackups(backupsRoot: string): void {
+function pruneOldArsAssetBackups(backupsRoot: string): void {
   if (!fs.existsSync(backupsRoot)) {
     return;
   }

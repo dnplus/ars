@@ -1,7 +1,8 @@
 import path from 'path';
 import { CONFIG_SCHEMA_VERSION } from '../lib/ars-config';
 import {
-  backupEngine,
+  ArsAssetBackup,
+  backupArsAssets,
   detectInstallMethod,
   getTargetRepoRoot,
   locateSourcePackageRoot,
@@ -42,7 +43,16 @@ export async function run(args: string[]) {
     return;
   }
 
-  console.log(`✅ Backed up engine to ${result.backupDir}`);
+  console.log(`✅ Backed up engine to ${result.backup.engineDir}`);
+  if (result.backup.claudeSkillsDir) {
+    console.log(`✅ Backed up ARS skills to ${result.backup.claudeSkillsDir}`);
+  }
+  if (result.backup.claudeAgentsDir) {
+    console.log(`✅ Backed up ARS agents to ${result.backup.claudeAgentsDir}`);
+  }
+  if (result.backup.hookScriptsDir) {
+    console.log(`✅ Backed up hook scripts to ${result.backup.hookScriptsDir}`);
+  }
   console.log(`✅ Refreshed engine from ${path.join(result.sourceRoot, 'src', 'engine')}`);
   if (result.installedSkills.length > 0) {
     console.log(`✅ Synced ${result.installedSkills.length} ARS skills into .claude/skills/ars/`);
@@ -57,16 +67,31 @@ export async function run(args: string[]) {
     console.log(`✅ Patched ${result.claudeMdPath}`);
   }
   console.log(`✅ Wrote ${result.versionPath}`);
-  console.log('Rollback hint:');
+  console.log('Rollback hints:');
   console.log(`  rm -rf "${path.join(result.root, 'src', 'engine')}"`);
-  console.log(`  cp -R "${result.backupDir}" "${path.join(result.root, 'src', 'engine')}"`);
+  console.log(`  cp -R "${result.backup.engineDir}" "${path.join(result.root, 'src', 'engine')}"`);
+  if (result.backup.claudeSkillsDir) {
+    const target = path.join(result.root, '.claude', 'skills', 'ars');
+    console.log(`  rm -rf "${target}"`);
+    console.log(`  cp -R "${result.backup.claudeSkillsDir}" "${target}"`);
+  }
+  if (result.backup.claudeAgentsDir) {
+    const target = path.join(result.root, '.claude', 'agents');
+    console.log(`  rm -rf "${target}"`);
+    console.log(`  cp -R "${result.backup.claudeAgentsDir}" "${target}"`);
+  }
+  if (result.backup.hookScriptsDir) {
+    const target = path.join(result.root, '.ars', 'hooks', 'scripts');
+    console.log(`  rm -rf "${target}"`);
+    console.log(`  cp -R "${result.backup.hookScriptsDir}" "${target}"`);
+  }
 }
 
 export async function updateCommand(options: UpdateOptions & { root?: string }):
 Promise<{
   root: string;
   sourceRoot: string;
-  backupDir: string;
+  backup: ArsAssetBackup;
   versionPath: string;
   claudeMdPath?: string;
   installedSkills: string[];
@@ -76,7 +101,10 @@ Promise<{
   const root = options.root ?? getTargetRepoRoot();
   const runtime = getRuntimePackageInfo(import.meta.url);
   const sourceRoot = locateSourcePackageRoot(import.meta.url);
-  const backupDir = backupEngine(root);
+  // Snapshot every ARS-owned asset BEFORE any sync runs. `.claude/` is in the
+  // consumer-repo .gitignore, so without this backup `git restore` cannot
+  // recover user customizations to `.claude/skills/ars/` or `.claude/agents/`.
+  const backup = backupArsAssets(root);
 
   syncEngineFiles({
     root,
@@ -108,7 +136,7 @@ Promise<{
   return {
     root,
     sourceRoot,
-    backupDir,
+    backup,
     versionPath,
     claudeMdPath,
     installedSkills,

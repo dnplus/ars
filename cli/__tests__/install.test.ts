@@ -2,7 +2,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { patchClaudeSettings } from '../lib/install';
+import { backupArsAssets, patchClaudeSettings } from '../lib/install';
 
 const tempRoots: string[] = [];
 
@@ -91,5 +91,59 @@ describe('patchClaudeSettings', () => {
         { type: 'command', command: 'node ".ars/hooks/scripts/studio-intent-stop.mjs"', timeout: 3 },
       ],
     });
+  });
+});
+
+describe('backupArsAssets', () => {
+  function seedFile(filePath: string, contents: string): void {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, contents, 'utf-8');
+  }
+
+  it('snapshots engine plus .claude skills/agents and hook scripts into one timestamp directory', () => {
+    const root = makeTempRoot('ars-backup-');
+    seedFile(path.join(root, 'src', 'engine', 'marker.txt'), 'engine');
+    seedFile(path.join(root, '.claude', 'skills', 'ars', 'onboard', 'SKILL.md'), '# customised');
+    seedFile(path.join(root, '.claude', 'agents', 'planner.md'), '# planner');
+    seedFile(path.join(root, '.ars', 'hooks', 'scripts', 'session-start.mjs'), 'export {}');
+
+    const result = backupArsAssets(root);
+
+    expect(fs.readFileSync(path.join(result.engineDir, 'marker.txt'), 'utf-8')).toBe('engine');
+    expect(result.claudeSkillsDir).toBeDefined();
+    expect(
+      fs.readFileSync(path.join(result.claudeSkillsDir!, 'onboard', 'SKILL.md'), 'utf-8'),
+    ).toBe('# customised');
+    expect(result.claudeAgentsDir).toBeDefined();
+    expect(
+      fs.readFileSync(path.join(result.claudeAgentsDir!, 'planner.md'), 'utf-8'),
+    ).toBe('# planner');
+    expect(result.hookScriptsDir).toBeDefined();
+    expect(
+      fs.readFileSync(path.join(result.hookScriptsDir!, 'session-start.mjs'), 'utf-8'),
+    ).toBe('export {}');
+
+    // All snapshots live in the same timestamp folder so rollback hints stay coherent.
+    expect(result.engineDir.startsWith(result.timestampDir)).toBe(true);
+    expect(result.claudeSkillsDir!.startsWith(result.timestampDir)).toBe(true);
+    expect(result.claudeAgentsDir!.startsWith(result.timestampDir)).toBe(true);
+    expect(result.hookScriptsDir!.startsWith(result.timestampDir)).toBe(true);
+  });
+
+  it('skips optional asset roots that do not exist yet without crashing', () => {
+    const root = makeTempRoot('ars-backup-partial-');
+    seedFile(path.join(root, 'src', 'engine', 'marker.txt'), 'engine-only');
+
+    const result = backupArsAssets(root);
+
+    expect(fs.existsSync(result.engineDir)).toBe(true);
+    expect(result.claudeSkillsDir).toBeUndefined();
+    expect(result.claudeAgentsDir).toBeUndefined();
+    expect(result.hookScriptsDir).toBeUndefined();
+  });
+
+  it('throws when src/engine/ is missing because the repo was never initialized', () => {
+    const root = makeTempRoot('ars-backup-uninit-');
+    expect(() => backupArsAssets(root)).toThrow(/Run "npx ars init/);
   });
 });
