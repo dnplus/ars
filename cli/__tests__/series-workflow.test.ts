@@ -164,6 +164,13 @@ describe('single-series workflow', () => {
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('already initialized for series "demo-series"');
+    // P1c: error message must show actionable next steps so the user is not
+    // left guessing whether to delete the old series, use --force, or edit
+    // .ars/config.json.
+    expect(result.stderr).toContain('To switch to a different series');
+    expect(result.stderr).toContain('npx ars init other-series');
+    expect(result.stderr).toContain(path.join('src', 'episodes', 'demo-series'));
+    expect(result.stderr).toContain('project.activeSeries');
     expect(fs.existsSync(path.join(repoDir, 'src', 'episodes', 'other-series'))).toBe(false);
   });
 });
