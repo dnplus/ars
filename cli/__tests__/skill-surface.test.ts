@@ -127,6 +127,35 @@ describe('plugin skill surface', () => {
     expect(output).toContain('/ars:analytics');
   });
 
+  it('onboard SKILL.md never combines a series-name argument with --skip-series', () => {
+    // The CLI rejects `npx ars init <series> --skip-series` (and the reverse)
+    // with `Cannot use --skip-series with a series name argument`. If the
+    // onboarding skill instructs Claude to run that combination, Phase 2
+    // bootstrap throws and the whole onboard flow stalls. Guard against the
+    // regression at the doc level.
+    const skillPath = path.join(repoRoot, 'plugin', 'skills', 'onboard', 'SKILL.md');
+    const skill = fs.readFileSync(skillPath, 'utf-8');
+    const codeFences = skill.split(/```[a-zA-Z0-9_-]*\n/).slice(1).map((chunk) => chunk.split('```')[0]);
+    for (const block of codeFences) {
+      for (const rawLine of block.split('\n')) {
+        const line = rawLine.trim();
+        if (!line.startsWith('npx ars init') && !line.startsWith('ars init')) continue;
+        if (!line.includes('--skip-series')) continue;
+        // Allow lines that pass --skip-series only (no positional series-name arg).
+        const tokens = line
+          .replace(/^npx\s+/, '')
+          .replace(/^ars\s+init\s*/, '')
+          .split(/\s+/)
+          .filter(Boolean);
+        const hasSeriesArg = tokens.some((token) => !token.startsWith('-'));
+        expect(
+          hasSeriesArg,
+          `onboard SKILL.md still combines a series-name argument with --skip-series: "${line}"`,
+        ).toBe(false);
+      }
+    }
+  });
+
   it('keeps planning prompts on the Studio-first fast agenda path', () => {
     const planSkill = fs.readFileSync(
       path.join(repoRoot, 'plugin', 'skills', 'plan', 'SKILL.md'),

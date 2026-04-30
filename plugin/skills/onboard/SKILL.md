@@ -100,13 +100,15 @@ Bootstrap handles **deterministic settings only** — things that don't require 
 
 1. Write workstate with stage `onboard-bootstrap`
 2. Tell the user: this phase collects basic config (series name, TTS provider, YouTube). No creative decisions yet.
-3. If `.ars/config.json` is missing or has no `project.activeSeries`, ask for a **series name** (channel slug, lowercase, no spaces), then run:
+3. If `.ars/config.json` is missing or has no `project.activeSeries`, ask for a **series name** (channel slug, lowercase, no spaces) and **remember it for Phase 3**. Do NOT pass it to the bootstrap call — `--skip-series` and a series-name argument are mutually exclusive in `npx ars init` and the CLI will refuse.
 
-```bash
-npx ars init <series> --skip-series -y
-```
+   Run the bootstrap as:
 
-   This initializes the repo (sync engine, patch CLAUDE.md, install skills) without copying the template series.
+   ```bash
+   npx ars init --skip-series -y
+   ```
+
+   This initializes the repo (sync engine, patch CLAUDE.md, install skills) without copying the template series. `project.activeSeries` stays unset on purpose — it is written in Phase 3 when the series content is actually created (`npx ars init <series>` for "from template" / "do it later", or direct file scaffolding for "from scratch").
 
 4. Confirm **TTS provider** (minimax / none). If minimax, remind about `.env` keys (`MINIMAX_API_KEY`, `MINIMAX_GROUP_ID`).
 5. Confirm **YouTube publishing** (enabled / disabled). If enabled, remind about credential files.
