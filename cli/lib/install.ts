@@ -3,6 +3,7 @@ import path from 'path';
 import { spawnSync } from 'child_process';
 import { getArsDir } from './ars-config';
 import { getRuntimePackageInfo } from './runtime-package';
+import { iterArsOwnedFiles } from './sync-paths';
 import {
   ArsInstallMethod,
   ArsVersionMetadata,
@@ -233,189 +234,33 @@ export function getSourceGitCommit(sourceRoot: string): string {
 }
 
 /**
- * Top-level paths inside `src/` that should NOT be copied into consumer repos.
- * Anything else under `src/` is treated as ARS engine source and synced wholesale.
+ * Sync every ARS-owned file from the installed package into the consumer repo.
  *
- * The default is "sync everything under src/" because adding a new top-level
- * runtime directory (e.g. `src/studio/` in the Phase 1 Studio rework) would
- * otherwise silently fail to land in consumer repos until someone remembered to
- * extend a whitelist. Explicit excludes here are easier to reason about than an
- * ever-growing allow list.
+ * The set of paths is derived from `package.json#files` (read via
+ * iterArsOwnedFiles in cli/lib/sync-paths.ts) — that is the same inventory npm
+ * uses when publishing the tarball, so it is the only correct definition of
+ * "what consumers should receive". Adding a new file under any included
+ * directory automatically lands here on next update; no allow-list to update.
+ *
+ * Two compounding pieces still live alongside the file walker:
+ *   • package.json itself is generated/merged via syncPackageJson, not copied
+ *   • .gitignore is line-merged via syncGitIgnore, not copied
+ * Both have content-aware merge semantics that a generic file copy would
+ * destroy, so they stay as dedicated calls below the walk.
  */
-const SRC_SYNC_EXCLUDES = new Set<string>([
-  // episodes is series-owned content; only the template ships, handled below
-  'episodes',
-  // dev-only directories (placeholder; add as we introduce them)
-  '__tests__',
-  '__fixtures__',
-  'test-utils',
-  'internal',
-]);
-
 export function syncEngineFiles(options: SyncEngineOptions): string[] {
   const copied: string[] = [];
-  const sourceSrcDir = path.join(options.sourceRoot, 'src');
+  const owned = iterArsOwnedFiles(options.sourceRoot);
 
-  if (fs.existsSync(sourceSrcDir)) {
-    for (const entry of fs.readdirSync(sourceSrcDir, { withFileTypes: true })) {
-      if (SRC_SYNC_EXCLUDES.has(entry.name)) continue;
-
-      const sourcePath = path.join(sourceSrcDir, entry.name);
-      const targetPath = path.join(options.root, 'src', entry.name);
-      // `src/engine/` is the only directory that follows the `--force-engine`
-      // overwrite flag; everything else (review/, studio/, types/, adapters/,
-      // root .tsx files, etc.) follows the support-files flag. Engine churns
-      // most often and ARS owns it end-to-end, so it gets the heavier hammer.
-      const overwrite = entry.name === 'engine'
-        ? options.overwriteEngine
-        : options.overwriteSupportFiles;
-
-      if (entry.isDirectory()) {
-        syncDirectoryIfNeeded(sourcePath, targetPath, overwrite, `${entry.name}/`, copied);
-      } else if (entry.isFile()) {
-        syncFileIfNeeded(sourcePath, targetPath, overwrite, entry.name, copied);
-      }
-    }
+  for (const entry of owned) {
+    const targetPath = path.join(options.root, entry.relPath);
+    const overwrite = entry.category === 'engine'
+      ? options.overwriteEngine
+      : options.overwriteSupportFiles;
+    syncFileIfNeeded(entry.sourceAbs, targetPath, overwrite, entry.relPath, copied);
   }
 
-  // Template episode lives under src/episodes/ which is excluded above; ship it
-  // explicitly so consumer repos can use it as a reference. Template is logically
-  // part of the engine (ships with ARS, never user-authored), so it follows
-  // overwriteEngine — `npx ars update` refreshes it like the engine code.
-  const sourceTemplateDir = path.join(
-    options.sourceRoot,
-    'src',
-    'episodes',
-    'template',
-  );
-  const targetTemplateDir = path.join(options.root, 'src', 'episodes', 'template');
-  syncDirectoryIfNeeded(
-    sourceTemplateDir,
-    targetTemplateDir,
-    options.overwriteEngine,
-    'episodes/template/',
-    copied,
-  );
-
-  syncFileIfNeeded(
-    path.join(options.sourceRoot, 'vite.studio.config.ts'),
-    path.join(options.root, 'vite.studio.config.ts'),
-    options.overwriteSupportFiles,
-    'vite.studio.config.ts',
-    copied,
-  );
-
-  syncFileIfNeeded(
-    path.join(options.sourceRoot, 'remotion.config.ts'),
-    path.join(options.root, 'remotion.config.ts'),
-    options.overwriteSupportFiles,
-    'remotion.config.ts',
-    copied,
-  );
-
-  syncFileIfNeeded(
-    path.join(options.sourceRoot, 'tsconfig.json'),
-    path.join(options.root, 'tsconfig.json'),
-    options.overwriteSupportFiles,
-    'tsconfig.json',
-    copied,
-  );
-
-  syncFileIfNeeded(
-    path.join(options.sourceRoot, 'eslint.config.mjs'),
-    path.join(options.root, 'eslint.config.mjs'),
-    options.overwriteSupportFiles,
-    'eslint.config.mjs',
-    copied,
-  );
-
-  syncFileIfNeeded(
-    path.join(options.sourceRoot, '.env.example'),
-    path.join(options.root, '.env.example'),
-    options.overwriteSupportFiles,
-    '.env.example',
-    copied,
-  );
-
   syncGitIgnore(options.root, copied);
-
-  syncFileIfNeeded(
-    path.join(options.sourceRoot, '.github', 'workflows', 'ci.yml'),
-    path.join(options.root, '.github', 'workflows', 'ci.yml'),
-    options.overwriteSupportFiles,
-    '.github/workflows/ci.yml',
-    copied,
-  );
-
-  // Consumer repos do not ship the full ARS CLI source tree, but synced runtime
-  // files import a small local helper surface. Keep those files in sync so
-  // Studio, typecheck, and publish work in a generated content repo.
-  syncFileIfNeeded(
-    path.join(options.sourceRoot, 'cli', 'lib', 'ars-config.ts'),
-    path.join(options.root, 'cli', 'lib', 'ars-config.ts'),
-    options.overwriteSupportFiles,
-    'cli/lib/ars-config.ts',
-    copied,
-  );
-
-  syncFileIfNeeded(
-    path.join(options.sourceRoot, 'cli', 'lib', 'context.ts'),
-    path.join(options.root, 'cli', 'lib', 'context.ts'),
-    options.overwriteSupportFiles,
-    'cli/lib/context.ts',
-    copied,
-  );
-
-  syncFileIfNeeded(
-    path.join(options.sourceRoot, 'cli', 'lib', 'episode-file.ts'),
-    path.join(options.root, 'cli', 'lib', 'episode-file.ts'),
-    options.overwriteSupportFiles,
-    'cli/lib/episode-file.ts',
-    copied,
-  );
-
-  syncFileIfNeeded(
-    path.join(options.sourceRoot, 'cli', 'lib', 'youtube-client.ts'),
-    path.join(options.root, 'cli', 'lib', 'youtube-client.ts'),
-    options.overwriteSupportFiles,
-    'cli/lib/youtube-client.ts',
-    copied,
-  );
-
-  syncFileIfNeeded(
-    path.join(options.sourceRoot, 'cli', 'lib', 'youtube-upload.ts'),
-    path.join(options.root, 'cli', 'lib', 'youtube-upload.ts'),
-    options.overwriteSupportFiles,
-    'cli/lib/youtube-upload.ts',
-    copied,
-  );
-
-  syncFileIfNeeded(
-    path.join(options.sourceRoot, 'cli', 'pronunciation_dict.yaml'),
-    path.join(options.root, 'cli', 'pronunciation_dict.yaml'),
-    options.overwriteSupportFiles,
-    'cli/pronunciation_dict.yaml',
-    copied,
-  );
-
-  // Static assets: fonts and shared audio required by the studio
-  syncDirectoryIfNeeded(
-    path.join(options.sourceRoot, 'public', 'shared'),
-    path.join(options.root, 'public', 'shared'),
-    options.overwriteSupportFiles,
-    'public/shared/',
-    copied,
-  );
-
-  // Template episode public assets (VTuber images used by walkthrough + npx ars init <series>)
-  syncDirectoryIfNeeded(
-    path.join(options.sourceRoot, 'public', 'episodes', 'template', 'shared'),
-    path.join(options.root, 'public', 'episodes', 'template', 'shared'),
-    options.overwriteSupportFiles,
-    'public/episodes/template/shared/',
-    copied,
-  );
-
   syncPackageJson(options.sourceRoot, options.root, copied);
 
   return copied;
