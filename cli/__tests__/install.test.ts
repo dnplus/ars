@@ -103,7 +103,12 @@ describe('backupArsAssets', () => {
   it('snapshots engine plus .claude skills/agents and hook scripts into one timestamp directory', () => {
     const root = makeTempRoot('ars-backup-');
     seedFile(path.join(root, 'src', 'engine', 'marker.txt'), 'engine');
-    seedFile(path.join(root, '.claude', 'skills', 'ars', 'onboard', 'SKILL.md'), '# customised');
+    // Each plugin skill lives at `.claude/skills/ars:<name>/SKILL.md`; the
+    // backup walks every `ars:*` sibling under .claude/skills/.
+    seedFile(path.join(root, '.claude', 'skills', 'ars:onboard', 'SKILL.md'), '# customised');
+    seedFile(path.join(root, '.claude', 'skills', 'ars:plan', 'SKILL.md'), '# plan-customised');
+    // A non-ARS skill must NOT leak into the backup.
+    seedFile(path.join(root, '.claude', 'skills', 'other', 'SKILL.md'), '# unrelated');
     seedFile(path.join(root, '.claude', 'agents', 'planner.md'), '# planner');
     seedFile(path.join(root, '.ars', 'hooks', 'scripts', 'session-start.mjs'), 'export {}');
 
@@ -112,8 +117,12 @@ describe('backupArsAssets', () => {
     expect(fs.readFileSync(path.join(result.engineDir, 'marker.txt'), 'utf-8')).toBe('engine');
     expect(result.claudeSkillsDir).toBeDefined();
     expect(
-      fs.readFileSync(path.join(result.claudeSkillsDir!, 'onboard', 'SKILL.md'), 'utf-8'),
+      fs.readFileSync(path.join(result.claudeSkillsDir!, 'ars:onboard', 'SKILL.md'), 'utf-8'),
     ).toBe('# customised');
+    expect(
+      fs.readFileSync(path.join(result.claudeSkillsDir!, 'ars:plan', 'SKILL.md'), 'utf-8'),
+    ).toBe('# plan-customised');
+    expect(fs.existsSync(path.join(result.claudeSkillsDir!, 'other'))).toBe(false);
     expect(result.claudeAgentsDir).toBeDefined();
     expect(
       fs.readFileSync(path.join(result.claudeAgentsDir!, 'planner.md'), 'utf-8'),

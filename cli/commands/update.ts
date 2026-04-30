@@ -67,13 +67,33 @@ export async function run(args: string[]) {
     console.log(`✅ Patched ${result.claudeMdPath}`);
   }
   console.log(`✅ Wrote ${result.versionPath}`);
-  console.log('Rollback hints:');
+
+  // Make non-snapshotted overwrites visible. syncEngineFiles refreshes a long
+  // list of ARS-owned support files (vite.studio.config.ts, tsconfig.json,
+  // eslint.config.mjs, src/studio/**, .github/workflows/ci.yml, etc.) that
+  // backupArsAssets does NOT cover. Without this banner the user has no way
+  // to know which paths to inspect with `git diff` when something feels off.
+  const supportFiles = summarizeSupportFiles(result.supportFilesTouched);
+  if (supportFiles.length > 0) {
+    console.log('');
+    console.log('ℹ️  Refreshed ARS-owned support files (NOT in the backup above — review with `git diff` if customised):');
+    for (const entry of supportFiles) {
+      console.log(`     - ${entry}`);
+    }
+  }
+
+  console.log('');
+  console.log('Rollback hints (snapshotted assets):');
   console.log(`  rm -rf "${path.join(result.root, 'src', 'engine')}"`);
   console.log(`  cp -R "${result.backup.engineDir}" "${path.join(result.root, 'src', 'engine')}"`);
   if (result.backup.claudeSkillsDir) {
-    const target = path.join(result.root, '.claude', 'skills', 'ars');
-    console.log(`  rm -rf "${target}"`);
-    console.log(`  cp -R "${result.backup.claudeSkillsDir}" "${target}"`);
+    // The snapshot contains one or more `ars:<name>/` subdirectories. Restore
+    // them in place under the consumer repo's .claude/skills/ — wipe any
+    // existing `ars:*` siblings first so the user gets exactly the snapshotted
+    // set, not a merge with whatever update just synced.
+    const target = path.join(result.root, '.claude', 'skills');
+    console.log(`  find "${target}" -maxdepth 1 -type d -name 'ars:*' -exec rm -rf {} +`);
+    console.log(`  cp -R "${result.backup.claudeSkillsDir}/." "${target}/"`);
   }
   if (result.backup.claudeAgentsDir) {
     const target = path.join(result.root, '.claude', 'agents');
@@ -85,6 +105,29 @@ export async function run(args: string[]) {
     console.log(`  rm -rf "${target}"`);
     console.log(`  cp -R "${result.backup.hookScriptsDir}" "${target}"`);
   }
+  if (supportFiles.length > 0) {
+    console.log('Support files above are NOT snapshotted — recover via `git restore <path>` or `git checkout <ref> -- <path>`.');
+  }
+}
+
+/**
+ * Reduce the verbose `syncEngineFiles` copy log into a short list of paths the
+ * user might have customised. `engine/` and `episodes/template/` are excluded
+ * because they're either covered by the engine backup or shipped read-only.
+ */
+function summarizeSupportFiles(copiedFiles: string[]): string[] {
+  const labels = new Set<string>();
+  for (const entry of copiedFiles) {
+    // Each entry is either "<label> ← <source>" (from syncEngineFiles) or a
+    // bare label (e.g. "package.json (generated)", ".gitignore"). Take only
+    // the label half so the output stays readable.
+    const label = entry.split(' ← ')[0].trim();
+    if (!label) continue;
+    if (label.startsWith('engine/')) continue; // covered by the engine backup
+    if (label.startsWith('episodes/template/')) continue; // ARS-shipped read-only template
+    labels.add(label);
+  }
+  return Array.from(labels).sort();
 }
 
 export async function updateCommand(options: UpdateOptions & { root?: string }):
@@ -97,6 +140,8 @@ Promise<{
   installedSkills: string[];
   installedAgents: string[];
   installedHookScripts: string[];
+  /** Raw copy log from syncEngineFiles for surfacing non-snapshotted overwrites. */
+  supportFilesTouched: string[];
 }> {
   const root = options.root ?? getTargetRepoRoot();
   const runtime = getRuntimePackageInfo(import.meta.url);
@@ -106,7 +151,7 @@ Promise<{
   // recover user customizations to `.claude/skills/ars/` or `.claude/agents/`.
   const backup = backupArsAssets(root);
 
-  syncEngineFiles({
+  const supportFilesTouched = syncEngineFiles({
     root,
     sourceRoot,
     overwriteEngine: true,
@@ -142,6 +187,7 @@ Promise<{
     installedSkills,
     installedAgents,
     installedHookScripts,
+    supportFilesTouched,
   };
 }
 

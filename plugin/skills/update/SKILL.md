@@ -51,9 +51,10 @@ When the user invokes `/ars:update`:
 1. Confirm the repo is initialized: check `.ars/config.json` exists. If it does not, tell the user to run `/ars:onboard` or `npx ars init <series>` instead — `update` is not a bootstrap command.
 2. Run `npx ars update` from the repo root and surface the output verbatim.
 3. After it completes, summarize:
-   - the path of the new backup under `.ars/backups/<timestamp>/engine`
+   - the path of the new backup under `.ars/backups/<timestamp>/`
    - which categories were synced (engine, skills, agents, hook scripts)
    - whether `CLAUDE.md` was patched (only when `--force` or `--force-claude-md` was passed)
+   - the list of refreshed support files printed under `ℹ️  Refreshed ARS-owned support files (NOT in the backup above ...)`. Tell the user these are NOT snapshotted; if any path looks customised in their repo (e.g. `tsconfig.json`, `eslint.config.mjs`, `.github/workflows/ci.yml`), they should diff it against `git` before committing the update.
    - the rollback hint (see below)
 4. If the user asks for a dry run or wants to see what changed, point them at `git diff` on `src/engine/` and `.claude/` after the command runs — `update` does not have a dry-run mode of its own.
 
@@ -66,9 +67,9 @@ When the user invokes `/ars:update`:
 rm -rf "<repo>/src/engine"
 cp -R "<repo>/.ars/backups/<timestamp>/engine" "<repo>/src/engine"
 
-# ARS skills (only present if .claude/skills/ars existed before the update)
-rm -rf "<repo>/.claude/skills/ars"
-cp -R "<repo>/.ars/backups/<timestamp>/claude-skills" "<repo>/.claude/skills/ars"
+# ARS skills (each one lives at .claude/skills/ars:<name>/, not under .claude/skills/ars/)
+find "<repo>/.claude/skills" -maxdepth 1 -type d -name 'ars:*' -exec rm -rf {} +
+cp -R "<repo>/.ars/backups/<timestamp>/claude-skills/." "<repo>/.claude/skills/"
 
 # ARS agents
 rm -rf "<repo>/.claude/agents"

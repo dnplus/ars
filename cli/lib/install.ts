@@ -576,10 +576,29 @@ export function backupArsAssets(root = getTargetRepoRoot()): ArsAssetBackup {
   const engineDir = path.join(timestampDir, 'engine');
   copyDirectory(targetEngineDir, engineDir, { overwrite: false });
 
-  const claudeSkillsSrc = path.join(root, '.claude', 'skills', 'ars');
-  const claudeSkillsDir = fs.existsSync(claudeSkillsSrc)
-    ? snapshotDir(claudeSkillsSrc, path.join(timestampDir, 'claude-skills'))
-    : undefined;
+  // Each plugin skill lives at `.claude/skills/ars:<name>/` (not under a single
+  // `.claude/skills/ars/` parent — see syncSkills). Snapshot every `ars:*`
+  // subdirectory into `<timestampDir>/claude-skills/ars:<name>/`.
+  const claudeSkillsBase = path.join(root, '.claude', 'skills');
+  const arsSkillDirs = fs.existsSync(claudeSkillsBase)
+    ? fs
+        .readdirSync(claudeSkillsBase, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory() && entry.name.startsWith('ars:'))
+        .map((entry) => entry.name)
+    : [];
+  const claudeSkillsDir =
+    arsSkillDirs.length > 0
+      ? (() => {
+          const target = path.join(timestampDir, 'claude-skills');
+          for (const skillName of arsSkillDirs) {
+            snapshotDir(
+              path.join(claudeSkillsBase, skillName),
+              path.join(target, skillName),
+            );
+          }
+          return target;
+        })()
+      : undefined;
 
   const claudeAgentsSrc = path.join(root, '.claude', 'agents');
   const claudeAgentsDir = fs.existsSync(claudeAgentsSrc)
