@@ -2,6 +2,12 @@ import fs from 'fs';
 import path from 'path';
 import { spawnSync } from 'child_process';
 import { getArsDir } from './ars-config';
+import {
+  BACKUP_MANIFEST_SCHEMA_VERSION,
+  BackupEntry,
+  BackupManifest,
+  writeManifest,
+} from './backup-manifest';
 import { getRuntimePackageInfo } from './runtime-package';
 import { iterArsOwnedFiles } from './sync-paths';
 import {
@@ -413,26 +419,54 @@ function isRecord(value: unknown): value is Record<string, string> {
 export interface ArsAssetBackup {
   /** Top-level timestamp directory under .ars/backups/. */
   timestampDir: string;
-  /** Full path of the engine snapshot. Always present. */
-  engineDir: string;
-  /** Snapshots of ARS-owned assets that are otherwise unreachable for rollback. */
-  claudeSkillsDir?: string;
-  claudeAgentsDir?: string;
-  hookScriptsDir?: string;
+  /** Full path of the manifest file describing what was snapshotted. */
+  manifestPath: string;
+  /** Number of paths captured (not including the manifest itself). */
+  entryCount: number;
+}
+
+export interface BackupArsAssetsOptions {
+  /** Consumer repo root. Defaults to process.cwd(). */
+  root?: string;
+  /**
+   * Source ARS package root. When provided, the backup uses
+   * iterArsOwnedFiles(sourceRoot) to determine the package-derived paths to
+   * snapshot, guaranteeing backup-range matches the next sync's target-range.
+   * If omitted (legacy callers), only the well-known plugin-derived paths
+   * (.claude/, .ars/hooks/) are snapshotted.
+   */
+  sourceRoot?: string;
 }
 
 /**
- * Snapshot every ARS-owned asset that `npx ars update` is about to overwrite.
- *
- * `src/engine/` is the historical backup target, but update also overwrites
- *   - `.claude/skills/ars/`
- *   - `.claude/agents/`
- *   - `.ars/hooks/scripts/`
- * with `overwrite: true`, and `.claude/` is in the consumer-repo .gitignore so
- * `git restore` cannot recover user customizations either. Backing them up
- * alongside the engine is the only way an `update` is actually reversible.
+ * Plugin-derived asset paths in the consumer repo. These are written by
+ * syncSkills / syncAgents / syncHookScripts from the package's plugin/
+ * directory but land outside the package-files mirror, so they need explicit
+ * backup coverage. Each entry is a directory under the consumer root.
  */
-export function backupArsAssets(root = getTargetRepoRoot()): ArsAssetBackup {
+const PLUGIN_DERIVED_BACKUP_DIRS: readonly string[] = [
+  '.claude/agents',
+  '.ars/hooks/scripts',
+];
+
+/**
+ * Snapshot every ARS-owned asset that `npx ars update` is about to overwrite,
+ * and write a manifest so `npx ars rollback` can restore the snapshot without
+ * relying on platform-specific shell commands.
+ *
+ * Coverage = the union of:
+ *   - iterArsOwnedFiles(sourceRoot): every package-mirrored file (when a
+ *     sourceRoot is provided; this is the same iterator syncEngineFiles uses
+ *     so backup-range and sync-range cannot drift apart).
+ *   - PLUGIN_DERIVED_BACKUP_DIRS: .claude/agents/ and .ars/hooks/scripts/,
+ *     plus every .claude/skills/ars:* sibling that exists at backup time.
+ *
+ * Anything that exists in the consumer repo at one of those paths gets copied
+ * into the per-timestamp snapshot directory. Paths that don't exist yet
+ * (first-time install, optional features) are simply skipped.
+ */
+export function backupArsAssets(options: BackupArsAssetsOptions = {}): ArsAssetBackup {
+  const root = options.root ?? getTargetRepoRoot();
   const targetEngineDir = path.join(root, 'src', 'engine');
   if (!fs.existsSync(targetEngineDir)) {
     throw new Error(`Missing ${targetEngineDir}. Run "npx ars init <series>" first.`);
@@ -441,66 +475,93 @@ export function backupArsAssets(root = getTargetRepoRoot()): ArsAssetBackup {
   const backupsRoot = path.join(getArsDir(root), 'backups');
   const backupTimestamp = new Date().toISOString().replace(/:/g, '-');
   const timestampDir = path.join(backupsRoot, backupTimestamp);
+  const snapshotRoot = path.join(timestampDir, 'snapshot');
 
-  const engineDir = path.join(timestampDir, 'engine');
-  copyDirectory(targetEngineDir, engineDir, { overwrite: false });
+  const targetPaths = collectBackupTargets(root, options.sourceRoot);
+  const entries: BackupEntry[] = [];
 
-  // Each plugin skill lives at `.claude/skills/ars:<name>/` (not under a single
-  // `.claude/skills/ars/` parent — see syncSkills). Snapshot every `ars:*`
-  // subdirectory into `<timestampDir>/claude-skills/ars:<name>/`.
-  const claudeSkillsBase = path.join(root, '.claude', 'skills');
-  const arsSkillDirs = fs.existsSync(claudeSkillsBase)
-    ? fs
-        .readdirSync(claudeSkillsBase, { withFileTypes: true })
-        .filter((entry) => entry.isDirectory() && entry.name.startsWith('ars:'))
-        .map((entry) => entry.name)
-    : [];
-  const claudeSkillsDir =
-    arsSkillDirs.length > 0
-      ? (() => {
-          const target = path.join(timestampDir, 'claude-skills');
-          for (const skillName of arsSkillDirs) {
-            snapshotDir(
-              path.join(claudeSkillsBase, skillName),
-              path.join(target, skillName),
-            );
-          }
-          return target;
-        })()
-      : undefined;
+  for (const target of targetPaths) {
+    const sourceAbs = path.join(root, target.relPath);
+    if (!fs.existsSync(sourceAbs)) continue;
+    const stat = fs.statSync(sourceAbs);
+    const snapshotAbs = path.join(snapshotRoot, target.relPath);
+    if (stat.isDirectory()) {
+      copyDirectory(sourceAbs, snapshotAbs, { overwrite: false });
+      entries.push({
+        targetRelPath: target.relPath,
+        snapshotRelPath: path.posix.join('snapshot', target.relPath.replace(/\\/g, '/')),
+        kind: 'directory',
+      });
+    } else if (stat.isFile()) {
+      copyFile(sourceAbs, snapshotAbs, { overwrite: false });
+      entries.push({
+        targetRelPath: target.relPath,
+        snapshotRelPath: path.posix.join('snapshot', target.relPath.replace(/\\/g, '/')),
+        kind: 'file',
+      });
+    }
+  }
 
-  const claudeAgentsSrc = path.join(root, '.claude', 'agents');
-  const claudeAgentsDir = fs.existsSync(claudeAgentsSrc)
-    ? snapshotDir(claudeAgentsSrc, path.join(timestampDir, 'claude-agents'))
-    : undefined;
-
-  const hookScriptsSrc = path.join(root, '.ars', 'hooks', 'scripts');
-  const hookScriptsDir = fs.existsSync(hookScriptsSrc)
-    ? snapshotDir(hookScriptsSrc, path.join(timestampDir, 'hook-scripts'))
-    : undefined;
+  const manifest: BackupManifest = {
+    schemaVersion: BACKUP_MANIFEST_SCHEMA_VERSION,
+    createdAt: new Date().toISOString(),
+    source: 'update',
+    repoRoot: root,
+    entries,
+  };
+  writeManifest(timestampDir, manifest);
 
   pruneOldArsAssetBackups(backupsRoot);
   return {
     timestampDir,
-    engineDir,
-    claudeSkillsDir,
-    claudeAgentsDir,
-    hookScriptsDir,
+    manifestPath: path.join(timestampDir, 'manifest.json'),
+    entryCount: entries.length,
   };
 }
 
-/**
- * @deprecated Use {@link backupArsAssets}, which also snapshots `.claude/`
- * skills/agents and `.ars/hooks/scripts/`. Kept as a thin alias so any
- * downstream caller still importing `backupEngine` keeps working.
- */
-export function backupEngine(root = getTargetRepoRoot()): string {
-  return backupArsAssets(root).engineDir;
+interface BackupTarget {
+  /** Path relative to the consumer repo root. May be a file or directory. */
+  relPath: string;
 }
 
-function snapshotDir(sourceDir: string, targetDir: string): string {
-  copyDirectory(sourceDir, targetDir, { overwrite: false });
-  return targetDir;
+function collectBackupTargets(root: string, sourceRoot?: string): BackupTarget[] {
+  const set = new Set<string>();
+
+  // Package-mirrored paths: trust the sync iterator so backup matches sync.
+  if (sourceRoot) {
+    for (const entry of iterArsOwnedFiles(sourceRoot)) {
+      set.add(entry.relPath);
+    }
+  }
+
+  // Plugin-derived paths under consumer repo. These never live in the package
+  // mirror (they come from plugin/ and land in .claude/, .ars/hooks/), so they
+  // are added explicitly as directories.
+  for (const dir of PLUGIN_DERIVED_BACKUP_DIRS) set.add(dir);
+
+  // Each plugin skill lives at `.claude/skills/ars:<name>/`, listed
+  // dynamically since the names follow whatever skills are installed.
+  const claudeSkillsBase = path.join(root, '.claude', 'skills');
+  if (fs.existsSync(claudeSkillsBase)) {
+    for (const dirent of fs.readdirSync(claudeSkillsBase, { withFileTypes: true })) {
+      if (dirent.isDirectory() && dirent.name.startsWith('ars:')) {
+        set.add(`.claude/skills/${dirent.name}`);
+      }
+    }
+  }
+
+  return Array.from(set).sort().map((relPath) => ({ relPath }));
+}
+
+/**
+ * @deprecated Use {@link backupArsAssets} with the new signature. Kept as a
+ * thin alias so any downstream caller still importing backupEngine keeps
+ * working. Note the return value (engine snapshot dir) is now derived from
+ * the manifest-based timestamp directory.
+ */
+export function backupEngine(root = getTargetRepoRoot()): string {
+  const backup = backupArsAssets({ root });
+  return path.join(backup.timestampDir, 'snapshot', 'src', 'engine');
 }
 
 const ENGINE_BACKUP_RETENTION_COUNT = 3;

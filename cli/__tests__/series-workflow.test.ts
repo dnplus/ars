@@ -146,26 +146,26 @@ describe('single-series workflow', () => {
     expect(fs.existsSync(path.join(repoDir, 'cli', 'lib', 'youtube-client.ts'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'cli', 'lib', 'youtube-upload.ts'))).toBe(true);
 
-    // Update output must surface every asset the user might want to roll back.
-    // P0b: snapshot summaries for every backed-up asset root.
-    expect(updateStdout).toMatch(/Backed up engine to .*\.ars\/backups\//);
-    expect(updateStdout).toMatch(/Backed up ARS skills to .*\/claude-skills/);
-    expect(updateStdout).toMatch(/Backed up ARS agents to .*\/claude-agents/);
-    expect(updateStdout).toMatch(/Backed up hook scripts to .*\/hook-scripts/);
+    // Snapshot summary points to a single timestamp directory containing
+    // a manifest. No more shell hints in the output (those were unix-only).
+    expect(updateStdout).toMatch(/Snapshotted \d+ ARS-owned paths to .*\.ars\/backups\//);
+    expect(updateStdout).toContain('To revert: npx ars rollback');
+    expect(updateStdout).not.toContain('rm -rf');
+    expect(updateStdout).not.toContain('cp -R');
 
-    // P1a: refreshed support files (NOT in backup) listed explicitly so the
-    // user knows which paths to inspect with `git diff`.
-    expect(updateStdout).toContain('Refreshed ARS-owned support files');
-    expect(updateStdout).toContain('eslint.config.mjs');
-    expect(updateStdout).toContain('.github/workflows/ci.yml');
-    expect(updateStdout).not.toMatch(/^\s*-\s+engine\//m); // engine is in the backup, not in this list
-
-    // Rollback hints cover the snapshotted assets.
-    expect(updateStdout).toContain('Rollback hints (snapshotted assets):');
-    expect(updateStdout).toMatch(/cp -R "[^"]*\/engine"/);
-    // The skills hint copies the snapshot's contents (`claude-skills/.`) into
-    // the consumer's `.claude/skills/` so each ars:<name> dir lands in place.
-    expect(updateStdout).toMatch(/cp -R "[^"]*\/claude-skills\/\."/);
+    // The manifest must exist on disk and list at least the engine plus
+    // a few representative non-engine support files we deleted before update.
+    const backupsRoot = path.join(repoDir, '.ars', 'backups');
+    const stamps = fs.readdirSync(backupsRoot).sort();
+    expect(stamps.length).toBeGreaterThan(0);
+    const latest = stamps[stamps.length - 1];
+    const manifestPath = path.join(backupsRoot, latest, 'manifest.json');
+    expect(fs.existsSync(manifestPath)).toBe(true);
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+    expect(manifest.schemaVersion).toBe(1);
+    const targetPaths = new Set(manifest.entries.map((e: { targetRelPath: string }) => e.targetRelPath));
+    // Engine source is package-mirrored and must be in the snapshot.
+    expect(Array.from(targetPaths).some((p) => (p as string).startsWith('src/engine/'))).toBe(true);
   });
 
   it('rejects initializing a second series in the same repo', () => {

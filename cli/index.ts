@@ -30,6 +30,7 @@ const KNOWN_COMMANDS = new Set([
   'prepare',
   'publish',
   'review',
+  'rollback',
   'studio',
   'update',
   'config',
@@ -54,6 +55,7 @@ Commands:
   config <subcommand> [...]        Read or write .ars/config.json fields
   init <series-name> [options]     Bootstrap a new ARS repo and set its only active series
   update [options]                 Backup and refresh the installed ARS engine
+  rollback [--to <ts>] [--list]    Restore the most recent ARS update backup (cross-platform)
   doctor [options]                 Validate config, engine install, plugin assets, and providers
   card <subcommand> [...]           Card catalog and metadata
   episode <subcommand> [...]       Episode management
@@ -101,6 +103,8 @@ async function loadCommandModule(command: string): Promise<CommandModule> {
       return import('./commands/publish');
     case 'review':
       return import('./commands/review');
+    case 'rollback':
+      return import('./commands/rollback');
     case 'studio':
       return import('./commands/studio');
     case 'update':
