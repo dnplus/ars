@@ -136,7 +136,7 @@ When presenting the paths, explain the outcome of each one in one sentence.
 Before the interview begins, align Studio with the current series:
 
 - Tell the user to keep the Studio tab on `?series=<activeSeries>&ep=ep-demo&phase=review`.
-- During customize, treat Studio as the live preview surface for series defaults. Tell the user comments on the demo are normally interpreted as brand/series-level requests (theme, typography, density, VTuber/assets, tone, title style, card preference, pacing). If they only want to patch the demo card/step, they should say "只修這張 demo" in the comment.
+- During customize, treat Studio as the live preview surface for series defaults. Tell the user comments on the demo are normally interpreted as brand/series-level requests (theme, typography, density, VTuber/assets/logo, tone, title style, card preference, recurring card behavior, pacing). If they only want to patch the demo card/step, they should say "只修這張 demo" in the comment.
 - Confirm the Studio intent Monitor from Phase 1 is still running. If not, restart it immediately using `## Studio Intent Monitor` before asking customize questions.
 
 ## Studio Intent Monitor
@@ -158,7 +158,8 @@ Each stdout line is a notification. On every notification:
 3. For each pending intent targeting the active preview episode:
    - Treat intents with `source.ui === "onboard"` or `source.hash` starting with `onboard:` as onboarding feedback, not ordinary episode review.
    - During `onboard-walkthrough`, do not patch files from Studio comments. Leave actionable comments pending and tell the user they will be handled in customize, unless the user explicitly asks to skip them.
-   - During `onboard-customize`, default Studio comments to series-level customization. Comments about color, typography, visual density, layout feel, VTuber/avatar/logo/assets, tone, narration style, title style, card preference, pacing, or recurring defaults should patch `series-config.ts`, `SERIES_GUIDE.md`, or shared assets directly, then resolve the intent with evidence.
+   - During `onboard-customize`, default Studio comments to series-level customization. Comments about color, typography, visual density, layout feel, VTuber/avatar/logo/assets, tone, narration style, title style, card preference, recurring card behavior, pacing, or recurring defaults should patch `series-config.ts`, `SERIES_GUIDE.md`, shared assets, or series-scoped cards directly, then resolve the intent with evidence.
+   - If a comment targets a demo card but describes how that card type should behave in the user's series (for example: "cover cards should be blue, include our logo, and remove the channel-name pill"), treat it as series template work. Split the request into the appropriate surfaces: theme/config changes, shared brand assets, `SERIES_GUIDE.md` card rules, and, when the built-in card cannot express the behavior, a series-scoped card override under `src/episodes/<activeSeries>/cards/<type>/` using the same `cardSpec.type`.
    - Only delegate to `/ars:apply-review <intent.id>` when the user explicitly says the issue is local to this demo card/step (for example "只修這張 demo") or the comment is clearly a factual/content bug in the demo episode.
    - During `onboard-verify`, handle only blocker comments or final review fixes that prevent onboarding completion; otherwise resolve/defer with a clear summary.
 4. After any series-level change, tell the user to refresh the Studio tab and keep the monitor loop running.

@@ -117,8 +117,8 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
 }) => {
   const [draftEpisode, setDraftEpisode] = useState(episode);
   const [intents, setIntents] = useState<ReviewIntent[]>([]);
-  const [statusState, setStatusState] = useState<StatusBarState>('watching');
-  const [statusDetail, setStatusDetail] = useState<string>('watching plan.md · ready for review');
+  const [statusState, setStatusState] = useState<StatusBarState>('polling');
+  const [statusDetail, setStatusDetail] = useState<string>('polling .ars/studio-intents · idle');
   const [selectModeActive, setSelectModeActive] = useState(false);
   const shell = draftEpisode.shell!;
   const theme = shell.theme!;
@@ -458,7 +458,7 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
   }, [fetchIntents]);
 
   // Derive StatusBar state from active signals. Priority:
-  //   failed > applying > building (audio job) > ready > watching > idle
+  //   failed > applying > building (audio job) > ready > onboard > polling
   useEffect(() => {
     if (audioJob.status === 'failed') {
       setStatusState('failed');
@@ -476,7 +476,7 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
       return;
     }
     if (onboardStatus.active) {
-      setStatusState('watching');
+      setStatusState('onboard');
       const modeHint = onboardStatus.stage === 'onboard-customize'
         ? 'series defaults'
         : onboardStatus.stage === 'onboard-walkthrough'
@@ -484,13 +484,13 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
           : 'readiness check';
       setStatusDetail(
         `onboard ${onboardStatus.phaseLabel?.toLowerCase() ?? 'active'} · ${
-          onboardStatus.sessionActive ? 'monitor active' : 'session reconnecting'
+          onboardStatus.sessionActive ? 'Studio connected' : 'Studio reconnecting'
         } · ${modeHint} · ${onboardStatus.pendingIntents} pending`,
       );
       return;
     }
-    setStatusState('watching');
-    setStatusDetail('watching .ars/studio-intents · idle');
+    setStatusState('polling');
+    setStatusDetail('polling .ars/studio-intents · idle');
   }, [
     audioJob.status,
     onboardStatus.active,

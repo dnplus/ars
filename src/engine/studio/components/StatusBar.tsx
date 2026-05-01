@@ -1,8 +1,8 @@
 /**
  * @component StatusBar
  * @description Live Claude Code status strip for the review viewport. Shows a
- *              colored dot + state label (IDLE / WATCHING / BUILDING / APPLYING /
- *              READY / FAILED) + detail message + optional mono tail. Drives
+ *              colored dot + state label (IDLE / POLLING / ONBOARD / BUILDING /
+ *              APPLYING / READY / FAILED) + detail message + optional mono tail. Drives
  *              itself from the existing /__ars/build-status poll; "APPLYING" is
  *              pushed in from ReviewView when the user hits batch-apply.
  */
@@ -10,6 +10,8 @@ import React from 'react';
 
 export type StatusBarState =
   | 'idle'
+  | 'polling'
+  | 'onboard'
   | 'watching'
   | 'building'
   | 'applying'
@@ -24,6 +26,8 @@ type StatusBarProps = {
 
 const STATE_MAP: Record<StatusBarState, { color: string; label: string }> = {
   idle:     { color: 'var(--color-text-muted, rgba(232, 224, 212, 0.6))', label: 'IDLE' },
+  polling:  { color: 'var(--color-info, #5b7e9e)',                       label: 'POLLING' },
+  onboard:  { color: 'var(--color-info, #5b7e9e)',                       label: 'ONBOARD' },
   watching: { color: 'var(--color-info, #5b7e9e)',                       label: 'WATCHING' },
   building: { color: 'var(--color-info, #5b7e9e)',                       label: 'BUILDING' },
   applying: { color: 'var(--color-warning, #c49a5c)',                    label: 'APPLYING' },

@@ -5,264 +5,6 @@
 
 import { Episode } from "../../engine/shared/types";
 
-const onboardSession = {
-  appTitle: "ARS#0.1.0 template/ep-demo",
-  workflow: "walkthrough › customize › verify",
-  version: "Claude Code v2.1.112",
-  model: "Sonnet 4.6 with high effort · Claude Max",
-  workspace: "~/cowork-workspace/template-series",
-  badges: [{ label: "onboard", tone: "info" }],
-} as const;
-
-const episodeSession = {
-  appTitle: "ARS#0.1.0 your-series/ep001",
-  workflow: "plan › build › review › prepare › publish",
-  version: "Claude Code v2.1.112",
-  model: "Sonnet 4.6 with high effort · Claude Max",
-  workspace: "~/cowork-workspace/your-series",
-  badges: [{ label: "episode", tone: "warning" }],
-} as const;
-
-const analyticsSession = {
-  appTitle: "ARS#0.1.0 your-series/ep001",
-  workflow: "publish › analytics",
-  version: "Claude Code v2.1.112",
-  model: "Sonnet 4.6 with high effort · Claude Max",
-  workspace: "~/cowork-workspace/your-series",
-  badges: [{ label: "analytics", tone: "info" }],
-} as const;
-
-const walkthroughScene = [
-  { type: "section", text: "walkthrough" },
-  {
-    type: "prompt",
-    text: "/ars:onboard",
-  },
-  {
-    type: "assistant",
-    text: "ARS 會先帶你看一遍 demo，再進到 series customize，最後做 verify。",
-  },
-  { type: "tool", text: "Open review studio in background", meta: "template/ep-demo" },
-  { type: "result", text: "localhost:5177/?series=template&ep=ep-demo" },
-  {
-    type: "assistant",
-    text: "Browse 完之後回我 next 繼續 Phase 2 customize，或 skip 跳過 walkthrough；Studio 先不要關，後面的 customize 還會繼續用這個預覽。",
-  },
-  {
-    type: "prompt",
-    text: "next",
-  },
-  {
-    type: "success",
-    text: "walkthrough 完成：demo 看完，流程往 customize 前進。",
-  },
-  {
-    type: "assistant",
-    text: "下一步：進 Phase 2 customize，依照你的頻道調整 series-config.ts 和 SERIES_GUIDE.md。",
-  },
-] as const;
-
-const customizeScene = [
-  { type: "section", text: "customize" },
-  {
-    type: "assistant",
-    text: "接下來是 customize。這階段會調 series-config.ts、寫 SERIES_GUIDE.md，讓未來 plan/build 都知道你的頻道要長什麼樣、講話像誰。預設走短版，只問必要問題。",
-  },
-  {
-    type: "prompt",
-    text: "quick customize",
-  },
-  {
-    type: "assistant",
-    text: "好，我會保留 demo episode 當參考，先問少量問題，再把系列品牌與預設寫進 series-config.ts 和 SERIES_GUIDE.md。Studio 先一路開著，等等直接刷新看 customize 後的樣子。",
-  },
-  {
-    type: "prompt",
-    text: "你幫我改一下 @SERIES_GUIDE.md，參考這份團隊背景頁面",
-  },
-  {
-    type: "result",
-    text: "Read SERIES_GUIDE.md (60 lines)",
-  },
-  {
-    type: "assistant",
-    text: "先用 Notion MCP 抓頁面內容。",
-  },
-  {
-    type: "tool",
-    text: "Called Notion",
-    meta: "ctrl+o to expand",
-  },
-  {
-    type: "assistant",
-    text: "內容很豐富，現在根據這份人物誌更新 SERIES_GUIDE.md。",
-  },
-  {
-    type: "assistant",
-    text: "根據人物誌內容，主要需要更新的是 Series Identity 和 Narration Voice。",
-  },
-  {
-    type: "tool",
-    text: "Update(SERIES_GUIDE.md)",
-    meta: "customize output",
-    details: [
-      { text: "Series Identity: host / audience / mission / language synced from Notion brief", tone: "positive" },
-      { text: "Narration Voice: opening style / banned phrases / rhythm updated from人物誌", tone: "positive" },
-      { text: "visual defaults stay on template unless user explicitly asks to change them", tone: "muted" },
-    ],
-  },
-  {
-    type: "success",
-    text: "customize 完成：大部分沿用 template，額外資料直接從 Notion 補進 SERIES_GUIDE.md。現在回到仍然開著的 Studio 重新整理，檢查預覽和留言；進 verify 前我會先把 pending intents 清乾淨。",
-  },
-  {
-    type: "assistant",
-    text: "下一步：進 Phase 3 verify，跑 doctor 把 config、provider、plugin 狀態確認乾淨。",
-  },
-] as const;
-
-const verifyScene = [
-  { type: "section", text: "verify" },
-  { type: "assistant", text: "最後跑 doctor，確認整個 repo 已經 ready。Studio 先保持開著，verify 期間 comment monitor 會繼續輪詢；如果有新的預覽留言就一起收斂。" },
-  { type: "tool", text: "Run doctor", meta: "npx ars doctor" },
-  { type: "result", text: "config.exists ............. pass  Loaded .ars/config.json" },
-  { type: "result", text: "config.active-series ...... pass  activeSeries=your-series" },
-  { type: "result", text: "engine.install ............ pass  remotion + vite ready" },
-  { type: "result", text: "plugin.assets ............. pass  onboard skill + shared assets synced" },
-  { type: "result", text: "provider.minimax .......... pass  MiniMax configured but disabled in series-config.ts" },
-  { type: "result", text: "provider.youtube .......... pass  YouTube publishing disabled." },
-  { type: "tool", text: "Drain pending Studio intents, stop comment monitor, close background Studio", meta: "onboard teardown" },
-  { type: "tool", text: "Clear workstate + stamp onboardedAt", meta: "onboard complete" },
-  { type: "success", text: "doctor clean — onboardedAt stamped，comment monitor 與 onboarding Studio 都已關閉，ready to start the first episode." },
-  { type: "assistant", text: "下一步：可以直接輸入 /ars:plan <topic>，或如果 ep 已存在就跑 /ars:build <epId>。" },
-] as const;
-
-const episodeMontage = [
-  { type: "section", text: "episode" },
-  {
-    type: "prompt",
-    text: "/ars:plan 參考這份研究筆記做一集",
-  },
-  {
-    type: "assistant",
-    text: "素材很完整（Notion 頁面已有核心觀點、大綱、製作筆記），SERIES_GUIDE.md 也已設好。",
-  },
-  {
-    type: "tool",
-    text: "ars:planner(Plan ep025 NVIDIA/TSMC AI 生態鏈)",
-    meta: "plan",
-    details: [
-      { text: "write .ars/episodes/ep025/plan.md", tone: "positive" },
-      { text: "define hook / body sections / runtime range / card mix", tone: "muted" },
-    ],
-  },
-  {
-    type: "success",
-    text: "Plan 完成。下一步：/ars:build ep025 生成 step cards 和 narration。",
-  },
-  { type: "prompt", text: "/ars:build ep025" },
-  {
-    type: "tool",
-    text: "ars:builder(Build ep025 from approved plan)",
-    meta: "build",
-    details: [
-      { text: "write src/episodes/your-series/ep001.ts", tone: "positive" },
-      { text: "sync narration / step durations / card data from plan.md", tone: "muted" },
-    ],
-  },
-  {
-    type: "success",
-    text: "Build 完成。下一步：/ars:review ep025 檢查畫面、字稿、節奏。",
-  },
-  { type: "prompt", text: "/ars:review ep025" },
-  {
-    type: "tool",
-    text: "Open review studio",
-    meta: "review",
-    details: [
-      { text: "localhost:5177/?series=your-series&ep=ep001", tone: "info" },
-      { text: "review script / visuals / timing, then patch if needed", tone: "muted" },
-    ],
-  },
-  {
-    type: "assistant",
-    text: "Review 完成，stage 已推進。下一步：/ars:prepare-youtube ep025 整理 metadata 和上傳。",
-  },
-  { type: "prompt", text: "/ars:prepare-youtube ep025" },
-  {
-    type: "tool",
-    text: "Prepare YouTube package",
-    meta: "prepare",
-    details: [
-      { text: "generate title / description / tags / thumbnail metadata", tone: "positive" },
-      { text: "assemble publish payload and final metadata", tone: "muted" },
-    ],
-  },
-  {
-    type: "prompt",
-    text: "/ars:publish-youtube ep025",
-  },
-  {
-    type: "tool",
-    text: "Publish YouTube video",
-    meta: "publish",
-    details: [
-      { text: "upload video as private", tone: "positive" },
-      { text: "return watch URL + publish metadata", tone: "muted" },
-    ],
-  },
-  {
-    type: "success",
-    text: "ep025 已全部完成。影片已上傳至 YouTube（private），URL：https://youtube.com/watch?v=i6SLgOu231k",
-  },
-  {
-    type: "assistant",
-    text: "下一步：換下一個題目，重新從 /ars:plan 開始整個 episode loop。",
-  },
-] as const;
-
-const analyticsScene = [
-  { type: "section", text: "analytics" },
-  {
-    type: "prompt",
-    text: "/ars:analytics 幫我看看最近三十天的數據",
-  },
-  {
-    type: "assistant",
-    text: "先讀 YouTube client 工具和頻道設定，確認 Analytics API 介面。",
-  },
-  {
-    type: "tool",
-    text: "Query YouTube Analytics API",
-    meta: "last 30 days",
-    details: [
-      { text: "views / watch time / avg view duration / subscribers", tone: "positive" },
-      { text: "daily trend + top videos by views", tone: "muted" },
-    ],
-  },
-  {
-    type: "result",
-    text: 'CHANNEL: {"viewCount":"19068","subscriberCount":"383","videoCount":"37"}',
-  },
-  {
-    type: "tool",
-    text: "Write(.ars/analytics/2026-04-17-30d.md)",
-    meta: "analytics report",
-    details: [
-      { text: "30-day KPI snapshot + spike windows + top videos", tone: "positive" },
-      { text: "risk summary + next content suggestions", tone: "muted" },
-    ],
-  },
-  {
-    type: "assistant",
-    text: "近 30 天觀看 11,875、淨訂閱 +312。兩波爆量集中在 Claude Code 小秘訣和工具清單題材。",
-  },
-  {
-    type: "assistant",
-    text: "下一步：把這些 insight 帶回下一輪 plan / reflect，讓題材、CTA 和節奏持續修正。",
-  },
-] as const;
-
 export const epDemo: Episode = {
   metadata: {
     title: "Agentic Remotion Studio",
@@ -314,12 +56,12 @@ export const epDemo: Episode = {
       layoutMode: "fullscreen",
       background: "aurora",
       data: {
-        title: "Agentic Remotion Studio",
-        subtitle: "你不是在做一支片，你是在啟動一套影片系統",
-        episodeTag: "REAL WORKFLOW DEMO",
+        title: "這是一個預設展示頁面",
+        subtitle: "請把它當作你的系列模板試衣間",
+        episodeTag: "ONBOARD PREVIEW",
         animation: "matrix",
       },
-      narration: "這不是概念展示，而是你接下來可以在自己系列裡反覆使用的影片工作流。你看到的不是單一指令，而是從 onboard、審稿到 analytics 都接在一起的一套系統。",
+      narration: "你現在看到的是 ARS 預設展示頁面。請先左右瀏覽每種卡片；看到不符合你系列風格的地方，可以點下方留言，或選取畫面元件留言。這些留言預設會影響以後每支影片的模板；如果只是這一頁臨時要改，留言時再說只改這一頁。",
       durationInSeconds: 6,
     },
     {
@@ -362,81 +104,138 @@ export const epDemo: Episode = {
       durationInSeconds: 8,
     },
     {
-      id: "walkthrough",
-      contentType: "claude-code",
-      layoutMode: "card-only",
-      background: "minimal",
-      data: {
-        tag: "WALKTHROUGH",
-        session: onboardSession,
-        lines: walkthroughScene,
-      },
-      narration: "walkthrough 的目標很單純，就是先把 demo 開起來，讓使用者快速理解 ARS 的整體畫面和節奏。看完之後，流程才會往 customize 推進。",
-      durationInSeconds: 8,
-    },
-    {
-      id: "customize",
-      contentType: "claude-code",
-      layoutMode: "card-only",
-      background: "minimal",
-      data: {
-        tag: "CUSTOMIZE",
-        session: onboardSession,
-        lines: customizeScene,
-      },
-      narration: "customize 不一定要把所有問題重答一遍。像這裡就是保留 demo 當參考，再補一份團隊背景資料，讓 agent 把新的系列脈絡寫回 SERIES_GUIDE.md。",
-      durationInSeconds: 14,
-    },
-    {
-      id: "verify",
-      contentType: "claude-code",
-      layoutMode: "card-only",
-      background: "minimal",
-      data: {
-        tag: "VERIFY",
-        session: onboardSession,
-        lines: verifyScene,
-      },
-      narration: "verify 這段負責把 onboard 收乾淨。agent 會用 doctor 檢查 config、engine、plugin 和 provider，全部通過之後再把 onboarded 狀態正式標記完成。",
-      durationInSeconds: 10,
-    },
-    {
-      id: "episode",
-      contentType: "claude-code",
-      layoutMode: "card-only",
-      background: "minimal",
-      data: {
-        tag: "EPISODE",
-        session: episodeSession,
-        lines: episodeMontage,
-      },
-      narration: "onboard 做完之後，後面的每一集就是同一條流水線的接力。這裡只用一張 montage 快速帶過 plan、build、review、prepare 和 publish 各自負責什麼。",
-      durationInSeconds: 15,
-    },
-    {
-      id: "analytics",
-      contentType: "claude-code",
-      layoutMode: "card-only",
-      background: "minimal",
-      data: {
-        tag: "ANALYTICS",
-        session: analyticsSession,
-        lines: analyticsScene,
-      },
-      narration: "golden set 的尾巴不是停在 publish。影片發出去之後，還會拉最近三十天的 analytics，寫成報告，然後把觀看、訂閱和題材表現回流到下一輪 plan 和 reflect。",
-      durationInSeconds: 12,
-    },
-    {
-      id: "review-studio-ui",
+      id: "card-system",
       contentType: "image",
       layoutMode: "fullscreen",
       background: "minimal",
       data: {
-        title: "Review Studio",
+        title: "Card system",
+        src: "/episodes/template/shared/onboard/card-system.svg",
+        objectFit: "contain",
+      },
+      narration: "接下來不是再演一次 onboarding，而是直接看卡片系統。ARS 的每一頁都是一個 card。你可以先用 built-in cards，也可以為自己的系列新增卡片，甚至用同一個 type 覆蓋內建卡片，變成自己的預設樣式。",
+      durationInSeconds: 10,
+    },
+    {
+      id: "gallery-cover",
+      contentType: "cover",
+      layoutMode: "fullscreen",
+      background: "aurora",
+      data: {
+        title: "Cover",
+        subtitle: "開場、章節切換、重大轉折",
+        episodeTag: "DEFAULT CARD",
+        animation: "matrix",
+      },
+      narration: "cover 是影片開場、章節切換和重大轉折最常用的卡片。onboard 時如果你希望 cover 以後固定改成藍色、放 logo、移除 channel name，這應該被當成系列模板需求，而不是只修這一張 demo。",
+      durationInSeconds: 8,
+    },
+    {
+      id: "gallery-markdown",
+      contentType: "markdown",
+      layoutMode: "card-only",
+      background: "minimal",
+      data: {
+        cardTitle: "Markdown",
+        content: [
+          "# 適合整理觀點",
+          "",
+          "- 條列關鍵結論",
+          "- 補充必要上下文",
+          "- 保持密度可讀，不要把整篇稿塞進一張卡",
+        ].join("\n"),
+      },
+      narration: "markdown 卡適合放重點、定義、對照或短段落。你可以在 Studio 上直接留言調整字級、密度、標題風格，這些會進入系列的卡片偏好。",
+      durationInSeconds: 8,
+    },
+    {
+      id: "gallery-image",
+      contentType: "image",
+      layoutMode: "fullscreen",
+      background: "minimal",
+      data: {
+        title: "Image",
         src: "/episodes/template/shared/review-studio/review-studio-ui.png",
         objectFit: "contain",
       },
-      narration: "這頁真正要講的不是右邊的 editor，而是畫面上的 💬 回饋入口。你可以直接從 Studio 預覽送出修改意圖，背景的 Claude Code 會即時改 step，改完再立刻回到這個畫面確認結果。",
+      narration: "image 卡用來展示截圖、證據圖、產品畫面或品牌素材。這也是 onboard 階段很適合調整的地方：圖片要不要加框、要不要滿版、背景要不要更像你的頻道。",
+      durationInSeconds: 8,
+    },
+    {
+      id: "gallery-mermaid",
+      contentType: "mermaid",
+      layoutMode: "card-only",
+      background: "minimal",
+      data: {
+        title: "Mermaid",
+        chart: [
+          "flowchart LR",
+          "  A[Source material] --> B[Plan]",
+          "  B --> C[Build cards]",
+          "  C --> D[Studio review]",
+          "  D --> E[Publish]",
+          "  E --> F[Reflect]",
+        ].join("\n"),
+      },
+      narration: "mermaid 卡適合流程、架構和依賴關係。如果你覺得這種圖太工程、太白板，onboard intent 可以改成系列偏好，甚至改用 series-scoped custom card 取代。",
+      durationInSeconds: 8,
+    },
+    {
+      id: "gallery-code",
+      contentType: "code",
+      layoutMode: "card-only",
+      background: "minimal",
+      data: {
+        title: "series-config.ts",
+        language: "ts",
+        code: [
+          "export const SERIES_CONFIG = {",
+          "  project: {",
+          "    channelName: 'Your Channel Name',",
+          "  },",
+          "  theme: {",
+          "    primary: '#d4b896',",
+          "    surfaceDark: '#211d19',",
+          "  },",
+          "} satisfies SeriesConfig;",
+        ].join("\n"),
+      },
+      narration: "code 卡用來展示設定、程式片段或指令結果。技術型頻道可以在 onboard 階段決定 code 卡要像 terminal、IDE、還是更像簡報型註解。",
+      durationInSeconds: 8,
+    },
+    {
+      id: "gallery-summary",
+      contentType: "summary",
+      layoutMode: "fullscreen",
+      background: "aurora",
+      data: {
+        title: "Summary",
+        points: [
+          "收束一集的三個重點",
+          "整理觀眾該帶走的結論",
+          "放 CTA、下一步或 QR code",
+        ],
+        ctaButtons: [
+          { label: "/ars:plan <topic>" },
+          { label: "Open Studio" },
+        ],
+        showCta: true,
+      },
+      narration: "summary 卡通常放在結尾，幫觀眾收束重點、記住下一步。這張也很適合調 CTA 語氣：要低調、要直接、或完全不要 CTA。",
+      durationInSeconds: 8,
+    },
+    {
+      id: "gallery-thumbnail",
+      contentType: "thumbnail",
+      layoutMode: "fullscreen",
+      background: "minimal",
+      data: {
+        title: "影片系統",
+        subtitle: "一次 onboard，重複製作",
+        episodeTag: "DEMO",
+        mascotUrl: "none",
+      },
+      narration: "thumbnail 卡用來預覽 YouTube 包裝。當系列要上傳 YouTube 時，標題、縮圖、描述和 tags 會接到 prepare 和 publish 流程。",
       durationInSeconds: 8,
     },
     {
@@ -445,19 +244,19 @@ export const epDemo: Episode = {
       layoutMode: "fullscreen",
       background: "aurora",
       data: {
-        title: "這不是單次 demo",
+        title: "現在請直接在 Studio 留言",
         points: [
-          "先 onboard，建立系列記憶",
-          "再用 Studio 與 Agent 持續修改",
-          "最後把 analytics 帶回下一輪",
+          "哪類卡片不符合你的系列風格？",
+          "哪些元素應該變成你的預設模板？",
+          "只修 demo 時，請明講「只修這張 demo」",
         ],
         ctaButtons: [
-          { label: "/ars:onboard", icon: "🎬" },
-          { label: "Run /ars:doctor", icon: "🩺" },
+          { label: "next: customize" },
+          { label: "leave Studio comments" },
         ],
         showCta: true,
       },
-      narration: "ARS 不是做完一支片就結束。它把系列設定、製作、審稿和 analytics 接成一條會持續演進的 workflow。接下來你可以直接從自己的系列主題開始進入下一輪 plan。",
+      narration: "這個 demo 現在是你的模板試衣間。看到任何卡片不符合你的系列風格，可以直接在 Studio 留言；agent 會把它當成系列級 customization，除非你明確說只修這張 demo。",
       durationInSeconds: 7,
     },
   ],

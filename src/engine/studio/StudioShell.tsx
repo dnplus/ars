@@ -122,6 +122,9 @@ export const StudioShell: React.FC<StudioShellProps> = ({
 
   const episode = episodes[episodeId] ?? null;
   const onboardActive = onboardStatus.active;
+  const onboardTabLabel = onboardStatus.phaseLabel
+    ? `Onboard · ${onboardStatus.phaseLabel}`
+    : 'Onboard';
 
   useEffect(() => {
     let cancelled = false;
@@ -211,7 +214,7 @@ export const StudioShell: React.FC<StudioShellProps> = ({
               className="studio-shell-tab active"
               title={`Onboard ${onboardStatus.phaseLabel?.toLowerCase() ?? 'active'}`}
             >
-              Onboard
+              {onboardTabLabel}
             </button>
           ) : (
             KNOWN_PHASES.map((p) => (

@@ -7,7 +7,8 @@
  * - `ThumbnailCardComponent`：CardRenderProps 介面，供 card registry / spec 使用
  */
 import React from 'react';
-import { Img } from 'remotion';
+import { Img, useVideoConfig } from 'remotion';
+import { BaseSlide } from '../../primitives/BaseSlide';
 import type { CardRenderProps } from '../types';
 import type { ThumbnailData } from '../../shared/types';
 
@@ -252,15 +253,53 @@ export const ThumbnailCardComponent: React.FC<CardRenderProps<ThumbnailData>> = 
   data,
   episode,
 }) => {
-  return (
+  const { width, height } = useVideoConfig();
+  const isThumbnailStill = width === 1280 && height === 720;
+  const previewScale = Math.min(width * 0.74 / 1280, height * 0.58 / 720, 1);
+  const previewWidth = Math.round(1280 * previewScale);
+  const previewHeight = Math.round(720 * previewScale);
+  const mascotUrl = data.mascotUrl === "none" ? undefined : data.mascotUrl;
+
+  const card = (
     <ThumbnailCard
       title={data.title ?? episode.title}
       subtitle={data.subtitle ?? episode.subtitle}
       channelName={data.channelName ?? episode.channelName}
       episodeTag={data.episodeTag ?? episode.episodeTag}
-      mascotUrl={data.mascotUrl}
+      mascotUrl={mascotUrl}
       width={1280}
       height={720}
     />
+  );
+
+  if (isThumbnailStill) {
+    return card;
+  }
+
+  return (
+    <BaseSlide
+      background={{ kind: "theme", token: "surfaceDark" }}
+      align={{ alignItems: "center", justifyContent: "center" }}
+      style={{ paddingBottom: Math.round(height * 0.1) }}
+    >
+      <div
+        style={{
+          width: previewWidth,
+          height: previewHeight,
+          boxShadow: "0 28px 90px rgba(0, 0, 0, 0.45)",
+        }}
+      >
+        <div
+          style={{
+            width: 1280,
+            height: 720,
+            transform: `scale(${previewScale})`,
+            transformOrigin: "top left",
+          }}
+        >
+          {card}
+        </div>
+      </div>
+    </BaseSlide>
   );
 };

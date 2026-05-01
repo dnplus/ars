@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <rect width="1920" height="1080" fill="#211d19"/>
+  <text x="130" y="132" fill="#f5f0e8" font-family="Noto Sans TC, Arial, sans-serif" font-size="64" font-weight="900">Card system：畫面可以變成系列模板</text>
+  <text x="130" y="202" fill="#d4b896" font-family="Noto Sans TC, Arial, sans-serif" font-size="40" font-weight="800">先用 default cards 開工；onboard 留言再沉澱成 custom card 或 override</text>
+
+  <g font-family="Noto Sans TC, Arial, sans-serif">
+    <rect x="120" y="320" width="460" height="380" rx="36" fill="#f5f0e8"/>
+    <text x="170" y="405" fill="#211d19" font-size="38" font-weight="900">Default cards</text>
+    <text x="170" y="475" fill="#3a3530" font-size="31" font-weight="850">cover / markdown / image</text>
+    <text x="170" y="528" fill="#3a3530" font-size="31" font-weight="850">mermaid / code / summary</text>
+    <text x="170" y="581" fill="#3a3530" font-size="31" font-weight="850">thumbnail 先夠你開工</text>
+    <rect x="170" y="630" width="260" height="56" rx="16" fill="#d4b896"/>
+    <text x="300" y="667" text-anchor="middle" fill="#211d19" font-size="25" font-weight="900">快速開工</text>
+
+    <rect x="730" y="320" width="460" height="380" rx="36" fill="#2d2823" stroke="#d4b896" stroke-width="4"/>
+    <text x="780" y="405" fill="#d4b896" font-size="38" font-weight="900">Custom cards</text>
+    <text x="780" y="475" fill="#f5f0e8" font-size="31" font-weight="850">src/episodes/&lt;series&gt;/cards/</text>
+    <text x="780" y="528" fill="#f5f0e8" font-size="31" font-weight="850">為這個系列新增畫面語言</text>
+    <text x="780" y="581" fill="#f5f0e8" font-size="31" font-weight="850">之後每集都能重複使用</text>
+
+    <rect x="1340" y="320" width="460" height="380" rx="36" fill="#f5f0e8"/>
+    <text x="1390" y="405" fill="#211d19" font-size="38" font-weight="900">Override</text>
+    <text x="1390" y="475" fill="#3a3530" font-size="31" font-weight="850">同一個 cardSpec.type</text>
+    <text x="1390" y="528" fill="#3a3530" font-size="31" font-weight="850">可以換掉 built-in card</text>
+    <text x="1390" y="581" fill="#3a3530" font-size="31" font-weight="850">例如重做 cover 預設</text>
+    <rect x="1390" y="630" width="260" height="56" rx="16" fill="#d4b896"/>
+    <text x="1520" y="667" text-anchor="middle" fill="#211d19" font-size="25" font-weight="900">系列模板</text>
+  </g>
+
+  <rect x="615" y="495" width="76" height="14" rx="7" fill="#d4b896"/>
+  <polygon points="691,467 731,502 691,537" fill="#d4b896"/>
+  <rect x="1225" y="495" width="76" height="14" rx="7" fill="#d4b896"/>
+  <polygon points="1301,467 1341,502 1301,537" fill="#d4b896"/>
+
+  <rect x="230" y="780" width="1460" height="118" rx="30" fill="#0d0a08" stroke="#d4b896" stroke-width="4"/>
+  <text x="960" y="828" text-anchor="middle" fill="#f5f0e8" font-family="Noto Sans TC, Arial, sans-serif" font-size="34" font-weight="900">例如：「cover 改藍、設計 logo、拿掉 channel name」</text>
+  <text x="960" y="872" text-anchor="middle" fill="#d4b896" font-family="Noto Sans TC, Arial, sans-serif" font-size="30" font-weight="850">這不是只修 demo，而是把 cover 變成你的系列模板。</text>
+</svg>

@@ -24,6 +24,7 @@ Notes:
 - In normal onboarding, `shell.layout` usually stays on a built-in key: `'streaming'` or `'shorts'`.
 - Advanced series can override the default layout by assigning a custom layout component to `shell.layout` instead of a string key.
 - `src/episodes/<series>/cards/` is the series-scoped extension point for cards: you can add new card types there, or fully replace a built-in engine card by reusing the same `type`.
+- Onboard Studio comments about recurring card behavior belong here. If the user points at a demo `cover` card and asks for a different default structure (logo placement, header removal, branded color treatment, etc.), prefer documenting the rule in `SERIES_GUIDE.md` and creating a series-scoped `cover` override when `series-config.ts` theme tokens are not enough. Do not patch only `ep-demo.ts` unless the user explicitly says the change is demo-local.
 
 ```typescript
 import { DEFAULT_VTUBER_CONFIG, DEFAULT_SUBTITLE_CONFIG } from '../../engine/shared/defaults';
