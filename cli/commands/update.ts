@@ -15,6 +15,7 @@ import {
   writeVersionMetadata,
 } from '../lib/install';
 import { getRuntimePackageInfo } from '../lib/runtime-package';
+import { migrateArsState, type StateMigrationResult } from '../lib/state-migrations';
 
 const HELP = `
 Usage: npx ars update [options]
@@ -67,6 +68,11 @@ export async function run(args: string[]) {
     console.log(`✅ Patched ${result.claudeMdPath}`);
   }
   console.log(`✅ Wrote ${result.versionPath}`);
+  if (result.stateMigration.prepareIntentsNormalized > 0 || result.stateMigration.prepareIntentsResolved > 0) {
+    console.log(
+      `✅ Migrated ARS state (${result.stateMigration.prepareIntentsNormalized} prepare intent kind(s) normalized, ${result.stateMigration.prepareIntentsResolved} satisfied prepare intent(s) resolved)`,
+    );
+  }
 
   // Make non-snapshotted overwrites visible. syncEngineFiles refreshes a long
   // list of ARS-owned support files (vite.studio.config.ts, tsconfig.json,
@@ -142,6 +148,7 @@ Promise<{
   installedHookScripts: string[];
   /** Raw copy log from syncEngineFiles for surfacing non-snapshotted overwrites. */
   supportFilesTouched: string[];
+  stateMigration: StateMigrationResult;
 }> {
   const root = options.root ?? getTargetRepoRoot();
   const runtime = getRuntimePackageInfo(import.meta.url);
@@ -177,6 +184,7 @@ Promise<{
     configSchemaVersion: CONFIG_SCHEMA_VERSION,
     installMethod: detectInstallMethod(sourceRoot),
   });
+  const stateMigration = await migrateArsState(root);
 
   return {
     root,
@@ -188,6 +196,7 @@ Promise<{
     installedAgents,
     installedHookScripts,
     supportFilesTouched,
+    stateMigration,
   };
 }
 

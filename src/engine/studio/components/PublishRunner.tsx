@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { readSkippedIntentIds } from '../utils/skipped-intents';
 
 type JobState = {
   status: 'idle' | 'running' | 'succeeded' | 'failed';
@@ -18,12 +19,21 @@ type PublishPlan = {
   requiresPrepared: boolean;
   preparedExists: boolean;
   preparedReady: boolean;
-  pendingPrepareIntents: number;
-  preparedArtifact: string;
-  privacyOptions: Array<'private' | 'unlisted' | 'public'>;
-  defaultPrivacy: 'private' | 'unlisted' | 'public';
+  metadataApplied?: boolean;
+  pendingPrepareIntents?: number;
+  pendingPrepareIntentIds?: string[];
+  preparedArtifact?: string;
+  privacyOptions?: Array<'private' | 'unlisted' | 'public'>;
+  defaultPrivacy?: 'private' | 'unlisted' | 'public';
   irreversible: boolean;
   runningJob: JobState | null;
+  publishPreview?: {
+    title: string | null;
+    description: string | null;
+    tags: string[];
+    selected: string | null;
+    source: string | null;
+  };
 };
 
 type PublishPlanResponse = { ok: boolean; plan?: PublishPlan; error?: string };
@@ -38,6 +48,15 @@ type PublishRunnerProps = {
 
 const POLL_INTERVAL_MS = 1500;
 
+const EMPTY_PUBLISH_PREVIEW: NonNullable<PublishPlan['publishPreview']> = {
+  title: null,
+  description: null,
+  tags: [],
+  selected: null,
+  source: null,
+};
+const DEFAULT_PRIVACY_OPTIONS: Array<'private' | 'unlisted' | 'public'> = ['private', 'unlisted', 'public'];
+
 export const PublishRunner: React.FC<PublishRunnerProps> = ({
   open,
   onClose,
@@ -50,6 +69,7 @@ export const PublishRunner: React.FC<PublishRunnerProps> = ({
   const [privacy, setPrivacy] = useState<'private' | 'unlisted' | 'public'>('private');
   const [dryRun, setDryRun] = useState(false);
   const [force, setForce] = useState(false);
+  const [skippedIntentIds, setSkippedIntentIds] = useState<Set<string>>(() => readSkippedIntentIds());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,7 +79,7 @@ export const PublishRunner: React.FC<PublishRunnerProps> = ({
     const payload = (await res.json()) as PublishPlanResponse;
     if (!res.ok || !payload.plan) throw new Error(payload.error ?? `${res.status}`);
     setPlan(payload.plan);
-    setPrivacy(payload.plan.defaultPrivacy);
+    setPrivacy(payload.plan.defaultPrivacy ?? 'private');
     if (payload.plan.runningJob) {
       setJob(payload.plan.runningJob);
       setPhase('running');
@@ -71,6 +91,7 @@ export const PublishRunner: React.FC<PublishRunnerProps> = ({
     setLoading(true);
     setError(null);
     setPhase('preview');
+    setSkippedIntentIds(readSkippedIntentIds());
     void loadPlan()
       .catch((err) => setError(err instanceof Error ? err.message : String(err)))
       .finally(() => setLoading(false));
@@ -99,11 +120,18 @@ export const PublishRunner: React.FC<PublishRunnerProps> = ({
 
   const commandPreview = useMemo(() => {
     if (!plan) return '';
-    const parts = [plan.cli, '--privacy', privacy];
+    const parts = [plan.cli ?? `npx ars publish youtube ${series}/${epId}`, '--privacy', privacy];
     if (dryRun) parts.push('--dry-run');
     if (force) parts.push('--force');
     return parts.join(' ');
-  }, [plan, privacy, dryRun, force]);
+  }, [plan, privacy, dryRun, force, series, epId]);
+
+  const activePendingPrepareIntents = plan
+    ? (plan.pendingPrepareIntentIds
+      ? plan.pendingPrepareIntentIds.filter((id) => !skippedIntentIds.has(id)).length
+      : (plan.pendingPrepareIntents ?? 0))
+    : 0;
+  const publishPreview = plan?.publishPreview ?? EMPTY_PUBLISH_PREVIEW;
 
   const blockedReason = !plan
     ? null
@@ -111,9 +139,11 @@ export const PublishRunner: React.FC<PublishRunnerProps> = ({
       ? '還沒有 prepare artifact，請先執行 Prepare。'
       : !plan.preparedReady
         ? 'Prepare 尚未 ready，請先選定一個 candidate。'
-        : plan.pendingPrepareIntents > 0
-          ? `Prepare 還有 ${plan.pendingPrepareIntents} 筆 pending 留言。`
-          : null;
+        : plan.metadataApplied === false
+          ? 'Prepare 已 ready，但尚未套用到 episode metadata.youtube。'
+          : activePendingPrepareIntents > 0
+            ? `Prepare 還有 ${activePendingPrepareIntents} 筆 pending 留言。`
+            : null;
 
   const trigger = useCallback(async () => {
     setError(null);
@@ -128,6 +158,7 @@ export const PublishRunner: React.FC<PublishRunnerProps> = ({
           privacy,
           dryRun,
           force,
+          skippedIntentIds: [...skippedIntentIds],
         }),
       });
       const payload = (await res.json()) as JobResponse;
@@ -137,7 +168,7 @@ export const PublishRunner: React.FC<PublishRunnerProps> = ({
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
-  }, [series, epId, privacy, dryRun, force]);
+  }, [series, epId, privacy, dryRun, force, skippedIntentIds]);
 
   if (!open) return null;
 
@@ -175,17 +206,29 @@ export const PublishRunner: React.FC<PublishRunnerProps> = ({
               </div>
               <div>
                 <dt>artifact</dt>
-                <dd><code>{plan.preparedArtifact}</code></dd>
+                <dd><code>{plan.preparedArtifact ?? '(not set)'}</code></dd>
               </div>
               <div>
                 <dt>ready</dt>
                 <dd>{plan.preparedReady ? 'yes' : 'no'}</dd>
               </div>
               <div>
+                <dt>metadata applied</dt>
+                <dd>{plan.metadataApplied === undefined ? 'unknown' : plan.metadataApplied ? 'yes' : 'no'}</dd>
+              </div>
+              <div>
+                <dt>title</dt>
+                <dd>{publishPreview.title ?? '(not set)'}</dd>
+              </div>
+              <div>
+                <dt>metadata source</dt>
+                <dd>{publishPreview.source ?? '(not set)'}</dd>
+              </div>
+              <div>
                 <dt>privacy</dt>
                 <dd>
                   <select value={privacy} onChange={(e) => setPrivacy(e.target.value as 'private' | 'unlisted' | 'public')}>
-                    {plan.privacyOptions.map((option) => (
+                    {(plan.privacyOptions ?? DEFAULT_PRIVACY_OPTIONS).map((option) => (
                       <option key={option} value={option}>{option}</option>
                     ))}
                   </select>
@@ -207,6 +250,21 @@ export const PublishRunner: React.FC<PublishRunnerProps> = ({
             </dl>
             <div className="studio-action-modal-warn">
               這個動作會執行正式 publish CLI。UI 會先做一次明確確認，再送出不可逆操作。
+            </div>
+            <div className="studio-action-modal-subhead">
+              <span>YouTube preview</span>
+            </div>
+            <div className="studio-action-modal-fields">
+              <div>
+                <dt>Description</dt>
+                <dd style={{ whiteSpace: 'pre-wrap' }}>
+                  {publishPreview.description ?? '(not set)'}
+                </dd>
+              </div>
+              <div>
+                <dt>Tags</dt>
+                <dd>{publishPreview.tags.length > 0 ? publishPreview.tags.join(', ') : '(none)'}</dd>
+              </div>
             </div>
             {blockedReason && (
               <div className="studio-action-modal-error">{blockedReason}</div>

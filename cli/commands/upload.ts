@@ -10,7 +10,6 @@ import path from 'path';
 import { resolveEpisodeTarget, resolveSeriesContext } from '../lib/context';
 import { getRepoRoot } from '../lib/ars-config';
 import { loadEpisodeMetadata, writeEpisodePublishState } from '../lib/episode-file';
-import { readPreparedYoutubeCandidate } from '../lib/prepare-artifact';
 import {
   getAccessToken,
   getAccessTokenInfo,
@@ -66,8 +65,7 @@ Options:
 Notes:
   - This core command only handles YouTube.
   - Social uploads live in the optional social extension.
-  - Run prepare first:
-      npx ars prepare youtube <epId>
+  - Apply YouTube metadata first with /ars:prepare-youtube or Studio Prepare.
 `;
 
 function parseArgs(args: string[]): UploadOptions {
@@ -119,10 +117,6 @@ function parseArgs(args: string[]): UploadOptions {
   };
 }
 
-function prepareHint(series: string, epId: string): string {
-  return `npx ars prepare youtube ${epId}`;
-}
-
 function resolveAssets(series: string, epId: string, customVideoPath?: string): ResolvedAssets {
   const defaultVideoPath = path.join(ROOT, 'output/render', series, `${epId}.mp4`);
   const videoPath = customVideoPath
@@ -168,38 +162,22 @@ function resolveYoutubeMetadata(
   metadata: VideoMetadata;
   source: string;
 } | null {
-  const prepared = readPreparedYoutubeCandidate(series, epId);
-  if (prepared) {
+  if (episodeMetadata?.youtube) {
     return {
       metadata: {
-        title: prepared.candidate.title,
-        description: prepared.candidate.description,
-        tags: prepared.candidate.tags,
+        title: episodeMetadata.youtube.title,
+        description: episodeMetadata.youtube.description,
+        tags: episodeMetadata.youtube.tags,
         categoryId: '28',
         defaultLanguage: 'zh-TW',
         privacyStatus: 'private',
         selfDeclaredMadeForKids: false,
       },
-      source: path.relative(ROOT, prepared.artifactPath),
+      source: 'metadata.youtube',
     };
   }
 
-  if (!episodeMetadata?.youtube) {
-    return null;
-  }
-
-  return {
-    metadata: {
-      title: episodeMetadata.youtube.title,
-      description: episodeMetadata.youtube.description,
-      tags: episodeMetadata.youtube.tags,
-      categoryId: '28',
-      defaultLanguage: 'zh-TW',
-      privacyStatus: 'private',
-      selfDeclaredMadeForKids: false,
-    },
-    source: 'metadata.youtube',
-  };
+  return null;
 }
 
 function saveUploadResult(series: string, epId: string, data: unknown): void {
@@ -228,9 +206,8 @@ async function uploadToYouTube(
 
   const resolvedMetadata = resolveYoutubeMetadata(opts.series, opts.epId, episodeMetadata);
   if (!resolvedMetadata) {
-    console.error(`Error: YouTube metadata not found.`);
-    console.error(`   1. Run: ${prepareHint(opts.series, opts.epId)}`);
-    console.error(`   2. In Claude Code: /ars:prepare-youtube ${opts.epId}`);
+    console.error(`Error: episode metadata.youtube not found.`);
+    console.error(`   In Claude Code or Studio Prepare, apply a YouTube candidate to metadata.youtube before upload.`);
     return null;
   }
 

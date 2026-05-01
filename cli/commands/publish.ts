@@ -11,9 +11,9 @@ import path from 'path';
 import { execFileSync } from 'child_process';
 import { createInterface } from 'readline';
 import { resolveEpisodeTarget } from '../lib/context';
-import { readPreparedYoutubeCandidate } from '../lib/prepare-artifact';
 import { getRepoRoot } from '../lib/ars-config';
 import { getRuntimePackageInfo } from '../lib/runtime-package';
+import { loadEpisodeMetadata } from '../lib/episode-file';
 
 type PublishMode = 'package' | 'youtube';
 
@@ -44,8 +44,7 @@ Options:
 
 Notes:
   - Prefer publish* for daily release; use low-level upload* only for partial reruns/debugging.
-  - publish youtube expects a prepared artifact from:
-      npx ars prepare youtube <epId>
+  - publish youtube expects episode metadata.youtube populated by /ars:prepare-youtube or Studio Prepare.
   - Social publishing has been removed from ARS core. Move that workflow into an extension.
 `;
 
@@ -128,11 +127,12 @@ function tryRunLocalStep(label: string, bin: string, args: string[]): boolean {
   }
 }
 
-function ensureYoutubeReady(series: string, epId: string): void {
-  if (!readPreparedYoutubeCandidate(series, epId)) {
-    console.error(`Error: YouTube metadata not found.`);
+async function ensureYoutubeReady(series: string, epId: string): Promise<void> {
+  const episodeMetadata = await loadEpisodeMetadata(series, epId);
+  if (!episodeMetadata?.youtube) {
+    console.error(`Error: episode metadata.youtube not found.`);
     console.error(`   1. Run: npx ars prepare youtube ${epId}`);
-    console.error(`   2. In Claude Code: /ars:prepare-youtube ${epId}`);
+    console.error(`   2. In Claude Code or Studio Prepare: generate candidates and apply one to metadata.youtube.`);
     process.exit(1);
   }
 }
@@ -204,7 +204,7 @@ export async function run(args: string[]) {
   }
 
   if (opts.mode === 'youtube') {
-    ensureYoutubeReady(opts.series, opts.epId);
+    await ensureYoutubeReady(opts.series, opts.epId);
     publishPackage(target, opts.series, opts.epId, opts.dryRun, opts.force);
     if (!opts.dryRun) ensurePackageOutputs(opts.series, opts.epId);
     runStep(

@@ -14,6 +14,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReviewIntent } from '../../../types/review-intent';
 import { EPISODE_SCOPE_ID, INTENT_SUBMITTED_EVENT, KIND_LABELS } from '../constants';
+import { readSkippedIntentIds, writeSkippedIntentIds } from '../utils/skipped-intents';
 
 type FixListSidebarProps = {
   onClose: () => void;
@@ -29,8 +30,6 @@ type ReviewIntentsResponse = {
 
 type FixStatus = 'pending' | 'applied' | 'skipped';
 
-const SKIP_STORAGE_KEY = 'ars-studio-skipped-intents';
-
 const KIND_BADGE_COLORS: Record<string, string> = {
   visual: 'var(--color-highlight)',
   content: 'var(--color-positive)',
@@ -38,6 +37,10 @@ const KIND_BADGE_COLORS: Record<string, string> = {
   timing: 'var(--color-warning)',
   'plan-section': 'var(--color-info)',
   'build-trigger': 'var(--color-primary)',
+  'prepare-generate': 'var(--color-primary)',
+  'prepare-select': 'var(--color-positive)',
+  'prepare-edit': 'var(--color-info)',
+  'prepare-trigger': 'var(--color-primary)',
 };
 
 const truncate = (str: string, max: number): string =>
@@ -45,26 +48,6 @@ const truncate = (str: string, max: number): string =>
 
 const hasAttachment = (intent: ReviewIntent): boolean =>
   !!intent.attachments?.screenshotPath || !!intent.attachments?.screenshotDataUrl;
-
-function readSkipped(): Set<string> {
-  try {
-    const raw = localStorage.getItem(SKIP_STORAGE_KEY);
-    if (!raw) return new Set();
-    const arr = JSON.parse(raw) as unknown;
-    if (!Array.isArray(arr)) return new Set();
-    return new Set(arr.filter((x): x is string => typeof x === 'string'));
-  } catch {
-    return new Set();
-  }
-}
-
-function writeSkipped(set: Set<string>) {
-  try {
-    localStorage.setItem(SKIP_STORAGE_KEY, JSON.stringify([...set]));
-  } catch {
-    // ignore quota errors
-  }
-}
 
 function getStatus(intent: ReviewIntent, skipped: Set<string>): FixStatus {
   if (intent.processedAt) return 'applied';
@@ -79,7 +62,7 @@ export const FixListSidebar: React.FC<FixListSidebarProps> = ({
   currentStepId,
 }) => {
   const [intents, setIntents] = useState<ReviewIntent[]>([]);
-  const [skipped, setSkipped] = useState<Set<string>>(() => readSkipped());
+  const [skipped, setSkipped] = useState<Set<string>>(() => readSkippedIntentIds());
   const [onlyThisStep, setOnlyThisStep] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -130,7 +113,7 @@ export const FixListSidebar: React.FC<FixListSidebarProps> = ({
       } else {
         next.add(intentId);
       }
-      writeSkipped(next);
+      writeSkippedIntentIds(next);
       return next;
     });
   }, []);

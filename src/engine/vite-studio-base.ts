@@ -13,6 +13,7 @@ import path from 'path';
 import fs from 'fs';
 import { spawn, type ChildProcess } from 'child_process';
 import { createRequire } from 'module';
+import * as ts from 'typescript';
 import { getTTSProviderCapabilities } from '../adapters/tts/registry';
 import { createStudioIntent, getStudioIntentsDir } from '../studio/studio-intents';
 import { migrateReviewIntents } from '../studio/migrate-review-intents';
@@ -27,7 +28,7 @@ import {
 } from '../studio/prepare-youtube-artifact';
 import type { StudioIntentAnchorType, StudioIntentTarget } from '../types/studio-intent';
 import { extractSections } from './shared/markdown-anchor';
-import type { SpeechProviderId } from './shared/types';
+import type { EpisodeMetadata, SpeechProviderId } from './shared/types';
 
 export interface StudioConfigOptions {
   /** Dev server port (each project should use a unique port) */
@@ -533,6 +534,7 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
                 const series = asRequiredString(url.searchParams.get('series'), 'series');
                 const epId = asRequiredString(url.searchParams.get('ep'), 'ep');
                 const preparedArtifact = readPrepareArtifact(rootDir, series, epId);
+                const episodeMetadata = await tryLoadEpisodeMetadata(rootDir, series, epId);
                 const preparedArtifactPath = path.relative(
                   rootDir,
                   getPrepareArtifactPath(rootDir, series, epId),
@@ -541,7 +543,10 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
                   rootDir,
                   getPrepareMarkdownPath(rootDir, series, epId),
                 ).split(path.sep).join('/');
-                const pendingPrepareIntents = getPendingPrepareIntents(rootDir, series, epId);
+                const pendingPrepareIntents = getPendingPrepareIntents(rootDir, series, epId, {
+                  preparedArtifact,
+                  episodeMetadata,
+                });
                 writeJson(res, 200, {
                   ok: true,
                   plan: {
@@ -581,7 +586,11 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
                 const series = asRequiredString(url.searchParams.get('series'), 'series');
                 const epId = asRequiredString(url.searchParams.get('ep'), 'ep');
                 const artifact = readPrepareArtifact(rootDir, series, epId);
-                const pendingPrepareIntents = getPendingPrepareIntents(rootDir, series, epId);
+                const episodeMetadata = await tryLoadEpisodeMetadata(rootDir, series, epId);
+                const pendingPrepareIntents = getPendingPrepareIntents(rootDir, series, epId, {
+                  preparedArtifact: artifact,
+                  episodeMetadata,
+                });
                 writeJson(res, 200, {
                   ok: true,
                   artifact,
@@ -762,7 +771,11 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
                 const series = asRequiredString(url.searchParams.get('series'), 'series');
                 const epId = asRequiredString(url.searchParams.get('ep'), 'ep');
                 const preparedArtifact = readPrepareArtifact(rootDir, series, epId);
-                const pendingPrepareIntents = getPendingPrepareIntents(rootDir, series, epId);
+                const episodeMetadata = await tryLoadEpisodeMetadata(rootDir, series, epId);
+                const pendingPrepareIntents = getPendingPrepareIntents(rootDir, series, epId, {
+                  preparedArtifact,
+                  episodeMetadata,
+                });
                 const preparedArtifactPath = path.relative(
                   rootDir,
                   getPrepareArtifactPath(rootDir, series, epId),
@@ -776,12 +789,17 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
                     requiresPrepared: true,
                     preparedExists: preparedArtifact !== null,
                     preparedReady: preparedArtifact?.status === 'ready',
+                    metadataApplied: !!episodeMetadata?.youtube,
                     pendingPrepareIntents: pendingPrepareIntents.length,
+                    pendingPrepareIntentIds: pendingPrepareIntents
+                      .map((intent) => intent.id)
+                      .filter((id): id is string => typeof id === 'string'),
                     preparedArtifact: preparedArtifactPath,
                     privacyOptions: ['private', 'unlisted', 'public'] as const,
                     defaultPrivacy: 'private',
                     irreversible: true,
                     runningJob: publishJobState.status === 'running' ? publishJobState : null,
+                    publishPreview: resolvePublishPreview(preparedArtifact, episodeMetadata?.youtube ?? null),
                   },
                 });
               } catch (error) {
@@ -813,15 +831,25 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
                 const privacy = typeof body.privacy === 'string' ? body.privacy : 'private';
                 const dryRun = body.dryRun === true;
                 const force = body.force === true;
+                const skippedIntentIds = parseStringArray(body.skippedIntentIds);
                 const target = `${series}/${epId}`;
                 const preparedArtifact = readPrepareArtifact(rootDir, series, epId);
-                const pendingPrepareIntents = getPendingPrepareIntents(rootDir, series, epId);
+                const episodeMetadata = await tryLoadEpisodeMetadata(rootDir, series, epId);
+                const pendingPrepareIntents = getPendingPrepareIntents(rootDir, series, epId, {
+                  preparedArtifact,
+                  episodeMetadata,
+                })
+                  .filter((intent) => typeof intent.id !== 'string' || !skippedIntentIds.has(intent.id));
                 if (publishJobState.status === 'running') {
                   writeJson(res, 409, { ok: false, error: 'Publish already running.', job: publishJobState });
                   return;
                 }
                 if (!preparedArtifact || preparedArtifact.status !== 'ready') {
                   writeJson(res, 409, { ok: false, error: 'Prepare is not ready yet. Select a candidate first.' });
+                  return;
+                }
+                if (!episodeMetadata?.youtube) {
+                  writeJson(res, 409, { ok: false, error: 'Prepare is ready but not applied to episode metadata.youtube yet.' });
                   return;
                 }
                 if (pendingPrepareIntents.length > 0) {
@@ -1147,6 +1175,13 @@ type StudioIntentRecord = {
       hash?: string;
     };
   };
+  feedback?: {
+    kind?: string;
+  };
+};
+
+type EpisodePublishMetadata = {
+  youtube?: EpisodeMetadata['youtube'];
 };
 
 async function readJsonBody(req: NodeJS.ReadableStream): Promise<Record<string, unknown>> {
@@ -1262,8 +1297,8 @@ function sanitizePathToken(value: string): string {
   return normalized.replace(/^-|-$/g, '') || 'attachment';
 }
 
-function asStudioUi(value: unknown): 'studio' | 'plan' | 'build' | 'review' {
-  if (value === 'studio' || value === 'plan' || value === 'build' || value === 'review') {
+function asStudioUi(value: unknown): 'studio' | 'plan' | 'build' | 'review' | 'prepare' {
+  if (value === 'studio' || value === 'plan' || value === 'build' || value === 'review' || value === 'prepare') {
     return value;
   }
   if (value === 'slides') {
@@ -1273,13 +1308,17 @@ function asStudioUi(value: unknown): 'studio' | 'plan' | 'build' | 'review' {
   throw new Error('Invalid studio intent source ui.');
 }
 
-function asStudioKind(value: unknown): 'visual' | 'content' | 'timing' | 'plan-section' | 'build-trigger' | 'other' {
+function asStudioKind(value: unknown): 'visual' | 'content' | 'timing' | 'plan-section' | 'build-trigger' | 'prepare-generate' | 'prepare-select' | 'prepare-edit' | 'prepare-trigger' | 'other' {
   if (
     value === 'visual' ||
     value === 'content' ||
     value === 'timing' ||
     value === 'plan-section' ||
     value === 'build-trigger' ||
+    value === 'prepare-generate' ||
+    value === 'prepare-select' ||
+    value === 'prepare-edit' ||
+    value === 'prepare-trigger' ||
     value === 'other'
   ) {
     return value;
@@ -1304,13 +1343,167 @@ function readStudioIntentRecords(rootDir: string): StudioIntentRecord[] {
     .filter((record): record is StudioIntentRecord => record !== null);
 }
 
-function getPendingPrepareIntents(rootDir: string, series: string, epId: string): StudioIntentRecord[] {
+function getPendingPrepareIntents(
+  rootDir: string,
+  series: string,
+  epId: string,
+  context?: {
+    preparedArtifact: YoutubePrepareArtifact | null;
+    episodeMetadata: EpisodePublishMetadata | null;
+  },
+): StudioIntentRecord[] {
   return readStudioIntentRecords(rootDir).filter((intent) => {
     if (intent.processedAt) return false;
     if (intent.target?.series !== series || intent.target?.epId !== epId) return false;
     const hash = intent.target?.anchorMeta?.hash ?? '';
-    return hash.startsWith('prepare:');
+    if (!hash.startsWith('prepare:')) return false;
+    return !isPrepareIntentSatisfied(intent, context);
   });
+}
+
+function isPrepareIntentSatisfied(
+  intent: StudioIntentRecord,
+  context?: {
+    preparedArtifact: YoutubePrepareArtifact | null;
+    episodeMetadata: EpisodePublishMetadata | null;
+  },
+): boolean {
+  const preparedReady = context?.preparedArtifact?.status === 'ready';
+  const metadataApplied = !!context?.episodeMetadata?.youtube;
+  const kind = intent.feedback?.kind;
+  const hash = intent.target?.anchorMeta?.hash ?? '';
+
+  if (
+    preparedReady &&
+    (kind === 'prepare-generate' || kind === 'prepare-trigger' || hash === 'prepare:youtube:generate')
+  ) {
+    return true;
+  }
+
+  if (
+    metadataApplied &&
+    (kind === 'prepare-select' || hash.endsWith(':select'))
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+async function tryLoadEpisodeMetadata(rootDir: string, series: string, epId: string): Promise<EpisodePublishMetadata | null> {
+  try {
+    const filePath = path.join(rootDir, 'src', 'episodes', series, `${epId}.ts`);
+    if (!fs.existsSync(filePath)) return null;
+    return readEpisodeMetadataFromSource(filePath);
+  } catch {
+    return null;
+  }
+}
+
+function readEpisodeMetadataFromSource(filePath: string): EpisodePublishMetadata | null {
+  const sourceText = fs.readFileSync(filePath, 'utf-8');
+  const sourceFile = ts.createSourceFile(filePath, sourceText, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  let metadataObject: ts.ObjectLiteralExpression | null = null;
+
+  const visit = (node: ts.Node): void => {
+    if (
+      !metadataObject &&
+      ts.isPropertyAssignment(node) &&
+      getPropertyNameText(node.name) === 'metadata' &&
+      ts.isObjectLiteralExpression(node.initializer)
+    ) {
+      metadataObject = node.initializer;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+
+  if (!metadataObject) return null;
+  const youtubeObject = getObjectProperty(metadataObject, 'youtube');
+  if (!youtubeObject) return {};
+  const title = getStringProperty(youtubeObject, 'title');
+  const description = getStringProperty(youtubeObject, 'description');
+  const tags = getStringArrayProperty(youtubeObject, 'tags');
+  if (!title || !description || !tags) return {};
+  return { youtube: { title, description, tags } };
+}
+
+function getObjectProperty(object: ts.ObjectLiteralExpression, propertyName: string): ts.ObjectLiteralExpression | null {
+  const property = object.properties.find((entry) => (
+    ts.isPropertyAssignment(entry) &&
+    getPropertyNameText(entry.name) === propertyName &&
+    ts.isObjectLiteralExpression(entry.initializer)
+  ));
+  return property && ts.isPropertyAssignment(property) && ts.isObjectLiteralExpression(property.initializer)
+    ? property.initializer
+    : null;
+}
+
+function getStringProperty(object: ts.ObjectLiteralExpression, propertyName: string): string | null {
+  const property = object.properties.find((entry) => (
+    ts.isPropertyAssignment(entry) &&
+    getPropertyNameText(entry.name) === propertyName
+  ));
+  if (!property || !ts.isPropertyAssignment(property)) return null;
+  return getStringExpressionValue(property.initializer);
+}
+
+function getStringArrayProperty(object: ts.ObjectLiteralExpression, propertyName: string): string[] | null {
+  const property = object.properties.find((entry) => (
+    ts.isPropertyAssignment(entry) &&
+    getPropertyNameText(entry.name) === propertyName &&
+    ts.isArrayLiteralExpression(entry.initializer)
+  ));
+  if (!property || !ts.isPropertyAssignment(property) || !ts.isArrayLiteralExpression(property.initializer)) {
+    return null;
+  }
+  const values = property.initializer.elements.map(getStringExpressionValue);
+  return values.every((value): value is string => typeof value === 'string') ? values : null;
+}
+
+function getStringExpressionValue(expression: ts.Expression): string | null {
+  if (ts.isStringLiteral(expression) || ts.isNoSubstitutionTemplateLiteral(expression)) {
+    return expression.text;
+  }
+  return null;
+}
+
+function getPropertyNameText(name: ts.PropertyName): string | null {
+  if (ts.isIdentifier(name) || ts.isStringLiteral(name) || ts.isNumericLiteral(name)) {
+    return name.text;
+  }
+  return null;
+}
+
+function resolvePublishPreview(artifact: YoutubePrepareArtifact | null, episodeYoutube: {
+  title: string;
+  description: string;
+  tags: string[];
+} | null): {
+  title: string | null;
+  description: string | null;
+  tags: string[];
+  selected: string | null;
+  source: string | null;
+} {
+  if (episodeYoutube) {
+    return {
+      title: episodeYoutube.title,
+      description: episodeYoutube.description,
+      tags: episodeYoutube.tags,
+      selected: artifact?.youtube.selected ?? null,
+      source: 'metadata.youtube',
+    };
+  }
+
+  return {
+    title: null,
+    description: null,
+    tags: [],
+    selected: artifact?.youtube.selected ?? null,
+    source: null,
+  };
 }
 
 function asStudioSeverity(value: unknown): 'low' | 'medium' | 'high' {
@@ -1354,6 +1547,11 @@ function asStepIds(value: unknown): string[] {
 
   const stepIds = value.map((entry) => asRequiredString(entry, 'stepIds[]'));
   return Array.from(new Set(stepIds));
+}
+
+function parseStringArray(value: unknown): Set<string> {
+  if (!Array.isArray(value)) return new Set();
+  return new Set(value.filter((entry): entry is string => typeof entry === 'string' && entry.length > 0));
 }
 
 type PlaceholderEntry = {
