@@ -5,6 +5,7 @@
  *              `ars review open` will become a deprecation shim that forwards
  *              here in commit 8.
  */
+import fs from 'fs';
 import path from 'path';
 import { resolveEpisodeTarget } from '../lib/context';
 import { getRepoRoot } from '../lib/ars-config';
@@ -41,6 +42,7 @@ Intent subcommands:
   intent clear <id|all>                   Mark Studio intents as processed
   intent resolve <id> [options]           Mark a Studio intent processed with resolution evidence
   intent create [options]                 Create a Studio intent
+  intent watch                            Stream new intent filenames to stdout (one per line)
 
 Intent create options:
   --from <studio|plan|build|review|prepare>
@@ -168,6 +170,8 @@ async function handleIntent(args: string[]): Promise<void> {
       return resolveIntent(rest);
     case 'create':
       return createIntent(rest);
+    case 'watch':
+      return watchIntents();
     default:
       console.error(`❌ Unknown studio intent subcommand: ${subcommand ?? '(missing)'}`);
       console.log(HELP);
@@ -352,6 +356,19 @@ async function createIntent(args: string[]): Promise<void> {
 
   console.log(`✅ Created studio intent: ${record.intent.id}`);
   console.log(`   File: ${path.relative(root, record.filePath)}`);
+}
+
+async function watchIntents(): Promise<void> {
+  const root = getRepoRoot();
+  const dir = getStudioIntentsDir(root);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.watch(dir, (_event, filename) => {
+    if (filename && filename.endsWith('.json')) {
+      process.stdout.write(`${filename}\n`);
+    }
+  });
+  process.stdout.write('watching\n');
+  await new Promise(() => {});
 }
 
 function parseCreateOptions(args: string[]): ParsedCreateOptions {

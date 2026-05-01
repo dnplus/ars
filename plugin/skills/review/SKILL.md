@@ -27,20 +27,10 @@ Tell the user the Studio URL printed in the output and that they can submit feed
 
 ## Intent watch loop
 
-Whenever Studio is opened or reused, register an event-driven watch over `.ars/studio-intents/` **using the `Monitor` tool** (not `Bash run_in_background` — Monitor is the only thing that converts each stdout line into a notification you receive). The script must `mkdirSync` the directory first, because `fs.watch` throws `ENOENT` if the dir does not exist yet on first review:
+Whenever Studio is opened or reused, register an event-driven watch over `.ars/studio-intents/` **using the `Monitor` tool** (not `Bash run_in_background` — Monitor is the only thing that converts each stdout line into a notification you receive):
 
 ```bash
-node -e "
-const fs = require('fs');
-const dir = '.ars/studio-intents';
-fs.mkdirSync(dir, { recursive: true });
-fs.watch(dir, (event, filename) => {
-  if (filename && filename.endsWith('.json')) {
-    console.log(filename);
-  }
-});
-process.stdout.write('watching\n');
-"
+npx ars studio intent watch
 ```
 
 Each stdout line is a notification. On every notification:

@@ -24,7 +24,7 @@ Skip both roles and you get a plan built on guesswork. Do one role's job twice a
 5. Hand off to the bundled `ars:planner` agent. Pass gathered context (see `references/interview.md` for the prompt contents). Do not use Claude Code Plan Mode for this handoff; the deliverable is the `plan.md` file itself.
 6. After the planner returns, **open Studio on the plan phase and start the intent watch loop** — see `## Studio handoff` below.
 7. Track the next workflow steps in your session notes or todo system: `/ars:build`, `/ars:review`, `/ars:audio`, `/ars:prepare-youtube`, `/ars:publish-youtube`.
-8. Direct the user to review the rendered plan in Studio and submit ✨ intents on any section that needs adjustment. Next step is `/ars:build <epId>` — the user triggers it from Studio's "觸發 Build" button, or by typing `/ars:build <epId>` in the TUI.
+8. Direct the user to review the rendered plan in Studio and submit 💬 intents on any section that needs adjustment. Next step is `/ars:build <epId>` — the user triggers it from Studio's "觸發 Build" button, or by typing `/ars:build <epId>` in the TUI.
 
 ## Studio handoff
 
@@ -44,17 +44,7 @@ npx ars workstate switch <epId> --stage plan
 4. Whenever Studio is opened or reused, register an event-driven watch over `.ars/studio-intents/` **using the `Monitor` tool**:
 
 ```bash
-node -e "
-const fs = require('fs');
-const dir = '.ars/studio-intents';
-fs.mkdirSync(dir, { recursive: true });
-fs.watch(dir, (event, filename) => {
-  if (filename && filename.endsWith('.json')) {
-    console.log(filename);
-  }
-});
-process.stdout.write('watching\n');
-"
+npx ars studio intent watch
 ```
 
 Each stdout line is a notification. On every notification:

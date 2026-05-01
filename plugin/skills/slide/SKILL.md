@@ -25,17 +25,7 @@ Run `npx ars studio <epId> --phase slide` in the background only when there is n
 Whenever Studio is opened or reused, register an event-driven watch over `.ars/studio-intents/` **using the `Monitor` tool**:
 
 ```bash
-node -e "
-const fs = require('fs');
-const dir = '.ars/studio-intents';
-fs.mkdirSync(dir, { recursive: true });
-fs.watch(dir, (event, filename) => {
-  if (filename && filename.endsWith('.json')) {
-    console.log(filename);
-  }
-});
-process.stdout.write('watching\n');
-"
+npx ars studio intent watch
 ```
 
 Each stdout line is a notification. On every notification:

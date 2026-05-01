@@ -211,8 +211,8 @@ describe('plugin skill surface', () => {
         .toContain('Whenever Studio is opened or reused');
       expect(skill, `${skillName} must use the Claude Monitor lifecycle, not a plain background shell`)
         .toContain('Monitor');
-      expect(skill, `${skillName} monitor must create .ars/studio-intents before fs.watch`)
-        .toContain('fs.mkdirSync(dir, { recursive: true })');
+      expect(skill, `${skillName} must use the ars studio intent watch wrapper, not inline node -e`)
+        .toContain('npx ars studio intent watch');
       expect(skill, `${skillName} must drain Studio intents through the CLI`)
         .toContain('npx ars studio intent list --pending --json');
     }

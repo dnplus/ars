@@ -417,7 +417,7 @@ export const epDemo: Episode = {
         src: "/episodes/template/shared/review-studio/review-studio-ui.png",
         objectFit: "contain",
       },
-      narration: "這頁真正要講的不是右邊的 editor，而是畫面上的 ✨ 回饋入口。你可以直接從 Studio 預覽送出修改意圖，背景的 Claude Code 會即時改 step，改完再立刻回到這個畫面確認結果。",
+      narration: "這頁真正要講的不是右邊的 editor，而是畫面上的 💬 回饋入口。你可以直接從 Studio 預覽送出修改意圖，背景的 Claude Code 會即時改 step，改完再立刻回到這個畫面確認結果。",
       durationInSeconds: 8,
     },
     {
