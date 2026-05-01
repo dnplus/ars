@@ -170,8 +170,8 @@ export async function run(args: string[]) {
 
   // 複製 src/episodes/template/ → src/episodes/{seriesName}/
   copyDir(templateSrcDir, srcDir);
-  // Rewrite path references in series-config.ts from "episodes/template/" → "episodes/<seriesName>/"
-  rewriteSeriesConfig(srcDir, 'template', targetSeries);
+  // Rewrite copied template asset references from "episodes/template/" → "episodes/<seriesName>/".
+  rewriteSeriesAssetReferences(srcDir, 'template', targetSeries);
   // Apply layout choice from init prompt
   if (result.shellLayout === 'shorts') {
     rewriteShellLayout(srcDir, 'shorts');
@@ -299,17 +299,23 @@ function parseArgs(args: string[]): {
 }
 
 /**
- * Rewrite path references in series-config.ts after copying from template.
+ * Rewrite public asset references after copying from template.
  * Template uses "episodes/template/" — consumer series must use "episodes/<series>/".
  */
-function rewriteSeriesConfig(seriesDir: string, fromSeries: string, toSeries: string): void {
-  const configPath = path.join(seriesDir, 'series-config.ts');
-  if (!fs.existsSync(configPath)) return;
-
-  const content = fs.readFileSync(configPath, 'utf-8');
-  const updated = content.replaceAll(`episodes/${fromSeries}/`, `episodes/${toSeries}/`);
-  if (updated !== content) {
-    fs.writeFileSync(configPath, updated, 'utf-8');
+function rewriteSeriesAssetReferences(seriesDir: string, fromSeries: string, toSeries: string): void {
+  if (!fs.existsSync(seriesDir)) return;
+  for (const entry of fs.readdirSync(seriesDir, { withFileTypes: true })) {
+    const entryPath = path.join(seriesDir, entry.name);
+    if (entry.isDirectory()) {
+      rewriteSeriesAssetReferences(entryPath, fromSeries, toSeries);
+      continue;
+    }
+    if (!entry.name.endsWith('.ts') && !entry.name.endsWith('.tsx')) continue;
+    const content = fs.readFileSync(entryPath, 'utf-8');
+    const updated = content.replaceAll(`episodes/${fromSeries}/`, `episodes/${toSeries}/`);
+    if (updated !== content) {
+      fs.writeFileSync(entryPath, updated, 'utf-8');
+    }
   }
 }
 

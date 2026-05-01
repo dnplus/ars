@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Img, staticFile } from "remotion";
 import { BaseSlide, useCardContext } from "../../primitives/BaseSlide";
 import { WindowSlide } from "../../primitives/WindowSlide";
@@ -50,6 +50,10 @@ const ImageContent: React.FC<{
   const showPlaceholder = !hasSrc || hasError || isExplicitPlaceholder(trimmedSrc);
   const placeholderLabel = title || "Image Placeholder";
   const placeholderPath = toPlaceholderPath(trimmedSrc);
+
+  useEffect(() => {
+    setHasError(false);
+  }, [trimmedSrc]);
 
   return (
     <div

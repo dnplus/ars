@@ -79,6 +79,7 @@ describe('single-series workflow', () => {
     expect(fs.existsSync(path.join(repoDir, 'src', 'episodes', 'demo-series', 'ep001.ts'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'src', 'episodes', 'demo-series', 'ep001.subtitles.ts'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'public', 'episodes', 'demo-series', 'ep001', 'audio'))).toBe(true);
+    expect(fs.existsSync(path.join(repoDir, 'public', 'episodes', 'demo-series', 'shared', 'review-studio', 'review-studio-ui.png'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'eslint.config.mjs'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'cli', 'lib', 'ars-config.ts'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'cli', 'lib', 'context.ts'))).toBe(true);
@@ -87,7 +88,9 @@ describe('single-series workflow', () => {
     expect(fs.existsSync(path.join(repoDir, 'cli', 'lib', 'youtube-upload.ts'))).toBe(true);
     expect(initOutput).toContain('Set TTS provider = none (audio disabled) in series-config.ts');
     expect(seriesConfig).toContain('enabled: false');
-    expect(demoEpisode).not.toContain('episodes/template/shared/vtuber');
+    expect(seriesConfig).not.toContain('episodes/template/');
+    expect(demoEpisode).not.toContain('episodes/template/');
+    expect(demoEpisode).toContain('/episodes/demo-series/shared/review-studio/review-studio-ui.png');
     expect(demoEpisode).not.toContain('channelName: "人蔘 Try Catch"');
     expect(createdEpisode).toContain('import { subtitles } from "./ep001.subtitles";');
     expect(createdEpisode).toContain('  subtitles,');
