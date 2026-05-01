@@ -166,7 +166,7 @@ Monitor rules:
 ### Quick customize
 
 1. Run the compact customize flow from `references/branding-guide.md`.
-2. Start with one free-form prompt, not a questionnaire: ask the user to describe the channel, audience, desired vibe, visual references, and anything they definitely dislike in one paragraph or bullet list.
+2. Start with one free-form prompt, not a questionnaire: ask the user to describe the channel, audience, desired vibe, visual references, and anything they definitely dislike in one paragraph or bullet list. Explicitly invite them to **paste a directory path or file paths** containing reference material (existing brand guide, sample scripts, screenshots, logo files, mood-board folder, prior episode transcripts) — read those files before asking follow-ups so the answers stay grounded in real material.
 3. Use existing values from `.ars/config.json` and `series-config.ts` instead of re-asking them.
 4. Ask follow-up questions only for missing fields that would otherwise force invention. Cap follow-ups at 3 before falling back to documented defaults.
 5. Update `src/episodes/<activeSeries>/series-config.ts`. See `references/series-structure.md`.
