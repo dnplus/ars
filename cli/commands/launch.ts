@@ -13,6 +13,7 @@ import {
 import { getRuntimePackageInfo } from '../lib/runtime-package';
 import { resolveEpisodeTarget } from '../lib/context';
 import { openStudio } from '../lib/studio-launcher';
+import { resolveClaudeCommand } from '../lib/repo-init';
 
 export function normalizeClaudeLaunchArgs(
   args: string[],
@@ -155,7 +156,7 @@ function runClaudeInsideTmux(cwd: string, args: string[]): void {
 
 function runClaudeOutsideTmux(cwd: string, args: string[]): void {
   const sessionName = buildTmuxSessionName(cwd);
-  const rawClaudeCommand = buildTmuxShellCommand('claude', args);
+  const rawClaudeCommand = buildTmuxShellCommand(resolveClaudeCommand(), args);
   const envPrefix = buildEnvExportPrefix(['PATH']);
   const claudeCommand = wrapWithLoginShell(
     `${envPrefix}${rawClaudeCommand}`,
@@ -196,7 +197,7 @@ function runClaudeDirect(cwd: string, args: string[]): void {
 
 function execClaude(cwd: string, args: string[]): void {
   try {
-    execFileSync('claude', args, {
+    execFileSync(resolveClaudeCommand(), args, {
       cwd,
       stdio: 'inherit',
     });

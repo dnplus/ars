@@ -14,6 +14,7 @@ import { detectInstallState } from '../lib/install';
 import { getRuntimePackageInfo } from '../lib/runtime-package';
 import { hasVersionDrift, readInstalledVersion } from '../lib/version';
 import { isTmuxAvailable } from '../lib/tmux';
+import { resolveClaudeCommand } from '../lib/repo-init';
 import { getTTSProviderCapabilities } from '../../src/adapters/tts/registry';
 import type { SpeechProviderId } from '../../src/engine/shared/types';
 
@@ -120,7 +121,7 @@ function validateCliRuntime(results: CheckResult[]): void {
     fixHint: nodeMajor >= 22 ? undefined : 'Use Node 22.12.0 or newer.',
   });
 
-  const claudeCheck = spawnSync('claude', ['--version'], {
+  const claudeCheck = spawnSync(resolveClaudeCommand(), ['--version'], {
     encoding: 'utf-8',
     stdio: 'pipe',
   });

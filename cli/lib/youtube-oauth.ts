@@ -9,7 +9,7 @@
  *   startCallbackServer  — HTTP server that captures OAuth callback code
  */
 import http from 'http';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import fs from 'fs';
 import crypto from 'crypto';
 
@@ -27,9 +27,13 @@ const CALLBACK_TIMEOUT_MS = 30_000;
 
 export function openBrowser(url: string): void {
   const platform = process.platform;
-  const cmd = platform === 'darwin' ? 'open' : 'xdg-open';
+  const command = platform === 'darwin'
+    ? { bin: 'open', args: [url] }
+    : platform === 'win32'
+      ? { bin: 'rundll32', args: ['url.dll,FileProtocolHandler', url] }
+      : { bin: 'xdg-open', args: [url] };
   try {
-    execSync(`${cmd} "${url}"`, { stdio: 'ignore' });
+    execFileSync(command.bin, command.args, { stdio: 'ignore' });
   } catch {
     // Silently fail — caller already printed the URL for manual fallback
   }

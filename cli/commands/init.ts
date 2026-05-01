@@ -9,7 +9,7 @@ import fs from 'fs';
 import path from 'path';
 import { spawnSync } from 'child_process';
 import { getRepoRoot } from '../lib/ars-config';
-import { ensureRepoInitialized } from '../lib/repo-init';
+import { ensureRepoInitialized, resolveClaudeCommand } from '../lib/repo-init';
 import { getActiveSeries, listUserSeries, setActiveSeries, validateSeriesName } from '../lib/context';
 import { isTmuxAvailable } from '../lib/tmux';
 
@@ -28,7 +28,7 @@ function preflight(): void {
     return;
   }
 
-  const claude = spawnSync('claude', ['--version'], { stdio: 'pipe' });
+  const claude = spawnSync(resolveClaudeCommand(), ['--version'], { stdio: 'pipe' });
   if (claude.status !== 0) {
     console.error('❌ Claude CLI not found in PATH.');
     console.error('   Install it from https://docs.claude.com/en/docs/claude-code, then re-run `ars init`.');

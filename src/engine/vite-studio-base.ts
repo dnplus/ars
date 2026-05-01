@@ -13,6 +13,7 @@ import path from 'path';
 import fs from 'fs';
 import { spawn, type ChildProcess } from 'child_process';
 import { createRequire } from 'module';
+import { fileURLToPath } from 'url';
 import * as ts from 'typescript';
 import { getTTSProviderCapabilities } from '../adapters/tts/registry';
 import { createStudioIntent, getStudioIntentsDir } from '../studio/studio-intents';
@@ -68,7 +69,7 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
   // When launched via `npx ars review open`, ARS_PACKAGE_ROOT points to the ARS package.
   // Fall back to resolving from import.meta.url for local ARS development.
   const arsPackageRoot = process.env.ARS_PACKAGE_ROOT
-    ?? path.resolve(new URL(import.meta.url).pathname, '..', '..', '..');
+    ?? path.resolve(fileURLToPath(import.meta.url), '..', '..', '..');
   const arsModulesDir = path.join(arsPackageRoot, 'node_modules');
   const require = createRequire(path.join(arsPackageRoot, 'package.json'));
   const tsxLoader = require.resolve('tsx');

@@ -6,12 +6,13 @@
  *   npx ars export thumbnail <epId>               Export YouTube thumbnail PNG
  *   npx ars export srt <epId>                     Export SRT subtitle for YouTube CC
  */
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { resolveEpisodeTarget, resolveSeriesContext } from '../lib/context';
 import { getRepoRoot } from '../lib/ars-config';
 import { getRuntimePackageInfo } from '../lib/runtime-package';
+import { npmCommand } from '../lib/platform-command';
 import type { Episode } from '../../src/engine/shared/types';
 import type { SubtitlePhrase } from '../../src/engine/shared/subtitle';
 
@@ -137,25 +138,34 @@ function resolvePrimaryVariantId(thumbnail: { variants: Array<{ id?: string }>; 
 
 /** 用 remotion still 輸出單張 PNG */
 function renderStill(
-  packageRoot: string,
+  _packageRoot: string,
   root: string,
   compositionId: string,
   outPath: string,
 ): void {
-  const remotionBin = path.join(packageRoot, 'node_modules', '.bin', 'remotion');
   const entryPoint = path.join(root, 'src', 'index.ts');
   const publicDir = path.join(root, 'public');
   const absOutPath = path.resolve(outPath);
 
-  execSync(
-    `"${remotionBin}" still "${entryPoint}" "${compositionId}" "${absOutPath}" --public-dir="${publicDir}" --image-format=png --log=error`,
+  execFileSync(
+    npmCommand('npx'),
+    [
+      'remotion',
+      'still',
+      entryPoint,
+      compositionId,
+      absOutPath,
+      `--public-dir=${publicDir}`,
+      '--image-format=png',
+      '--log=error',
+    ],
     {
-      cwd: packageRoot,
+      cwd: root,
       stdio: 'pipe',
       timeout: 60000,
       env: {
         ...process.env,
-        ARS_PACKAGE_ROOT: packageRoot,
+        ARS_PACKAGE_ROOT: _packageRoot,
         ARS_REPO_ROOT: root,
       },
     }

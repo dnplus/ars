@@ -19,7 +19,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // Read stdin (Claude Code passes JSON to statusLine commands)
 let stdinData = '';
 try {
-  stdinData = readFileSync('/dev/stdin', 'utf8');
+  stdinData = readFileSync(0, 'utf8');
 } catch {
   stdinData = '{}';
 }

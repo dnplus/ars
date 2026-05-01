@@ -7,6 +7,7 @@
 import fs from 'fs';
 import path from 'path';
 import { spawn, type ChildProcess } from 'child_process';
+import { createRequire } from 'module';
 import { getRuntimePackageInfo } from './runtime-package';
 
 export type StudioPhase = 'plan' | 'build' | 'review' | 'slide';
@@ -37,13 +38,11 @@ export function openStudio(options: OpenStudioOptions): OpenStudioResult {
   const inheritExit = options.inheritExit ?? true;
 
   const { packageRoot: arsPackageRoot } = getRuntimePackageInfo(import.meta.url);
-  const consumerViteBin = path.join(root, 'node_modules', '.bin', 'vite');
   const consumerViteConfig = path.join(root, 'vite.studio.config.ts');
-  const arsViteBin = path.join(arsPackageRoot, 'node_modules', '.bin', 'vite');
   const arsViteConfig = path.join(arsPackageRoot, 'vite.studio.config.ts');
 
-  const useConsumer = fs.existsSync(consumerViteBin) && fs.existsSync(consumerViteConfig);
-  const viteBin = useConsumer ? consumerViteBin : arsViteBin;
+  const useConsumer = fs.existsSync(consumerViteConfig) && canResolveViteCli(root);
+  const viteCli = useConsumer ? resolveViteCli(root) : resolveViteCli(arsPackageRoot);
   const viteConfigPath = useConsumer ? consumerViteConfig : arsViteConfig;
 
   const params = new URLSearchParams({ series: options.series, ep: options.epId, phase });
@@ -53,8 +52,8 @@ export function openStudio(options: OpenStudioOptions): OpenStudioResult {
   console.log(`   ${url}`);
 
   const child = spawn(
-    viteBin,
-    ['--config', viteConfigPath, '--port', String(port)],
+    process.execPath,
+    [viteCli, '--config', viteConfigPath, '--port', String(port)],
     {
       stdio: 'inherit',
       env: {
@@ -76,4 +75,28 @@ export function openStudio(options: OpenStudioOptions): OpenStudioResult {
   }
 
   return { child, url, port };
+}
+
+function canResolveViteCli(packageRoot: string): boolean {
+  try {
+    resolveViteCli(packageRoot);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function resolveViteCli(packageRoot: string): string {
+  const require = createRequire(path.join(packageRoot, 'package.json'));
+  const vitePackageJsonPath = require.resolve('vite/package.json');
+  const vitePackage = JSON.parse(fs.readFileSync(vitePackageJsonPath, 'utf-8')) as {
+    bin?: string | Record<string, string>;
+  };
+  const binRel = typeof vitePackage.bin === 'string'
+    ? vitePackage.bin
+    : vitePackage.bin?.vite;
+  if (!binRel) {
+    throw new Error(`Could not resolve vite CLI from ${vitePackageJsonPath}`);
+  }
+  return path.join(path.dirname(vitePackageJsonPath), binRel);
 }

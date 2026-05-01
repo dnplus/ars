@@ -26,6 +26,7 @@ import {
   writeVersionMetadata,
 } from './install';
 import { getRuntimePackageInfo } from './runtime-package';
+import { npmCommand, npmPackageCommand } from './platform-command';
 
 export interface RepoInitOptions {
   force: boolean;
@@ -132,7 +133,7 @@ export async function ensureRepoInitialized(options: RepoInitOptions): Promise<R
   const packageJsonPath = path.join(root, 'package.json');
   let npmInstalled = false;
   if (shouldRunNpmInstall(root, packageJsonPath, nodeModulesPath, copiedFiles)) {
-    const result = spawnSync('npm', ['install'], {
+    const result = spawnSync(npmCommand('npm'), ['install'], {
       cwd: root,
       stdio: 'inherit',
       shell: false,
@@ -182,7 +183,14 @@ function shouldRunNpmInstall(
 
 function hasConsumerDevTooling(root: string): boolean {
   const binDir = path.join(root, 'node_modules', '.bin');
-  return ['eslint', 'tsc', 'vite'].every((bin) => fs.existsSync(path.join(binDir, bin)));
+  return ['eslint', 'tsc', 'vite'].every((bin) => hasNodeModulesBin(binDir, bin));
+}
+
+function hasNodeModulesBin(binDir: string, bin: string): boolean {
+  return (
+    fs.existsSync(path.join(binDir, bin)) ||
+    (process.platform === 'win32' && fs.existsSync(path.join(binDir, `${bin}.cmd`)))
+  );
 }
 
 function ensureGitInitialized(root: string): RepoInitResult['git'] {
@@ -238,7 +246,7 @@ function ensureRemotionSkillInstalled(root: string): boolean {
   }
 
   const result = spawnSync(
-    'npx',
+    npmCommand('npx'),
     ['skills', 'add', 'remotion-dev/skills', '-a', 'claude-code', '-y'],
     {
       cwd: root,
@@ -253,6 +261,10 @@ function ensureRemotionSkillInstalled(root: string): boolean {
   }
 
   return hasRemotionSkill(root);
+}
+
+export function resolveClaudeCommand(): string {
+  return npmPackageCommand('claude');
 }
 
 function hasRemotionSkill(root: string): boolean {

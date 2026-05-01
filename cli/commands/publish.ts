@@ -9,11 +9,13 @@
 import fs from 'fs';
 import path from 'path';
 import { execFileSync } from 'child_process';
+import { createRequire } from 'module';
 import { createInterface } from 'readline';
 import { resolveEpisodeTarget } from '../lib/context';
 import { getRepoRoot } from '../lib/ars-config';
 import { getRuntimePackageInfo } from '../lib/runtime-package';
 import { loadEpisodeMetadata } from '../lib/episode-file';
+import { npmCommand } from '../lib/platform-command';
 
 type PublishMode = 'package' | 'youtube';
 
@@ -94,12 +96,13 @@ async function confirmExecution(opts: PublishOptions, target: string): Promise<v
 function cliArgs(...args: string[]): [string, string[]] {
   const { packageRoot } = getRuntimePackageInfo(import.meta.url);
   const cliEntry = path.join(packageRoot, 'cli', 'index.ts');
-  const tsxBin = path.join(packageRoot, 'node_modules', '.bin', 'tsx');
-  return [tsxBin, [cliEntry, ...args]];
+  const require = createRequire(path.join(packageRoot, 'package.json'));
+  const tsxLoader = require.resolve('tsx');
+  return [process.execPath, ['--import', tsxLoader, cliEntry, ...args]];
 }
 
 function remotionArgs(...args: string[]): [string, string[]] {
-  return ['npx', ['remotion', ...args]];
+  return [npmCommand('npx'), ['remotion', ...args]];
 }
 
 function runStep(label: string, bin: string, args: string[]): void {
