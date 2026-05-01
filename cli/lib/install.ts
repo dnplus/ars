@@ -1033,6 +1033,43 @@ export function patchClaudeSettings(options: {
     settings[event] = [...arsEntries, ...nonArs];
   }
 
+  // Pre-allow common ARS commands so onboard/plan/build don't prompt every step.
+  // Users can revoke any entry from .claude/settings.json after install.
+  const arsAllow = [
+    'Bash(npx ars *)',
+    'Bash(ars *)',
+    'Bash(node .ars/hooks/scripts/*)',
+    'Bash(ls *)',
+    'Bash(cat *)',
+    'Bash(pwd)',
+    'Bash(test *)',
+    'Bash(mkdir *)',
+    'Bash(rm *)',
+    'Bash(mv *)',
+    'Bash(cp *)',
+    'Bash(echo *)',
+    'Bash(grep *)',
+    'Bash(find *)',
+    'Bash(head *)',
+    'Bash(tail *)',
+    'Bash(wc *)',
+    'Bash(diff *)',
+    'Bash(jq *)',
+    'Bash(python3 *)',
+  ];
+  const existingPermissions =
+    typeof settings.permissions === 'object' && settings.permissions !== null
+      ? (settings.permissions as Record<string, unknown>)
+      : {};
+  const existingAllow = Array.isArray(existingPermissions.allow)
+    ? (existingPermissions.allow as unknown[]).filter((v): v is string => typeof v === 'string')
+    : [];
+  const mergedAllow = Array.from(new Set([...existingAllow, ...arsAllow]));
+  settings.permissions = {
+    ...existingPermissions,
+    allow: mergedAllow,
+  };
+
   fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}\n`, 'utf-8');
 }
 

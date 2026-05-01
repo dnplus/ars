@@ -7,9 +7,30 @@
  */
 import fs from 'fs';
 import path from 'path';
+import { spawnSync } from 'child_process';
 import { getRepoRoot } from '../lib/ars-config';
 import { ensureRepoInitialized } from '../lib/repo-init';
 import { getActiveSeries, listUserSeries, setActiveSeries, validateSeriesName } from '../lib/context';
+import { isTmuxAvailable } from '../lib/tmux';
+
+function preflight(): void {
+  const nodeMajor = Number.parseInt(process.versions.node.split('.')[0], 10);
+  if (nodeMajor < 22) {
+    console.error(`❌ Node ${process.versions.node} is too old. ARS needs Node 22.12.0 or newer.`);
+    process.exit(1);
+  }
+
+  const claude = spawnSync('claude', ['--version'], { stdio: 'pipe' });
+  if (claude.status !== 0) {
+    console.error('❌ Claude CLI not found in PATH.');
+    console.error('   Install it from https://docs.claude.com/en/docs/claude-code, then re-run `ars init`.');
+    process.exit(1);
+  }
+
+  if (!isTmuxAvailable()) {
+    console.warn('⚠️  tmux not found. `ars` will fall back to direct Claude launch (no session wrapping).');
+  }
+}
 
 const HELP = `
 Usage: npx ars init [series-name] [options]
@@ -29,6 +50,7 @@ Options:
 
 export async function run(args: string[]) {
   const { options, seriesName } = parseArgs(args);
+  preflight();
   const root = getRepoRoot();
   const result = await ensureRepoInitialized({
     force: options.force,
