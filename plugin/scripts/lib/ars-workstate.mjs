@@ -639,7 +639,7 @@ function stageToStep(stage) {
   const normalized = String(stage).split(':')[0];
   if (normalized === 'idle' || normalized === 'draft' || normalized === 'plan') return 0;
   if (normalized === 'build' || normalized === 'building' || normalized === 'validating') return 1;
-  if (normalized === 'review' || normalized === 'ready-for-review' || normalized === 'ready-for-review-with-warnings') return 2;
+  if (normalized === 'review' || normalized === 'ready-for-review') return 2;
   if (normalized === 'prepare-youtube' || normalized === 'package') return 3;
   if (normalized === 'publish-youtube') return 4;
   return -1;
@@ -647,9 +647,8 @@ function stageToStep(stage) {
 
 function onboardStageToStep(stage) {
   if (stage === 'onboard-walkthrough') return 0;
-  if (stage === 'onboard-bootstrap') return 1;
-  if (stage === 'onboard-customize') return 2;
-  if (stage === 'onboard-verify') return 3;
+  if (stage === 'onboard-customize') return 1;
+  if (stage === 'onboard-verify') return 2;
   return -1;
 }
 
@@ -658,7 +657,7 @@ export function isOnboardStage(stage) {
 }
 
 function renderOnboardPipeline(currentStep) {
-  const steps = ['walkthrough', 'bootstrap', 'customize', 'verify'];
+  const steps = ['walkthrough', 'customize', 'verify'];
   return steps.map((label, i) => {
     if (i < currentStep) return `${GREEN}${label}${RESET}`;
     if (i === currentStep) return `${CYAN}${BOLD}▶${label}${RESET}`;
@@ -694,7 +693,7 @@ export function renderStatusLine(root = process.cwd(), sessionId, version = '') 
   const rawStage = workState?.stage ?? progress?.stage ?? '';
 
   // SSOT for "has onboard been completed": config.project.onboardedAt
-  // Set by `npx ars workstate clear --onboarded` when onboard Phase 3 finishes.
+  // Set by `npx ars workstate clear --onboarded` when onboard verify finishes.
   const onboardedAt = config?.project?.onboardedAt;
   if (!onboardedAt && activeSeries) {
     const onboardStep = onboardStageToStep(rawStage);

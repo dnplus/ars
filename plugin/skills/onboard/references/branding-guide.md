@@ -1,17 +1,19 @@
 # Branding Interview Guide
 
-Use this guide during Phase 3 customize to collect brand information, derive theme tokens, and shape SERIES_GUIDE.md.
+Use this guide during onboard customize to collect brand information, derive theme tokens, and shape SERIES_GUIDE.md.
 
-The interview has **two stages**:
+The interview has a compact first pass and an optional deeper pass:
 
-- **Stage 1** (always run) — visual identity + series identity (10 questions). Produces basic SERIES_GUIDE.md.
-- **Stage 2** (opt-in, recommended) — voice deep-dive (slogan, persona, common openers, banned phrases, card preferences, step duration cap, contrast examples). Appends optional sections to SERIES_GUIDE.md and dramatically improves `/ars:build` output quality.
+- **Quick customize** (always run unless the user chooses "keep template for now") — one free-form answer first, then at most 3 follow-up questions. Produces usable `series-config.ts` changes and a basic `SERIES_GUIDE.md`.
+- **Deep-dive** (opt-in) — one free-form answer first, then at most 3 follow-up questions. Covers voice, language allergies, card preferences, step duration cap, contrast examples. Appends optional sections to `SERIES_GUIDE.md`.
 
 Channel name, YouTube publishing, and layout are already handled by `npx ars init` — do not re-ask them here. TTS settings now live in `series-config.ts` under `SERIES_CONFIG.speech`; audio starts disabled by default until the user explicitly enables it.
 
 ## Interview Rules
 
-Ask each question **one at a time**. Wait for the user's reply before asking the next question.
+Brief the user before asking questions. Say customize will tune visible defaults and write `SERIES_GUIDE.md`, which future plan/build/polish/reflect runs will read.
+
+Prefer free-form answers over a rigid questionnaire. Ask one broad prompt first. Wait for the user's reply, extract as much as possible, then ask targeted follow-ups only for missing fields that would otherwise force invention.
 
 - Default to a conversational flow, not a form dump.
 - If the user answers multiple questions in one reply, capture the answered fields and skip them.
@@ -20,7 +22,31 @@ Ask each question **one at a time**. Wait for the user's reply before asking the
 - Stop as soon as the user says "do it later."
 - If the user is lazy or says "just do your best", stop the interview and fall back to the minimal defaults in `references/series-guide-template.md`.
 
-## Stage 1 — Visual + Series Identity (always run)
+## Quick Customize — Free-Form First
+
+Start with this single prompt:
+
+```text
+先用一段話或幾個 bullet 描述這個頻道就好：
+它叫什麼、誰在講、想給誰看、希望觀眾帶走什麼、
+講話風格和視覺感覺大概是什麼。
+
+不用填表；你想到什麼先丟，我會幫你整理成 series-config.ts 和 SERIES_GUIDE.md。
+```
+
+After the answer, extract these fields. Ask at most 3 follow-up questions total, only for fields that are both missing and important:
+
+1. **Channel identity** — What should the channel/series be called, and who is presenting it? One line is enough.
+2. **Audience + takeaway** — Who is this for, and what should viewers usually walk away with?
+3. **Voice** — Pick or describe: direct / opinionated / playful / didactic / calm / other. Any words or phrases you dislike?
+4. **Visual direction** — Any brand color, visual tone, or VTuber/image assets? If no VTuber, set `shell.config.vtuber.enabled = false` instead of leaving broken image paths.
+5. **Episode defaults** — Preferred length range and CTA style? If unsure, use default: mixed length, soft CTA.
+
+If the user answers sparsely, use the minimal defaults and explicitly say which defaults were used. Do not keep asking just to fill every field.
+
+`brandTag` is derived — default to `EP`. Offer to set it only if the user spontaneously mentions episode-type labeling.
+
+## Field Mapping
 
 ### Visual identity (→ `series-config.ts`)
 
@@ -31,7 +57,7 @@ Ask each question **one at a time**. Wait for the user's reply before asking the
 
 ### Series identity (→ `SERIES_GUIDE.md`)
 
-These drive `SERIES_GUIDE.md` and are **required** — do NOT invent them from channel name alone. If the user says "reuse defaults" / "default", use the minimal defaults from `references/series-guide-template.md` verbatim and tell them which defaults you used.
+These drive `SERIES_GUIDE.md` and are required as fields, but they do not all need separate questions. Fill them from compact answers, existing config values, or minimal defaults. Do NOT invent them from channel name alone. If the user says "reuse defaults" / "default", use the minimal defaults from `references/series-guide-template.md` verbatim and tell them which defaults you used.
 
 5. **Host / creator** — Who is presenting this series? (one-line background, e.g. "senior backend engineer and small-team lead", "indie developer", "ServiceNow consultant") — drives narration credibility and the depth of claims the series can make.
 6. **Audience** — Who is this series for? (one line, e.g. "experienced engineers in Taiwan who want practical AI workflow examples")
@@ -42,19 +68,26 @@ These drive `SERIES_GUIDE.md` and are **required** — do NOT invent them from c
 
 `brandTag` is derived — default to `EP`. Offer to set it only if the user spontaneously mentions episode-type labeling (e.g. "I want each episode tagged as Tutorial / Deep Dive"). Don't ask proactively.
 
-## Stage 2 — Voice Deep-dive (opt-in, recommended)
+## Deep-Dive (opt-in)
 
-Run this **only after Stage 1 finishes** and the user opts in (see onboard SKILL's `## Stage 2 voice deep-dive` section for the opt-in prompt).
+Run this only after quick customize finishes and the user opts in. Before asking for input, explain what will happen next: the user gives one free-form style note, you summarize it into optional guide sections, then you ask at most 3 follow-ups if needed.
 
 These answers fill the optional sections in SERIES_GUIDE.md (`## Slogan & Persona`, `## Common Openers`, `## Signature Sign-off`, `## Banned Phrases & Replacements`, `## Card Preferences`, `## Step Duration Cap`, `## Contrast Examples`). They are read directly by `/ars:build` to drive narration style, card selection, and step pacing.
 
-Same interview rules as Stage 1 — ask one at a time, accept "skip" per question. Each skipped question simply means that section won't be added to SERIES_GUIDE.md.
+Start with one free-form prompt:
+
+```text
+想補強的話，直接描述你希望影片「聽起來」和「看起來」像什麼：
+口頭禪、禁用詞、喜歡/討厭的 AI 句型、卡片偏好、節奏都可以混在一起講。
+```
+
+Then map the answer to the fields below. Ask at most 3 follow-up questions total. Each skipped or unanswered field simply means that section won't be added to SERIES_GUIDE.md.
 
 ### Voice & Persona
 
 11. **Slogan / signature phrase** — One line you want viewers to remember. Example for 人蔘Try Catch: "人生就像 Try…Catch，反正 Catch 住就對了。" Skip if no slogan.
 
-12. **Persona one-liner** — Who is the host? In one line — role, age range or vibe, signature attitude. Example: "37 歲技術部門主管（人蔘擬人），冷面笑匠、苦中帶甘"; or "資深 ServiceNow 顧問，務實派"; or "indie hacker, plays dumb on purpose to teach better." Skip if persona = host's real bio (Stage 1 已答).
+12. **Persona one-liner** — Who is the host? In one line — role, age range or vibe, signature attitude. Example: "37 歲技術部門主管（人蔘擬人），冷面笑匠、苦中帶甘"; or "資深 ServiceNow 顧問，務實派"; or "indie hacker, plays dumb on purpose to teach better." Skip if persona = host's real bio from quick customize.
 
 13. **Common openers** — Up to 3 phrases you actually say at the top of segments. Example: "講白了" / "老實說" / "唉……（推眼鏡）" / "It's worth noting" → 否定樣本，不是真實口頭禪. Skip if you don't have stock openers.
 
@@ -153,7 +186,7 @@ shadow        → primary hex + alpha 0.2
 
 ## What to Write Back
 
-After Stage 1, update `series-config.ts`:
+After quick customize, update `series-config.ts`:
 - Replace all placeholder colors in `theme.colors`
 - Set `fontFamily` to chosen font (use Google Fonts via `@remotion/google-fonts/<FontName>` if available)
 - Update `vtuber.closedImg` / `openImg` paths if user provided images
@@ -168,9 +201,9 @@ For `shell.layout`:
 
 Then write `SERIES_GUIDE.md` — see `references/series-guide-template.md`. Use only the basic sections at this point.
 
-After Stage 2 (if the user opted in), append the optional sections to the same `SERIES_GUIDE.md`:
+After the deep-dive (if the user opted in), append the optional sections to the same `SERIES_GUIDE.md`:
 
-| Stage 2 question | SERIES_GUIDE section |
+| Deep-dive question | SERIES_GUIDE section |
 |---|---|
 | Q11 (slogan) + Q12 (persona) | `## Slogan & Persona` |
 | Q13 (common openers) | `## Common Openers` |
@@ -180,4 +213,4 @@ After Stage 2 (if the user opted in), append the optional sections to the same `
 | Q20 (step duration) | `## Step Duration Cap` |
 | Q21 (contrast pair) | `## Contrast Examples` |
 
-Sections corresponding to skipped questions are simply omitted — don't write empty placeholder sections. After writing, tell the user which sections were added so they can verify the file matches their answers.
+Sections corresponding to skipped questions are simply omitted — don't write empty placeholder sections. After writing, tell the user which sections were added so they can verify the file matches their answers. Also remind them that `SERIES_GUIDE.md` is editable later: they can directly tell the agent to change tone, banned phrases, card preferences, pacing, or other series rules in that file.

@@ -2,8 +2,8 @@
  * @component BuildView
  * @description Build phase of the Studio shell. Observes build state by polling
  *              `/__ars/build-status` (stateless server-side aggregator that reads
- *              workstate.json + .ars/studio-intents/ + episode source mtime +
- *              last-build.json). "Trigger Build" POSTs to `/__ars/build-trigger`
+ *              workstate.json + .ars/studio-intents/ + episode source mtime).
+ *              "Trigger Build" POSTs to `/__ars/build-trigger`
  *              which writes a StudioIntent of kind `build-trigger` — the TUI-side
  *              /ars:apply-review skill observes that intent and invokes
  *              /ars:build <epId>. Build is a Claude Code skill, NOT a CLI
@@ -19,16 +19,7 @@ type BuildState =
   | 'pending-trigger'
   | 'in-progress'
   | 'ready-for-review'
-  | 'ready-for-review-with-warnings'
-  | 'blocked-assets-missing'
   | 'failed';
-
-type PlaceholderEntry = {
-  stepId?: string;
-  src: string;
-  caption?: string;
-  isHero?: boolean;
-};
 
 type BuildStatusPayload = {
   state: BuildState;
@@ -37,10 +28,6 @@ type BuildStatusPayload = {
   pendingIntentAt?: string;
   episodeSourcePath?: string;
   episodeSourceMtime?: string;
-  lastBuildAt?: string;
-  validation?: { ok: boolean; errorCount: number; summary: string };
-  placeholders?: PlaceholderEntry[];
-  warnings?: string[];
 };
 
 type BuildStatusResponse = {
@@ -183,27 +170,6 @@ export const BuildView: React.FC<BuildViewProps> = ({ series, epId }) => {
                 )}
               />
             )}
-            {status.validation && (
-              <Row
-                label="last validation"
-                value={(
-                  <span>
-                    <span style={{ color: status.validation.ok ? 'var(--color-positive, #4ade80)' : 'var(--color-negative, #f87171)' }}>
-                      {status.validation.ok ? 'ok' : `failed (${status.validation.errorCount})`}
-                    </span>
-                    {status.validation.summary && (
-                      <span style={{ marginLeft: 8, opacity: 0.75 }}>{status.validation.summary}</span>
-                    )}
-                  </span>
-                )}
-              />
-            )}
-            {status.lastBuildAt && (
-              <Row
-                label="last build at"
-                value={<span style={{ opacity: 0.8 }}>{new Date(status.lastBuildAt).toLocaleString()}</span>}
-              />
-            )}
           </dl>
 
           {error && (
@@ -228,8 +194,6 @@ const CTA_LABELS: Record<BuildState, string> = {
   'pending-trigger': '⏳ 等 TUI 接手…',
   'in-progress': '🔨 Build 中…',
   'ready-for-review': '✅ 前往 Review',
-  'ready-for-review-with-warnings': '⚠ 前往 Review（有素材 warning）',
-  'blocked-assets-missing': '🚫 缺 Hero 素材，無法進 Review',
   'failed': '🔨 重試 Build',
 };
 
@@ -238,9 +202,7 @@ const STATE_LABEL: Record<BuildState, string> = {
   'pending-trigger': 'pending-trigger — 等 TUI 接手',
   'in-progress': 'in-progress — Build 中',
   'ready-for-review': 'ready-for-review — 可進 review',
-  'ready-for-review-with-warnings': 'ready-for-review-with-warnings — 有素材缺口',
-  'blocked-assets-missing': 'blocked-assets-missing — Hero 素材未備',
-  'failed': 'failed — 最近一次 build 失敗',
+  'failed': 'failed — build 失敗',
 };
 
 const STATE_COLOR: Record<BuildState, string> = {
@@ -248,8 +210,6 @@ const STATE_COLOR: Record<BuildState, string> = {
   'pending-trigger': '#f59e0b',
   'in-progress': '#3b82f6',
   'ready-for-review': '#4ade80',
-  'ready-for-review-with-warnings': '#f59e0b',
-  'blocked-assets-missing': '#f87171',
   'failed': '#f87171',
 };
 

@@ -14,15 +14,20 @@ Before opening Studio, make the episode context explicit:
 npx ars workstate switch <epId> --stage review
 ```
 
-If an existing review monitor is running for a different episode, stop that monitor before starting this one. Opening an episode file in the IDE, seeing an unrelated pending intent, or seeing a different episode in the statusline is only a weak signal; never switch review targets from those signals alone.
+Before opening or reusing Studio, check whether this Claude session already has a running Studio process and Studio intent Monitor:
 
-Run `npx ars studio <epId> --phase review` in the background (do not block on it).
+- If Studio is already open for this same `<epId>` and phase, reuse it. Do not start a duplicate Vite server just to get a fresh URL.
+- If Studio is open for this same `<epId>` but no intent Monitor is running, keep the Studio process and start the Monitor immediately.
+- If Studio or the Monitor is for a different episode, stop the old Monitor first. For cross-episode review, run the explicit workstate switch above before opening/reusing Studio.
+- Opening an episode file in the IDE, seeing an unrelated pending intent, or seeing a different episode in the statusline is only a weak signal; never switch review targets from those signals alone.
+
+Run `npx ars studio <epId> --phase review` in the background only when there is no reusable Studio process (do not block on it).
 
 Tell the user the Studio URL printed in the output and that they can submit feedback directly from the review UI.
 
 ## Intent watch loop
 
-After opening the Studio, register an event-driven watch over `.ars/studio-intents/` **using the `Monitor` tool** (not `Bash run_in_background` — Monitor is the only thing that converts each stdout line into a notification you receive). The script must `mkdirSync` the directory first, because `fs.watch` throws `ENOENT` if the dir does not exist yet on first review:
+Whenever Studio is opened or reused, register an event-driven watch over `.ars/studio-intents/` **using the `Monitor` tool** (not `Bash run_in_background` — Monitor is the only thing that converts each stdout line into a notification you receive). The script must `mkdirSync` the directory first, because `fs.watch` throws `ENOENT` if the dir does not exist yet on first review:
 
 ```bash
 node -e "

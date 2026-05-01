@@ -186,8 +186,8 @@ function runStamp(args: string[]): void {
     process.exit(1);
   }
 
-  // Stamp customizedAt WITHOUT touching the workstate file. The Phase 3 →
-  // Phase 4 hand-off needs the timestamp recorded immediately, but the
+  // Stamp customizedAt WITHOUT touching the workstate file. The customize →
+  // verify hand-off needs the timestamp recorded immediately, but the
   // workstate stage stays on `onboard-customize` until /ars:onboard advances
   // it (typically to `onboard-verify`).
   const config = readArsConfig();

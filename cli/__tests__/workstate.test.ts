@@ -96,12 +96,12 @@ describe('npx ars workstate', () => {
       fs.readFileSync(path.join(repoDir, '.ars', 'config.json'), 'utf-8'),
     );
     expect(typeof after.project.customizedAt).toBe('string');
-    // P2a invariant: stamping customized must NOT auto-stamp onboardedAt —
-    // onboardedAt is the SSOT for "Phase 4 verify passed".
+    // Stamping customized must NOT auto-stamp onboardedAt —
+    // onboardedAt is the SSOT for "verify passed".
     expect(after.project.onboardedAt).toBeUndefined();
 
     // Workstate stage stays untouched so the next /ars:onboard advance
-    // (typically to onboard-verify) can be deterministic.
+    // to onboard-verify can be deterministic.
     const workstate = JSON.parse(
       fs.readFileSync(path.join(repoDir, '.ars', 'state', 'workstate.json'), 'utf-8'),
     );

@@ -32,14 +32,13 @@ export interface ArsConfig {
     tone?: string;
     mascot?: string;
     /**
-     * Stamped at the end of /ars:onboard Phase 3 (customize) so a later
-     * Phase 4 verify failure does not lose the brand-interview work.
-     * Re-run detection treats this as "skip Phase 1/2, enter Phase 3
-     * confirmation" the same way `onboardedAt` does.
+     * Stamped at the end of /ars:onboard customize so a later verify failure
+     * does not lose the user's style/config notes. Re-run detection treats this as
+     * "skip walkthrough and resume verify".
      */
     customizedAt?: string;
     /**
-     * Stamped only after /ars:onboard Phase 4 verify passes. Single source
+     * Stamped only after /ars:onboard verify passes. Single source
      * of truth for "the full onboarding flow is complete" — read by the
      * statusline and other readiness checks.
      */

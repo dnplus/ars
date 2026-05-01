@@ -6,8 +6,8 @@
 import { Episode } from "../../engine/shared/types";
 
 const onboardSession = {
-  appTitle: "ARS#1.0.0 template/ep-demo",
-  workflow: "walkthrough › bootstrap › customize › verify",
+  appTitle: "ARS#0.1.0 template/ep-demo",
+  workflow: "walkthrough › customize › verify",
   version: "Claude Code v2.1.112",
   model: "Sonnet 4.6 with high effort · Claude Max",
   workspace: "~/cowork-workspace/template-series",
@@ -15,7 +15,7 @@ const onboardSession = {
 } as const;
 
 const episodeSession = {
-  appTitle: "ARS#1.0.0 your-series/ep001",
+  appTitle: "ARS#0.1.0 your-series/ep001",
   workflow: "plan › build › review › prepare › publish",
   version: "Claude Code v2.1.112",
   model: "Sonnet 4.6 with high effort · Claude Max",
@@ -24,7 +24,7 @@ const episodeSession = {
 } as const;
 
 const analyticsSession = {
-  appTitle: "ARS#1.0.0 your-series/ep001",
+  appTitle: "ARS#0.1.0 your-series/ep001",
   workflow: "publish › analytics",
   version: "Claude Code v2.1.112",
   model: "Sonnet 4.6 with high effort · Claude Max",
@@ -46,7 +46,7 @@ const walkthroughScene = [
   { type: "result", text: "localhost:5177/?series=template&ep=ep-demo" },
   {
     type: "assistant",
-    text: "Browse 完之後回我 next 繼續 Phase 2，或 skip 跳過 walkthrough；Studio 先不要關，後面的 customize 還會繼續用這個預覽。",
+    text: "Browse 完之後回我 next 繼續 Phase 2 customize，或 skip 跳過 walkthrough；Studio 先不要關，後面的 customize 還會繼續用這個預覽。",
   },
   {
     type: "prompt",
@@ -54,54 +54,11 @@ const walkthroughScene = [
   },
   {
     type: "success",
-    text: "walkthrough 完成：demo 看完，流程往 bootstrap 前進。",
+    text: "walkthrough 完成：demo 看完，流程往 customize 前進。",
   },
   {
     type: "assistant",
-    text: "下一步：進 Phase 2 bootstrap，先把 series name、TTS、YouTube 這些確定性設定搞定。",
-  },
-] as const;
-
-const bootstrapScene = [
-  { type: "section", text: "bootstrap" },
-  {
-    type: "assistant",
-    text: "bootstrap 只處理確定性設定，不需要思考品牌方向。三個問題搞定。",
-  },
-  {
-    type: "prompt",
-    text: "series name: my-channel",
-  },
-  {
-    type: "tool",
-    text: "Run npx ars init my-channel --skip-series -y",
-    meta: "repo init",
-    details: [
-      { text: "sync engine files + patch CLAUDE.md + install skills", tone: "positive" },
-      { text: "skip template copy (customize phase handles this)", tone: "muted" },
-    ],
-  },
-  {
-    type: "prompt",
-    text: "TTS: minimax, YouTube: disabled",
-  },
-  {
-    type: "tool",
-    text: "Update(.ars/config.json)",
-    meta: "bootstrap output",
-    details: [
-      { text: "tts.provider = minimax", tone: "positive" },
-      { text: "publish.youtube.enabled = false", tone: "muted" },
-      { text: "project.activeSeries = my-channel", tone: "positive" },
-    ],
-  },
-  {
-    type: "success",
-    text: "bootstrap 完成：repo 初始化 + config 寫入，接下來進 customize。",
-  },
-  {
-    type: "assistant",
-    text: "下一步：進 Phase 3 customize，選 from template 或 from scratch，再決定品牌細節。",
+    text: "下一步：進 Phase 2 customize，依照你的頻道調整 series-config.ts 和 SERIES_GUIDE.md。",
   },
 ] as const;
 
@@ -109,15 +66,15 @@ const customizeScene = [
   { type: "section", text: "customize" },
   {
     type: "assistant",
-    text: "接下來是 customize。先選模式；如果大部分設定沿用，你也可以直接貼補充資料，不用每題都重答。",
+    text: "接下來是 customize。這階段會調 series-config.ts、寫 SERIES_GUIDE.md，讓未來 plan/build 都知道你的頻道要長什麼樣、講話像誰。預設走短版，只問必要問題。",
   },
   {
     type: "prompt",
-    text: "from template",
+    text: "quick customize",
   },
   {
     type: "assistant",
-    text: "好，那就保留 demo episode 當參考，系列品牌與預設接下來交給你的 series-config.ts 和 SERIES_GUIDE.md。Studio 先一路開著，等等直接刷新看 customize 後的樣子；我也會同步開 comment monitor，主動輪詢 Studio intents。",
+    text: "好，我會保留 demo episode 當參考，先問少量問題，再把系列品牌與預設寫進 series-config.ts 和 SERIES_GUIDE.md。Studio 先一路開著，等等直接刷新看 customize 後的樣子。",
   },
   {
     type: "prompt",
@@ -396,19 +353,6 @@ export const epDemo: Episode = {
         lines: walkthroughScene,
       },
       narration: "walkthrough 的目標很單純，就是先把 demo 開起來，讓使用者快速理解 ARS 的整體畫面和節奏。看完之後，流程才會往 customize 推進。",
-      durationInSeconds: 8,
-    },
-    {
-      id: "bootstrap",
-      contentType: "claude-code",
-      layoutMode: "card-only",
-      background: "minimal",
-      data: {
-        tag: "BOOTSTRAP",
-        session: onboardSession,
-        lines: bootstrapScene,
-      },
-      narration: "bootstrap 只問三件事：series name、TTS provider、YouTube 要不要開。這些都是確定性的設定，不需要想品牌方向。",
       durationInSeconds: 8,
     },
     {

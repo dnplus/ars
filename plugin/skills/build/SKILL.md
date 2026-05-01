@@ -159,32 +159,10 @@ If you make rewrites in this phase, re-read the affected steps once more before 
 - Set workstate to `validating:<epId>` before running validate.
 - Run `npx ars episode validate <epId>` after writing `ep.ts`. Fix any validation errors before marking build done.
 - Run `npx ars episode stats <epId>` and apply the Build density guidance above. Use it as a script-depth sanity check, not a mechanical gate.
-- **Scan `ep.ts` for any `PLACEHOLDER_` src values.** Collect them into a `placeholders` list for `last-build.json`.
-- Write `.ars/episodes/<epId>/last-build.json` with the validation + asset result so Studio Build view and `/ars:review` have machine-readable state:
-  ```json
-  {
-    "ok": true,
-    "errorCount": 0,
-    "summary": "episode validate passed",
-    "finishedAt": "<ISO timestamp>",
-    "placeholders": [
-      {
-        "stepId": "hero-vs",
-        "src": "PLACEHOLDER_ugly-vs-claudedesign.png",
-        "caption": "NEEDS: before/after composite — ugly engineer UI vs Claude Design output",
-        "isHero": true
-      }
-    ],
-    "warnings": ["1 placeholder asset (hero blocker)"]
-  }
-  ```
-  - On validate failure: `"ok": false`, `errorCount` = actual count, `summary` = one-line reason.
-  - If `placeholders` is empty, omit the array and `warnings`.
-  - Always write the file, even on failure — Studio view relies on it.
-- **Workstate transitions must reflect placeholder state**:
-  - No placeholders → `ready-for-review:<epId>`
-  - Placeholders exist but none are hero → `ready-for-review-with-warnings:<epId>`
-  - Any hero placeholder → `blocked:<epId>:assets-missing` and do NOT suggest `/ars:review` as next step; suggest re-running `/ars:plan` to source the hero asset, or ask the user to provide the file directly
+- Do not write a build result/cache file. Studio Build status is derived from `workstate.json`, pending build-trigger intents, and the episode source file mtime.
+- Scan `ep.ts` for any `PLACEHOLDER_` src values and report them in the chat handoff with the relevant caption text. Placeholders are review warnings, not a separate persisted build state.
+- Workstate transitions:
+  - Validate passed → `ready-for-review:<epId>`
   - Validate failed → `failed:<epId>`
-- Report any remaining polish or review follow-up work separately, and mention placeholder caption text verbatim so the user knows what to provide.
-- Suggest next step based on the placeholder check above.
+- Report any remaining polish, placeholder, or review follow-up work separately.
+- Suggest `/ars:review <epId>` after validation passes.

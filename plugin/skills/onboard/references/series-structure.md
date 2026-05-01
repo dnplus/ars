@@ -99,8 +99,8 @@ export const SERIES_CONFIG: SeriesConfig = {
     width: 1920,
     height: 1080,
     fps: 30,
-    channelName: 'Your Channel Name',   // ← Fill from brand interview
-    brandTag: 'EP· Tag',                // ← Fill from brand interview
+    channelName: 'Your Channel Name',   // ← Fill from customize answers/config
+    brandTag: 'EP· Tag',                // ← Fill from customize answers/config
   },
   speech: {
     enabled: false,              // ← Default off; turn on only when audio is ready

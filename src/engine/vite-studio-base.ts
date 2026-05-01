@@ -1554,31 +1554,18 @@ function parseStringArray(value: unknown): Set<string> {
   return new Set(value.filter((entry): entry is string => typeof entry === 'string' && entry.length > 0));
 }
 
-type PlaceholderEntry = {
-  stepId?: string;
-  src: string;
-  caption?: string;
-  isHero?: boolean;
-};
-
 type BuildStatusResponse = {
   state:
     | 'idle'
     | 'pending-trigger'
     | 'in-progress'
     | 'ready-for-review'
-    | 'ready-for-review-with-warnings'
-    | 'blocked-assets-missing'
     | 'failed';
   stage?: string;
   pendingIntentId?: string;
   pendingIntentAt?: string;
   episodeSourcePath?: string;
   episodeSourceMtime?: string;
-  lastBuildAt?: string;
-  validation?: { ok: boolean; errorCount: number; summary: string };
-  placeholders?: PlaceholderEntry[];
-  warnings?: string[];
 };
 
 function findPendingBuildTriggerIntent(
@@ -1790,54 +1777,6 @@ function resolveOnboardStatus(rootDir: string, series: string, epId: string): On
   };
 }
 
-function readLastBuildRecord(
-  rootDir: string,
-  epId: string,
-): {
-  ok: boolean;
-  errorCount: number;
-  summary: string;
-  finishedAt?: string;
-  placeholders?: PlaceholderEntry[];
-  warnings?: string[];
-} | undefined {
-  try {
-    const raw = fs.readFileSync(
-      path.join(rootDir, '.ars', 'episodes', epId, 'last-build.json'),
-      'utf-8',
-    );
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-    const ok = typeof parsed.ok === 'boolean' ? parsed.ok : false;
-    const errorCount = typeof parsed.errorCount === 'number' ? parsed.errorCount : ok ? 0 : 1;
-    const summary = typeof parsed.summary === 'string' ? parsed.summary : '';
-    const finishedAt = typeof parsed.finishedAt === 'string' ? parsed.finishedAt : undefined;
-
-    const placeholders = Array.isArray(parsed.placeholders)
-      ? (parsed.placeholders as unknown[])
-          .map((entry): PlaceholderEntry | null => {
-            if (!entry || typeof entry !== 'object') return null;
-            const obj = entry as Record<string, unknown>;
-            if (typeof obj.src !== 'string' || !obj.src.trim()) return null;
-            return {
-              src: obj.src,
-              stepId: typeof obj.stepId === 'string' ? obj.stepId : undefined,
-              caption: typeof obj.caption === 'string' ? obj.caption : undefined,
-              isHero: obj.isHero === true,
-            };
-          })
-          .filter((entry): entry is PlaceholderEntry => entry !== null)
-      : undefined;
-
-    const warnings = Array.isArray(parsed.warnings)
-      ? (parsed.warnings as unknown[]).filter((entry): entry is string => typeof entry === 'string')
-      : undefined;
-
-    return { ok, errorCount, summary, finishedAt, placeholders, warnings };
-  } catch {
-    return undefined;
-  }
-}
-
 function computeBuildStatus(rootDir: string, series: string, epId: string): BuildStatusResponse {
   const result: BuildStatusResponse = { state: 'idle' };
 
@@ -1849,30 +1788,6 @@ function computeBuildStatus(rootDir: string, series: string, epId: string): Buil
     result.state = 'ready-for-review';
   }
 
-  const lastBuild = readLastBuildRecord(rootDir, epId);
-  if (lastBuild) {
-    result.validation = {
-      ok: lastBuild.ok,
-      errorCount: lastBuild.errorCount,
-      summary: lastBuild.summary,
-    };
-    if (lastBuild.finishedAt) {
-      result.lastBuildAt = lastBuild.finishedAt;
-    }
-    if (lastBuild.placeholders && lastBuild.placeholders.length > 0) {
-      result.placeholders = lastBuild.placeholders;
-    }
-    if (lastBuild.warnings && lastBuild.warnings.length > 0) {
-      result.warnings = lastBuild.warnings;
-    }
-    if (!lastBuild.ok) {
-      result.state = 'failed';
-    } else if (result.placeholders) {
-      const hasHero = result.placeholders.some((entry) => entry.isHero);
-      result.state = hasHero ? 'blocked-assets-missing' : 'ready-for-review-with-warnings';
-    }
-  }
-
   const stage = readWorkstateStage(rootDir);
   if (stage) {
     result.stage = stage;
@@ -1881,14 +1796,9 @@ function computeBuildStatus(rootDir: string, series: string, epId: string): Buil
     } else if (stage === `building:${epId}` || stage === `validating:${epId}`) {
       result.state = 'in-progress';
     } else if (stage === `blocked:${epId}:assets-missing`) {
-      result.state = 'blocked-assets-missing';
-    } else if (stage === `ready-for-review-with-warnings:${epId}` && result.episodeSourcePath) {
-      result.state = 'ready-for-review-with-warnings';
+      result.state = 'failed';
     } else if (stage === `ready-for-review:${epId}` && result.episodeSourcePath) {
-      // Only downgrade to plain ready if last-build didn't mark placeholders.
-      if (result.state === 'ready-for-review' || result.state === 'idle') {
-        result.state = 'ready-for-review';
-      }
+      result.state = 'ready-for-review';
     }
   }
 

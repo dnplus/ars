@@ -131,8 +131,8 @@ describe('plugin skill surface', () => {
   it('onboard SKILL.md never combines a series-name argument with --skip-series', () => {
     // The CLI rejects `npx ars init <series> --skip-series` (and the reverse)
     // with `Cannot use --skip-series with a series name argument`. If the
-    // onboarding skill instructs Claude to run that combination, Phase 2
-    // bootstrap throws and the whole onboard flow stalls. Guard against the
+    // onboarding skill instructs Claude to run that combination, setup
+    // throws and the whole onboard flow stalls. Guard against the
     // regression at the doc level.
     const skillPath = path.join(repoRoot, 'plugin', 'skills', 'onboard', 'SKILL.md');
     const skill = fs.readFileSync(skillPath, 'utf-8');
@@ -155,6 +155,110 @@ describe('plugin skill surface', () => {
         ).toBe(false);
       }
     }
+  });
+
+  it('keeps onboard on walkthrough, customize, verify without a bootstrap phase', () => {
+    const onboardSkill = fs.readFileSync(
+      path.join(repoRoot, 'plugin', 'skills', 'onboard', 'SKILL.md'),
+      'utf-8',
+    );
+    const statusline = fs.readFileSync(
+      path.join(repoRoot, 'plugin', 'scripts', 'lib', 'ars-workstate.mjs'),
+      'utf-8',
+    );
+    const demo = fs.readFileSync(
+      path.join(repoRoot, 'src', 'episodes', 'template', 'ep-demo.ts'),
+      'utf-8',
+    );
+
+    expect(`${onboardSkill}\n${statusline}\n${demo}`).not.toContain('onboard-bootstrap');
+    expect(`${onboardSkill}\n${demo}`).not.toContain('Phase 2 — bootstrap');
+    expect(demo).not.toContain('BOOTSTRAP');
+    expect(demo).not.toContain('walkthrough › bootstrap');
+    expect(statusline).toContain("const steps = ['walkthrough', 'customize', 'verify']");
+  });
+
+  it('keeps onboard customize brief-first and free-form-first', () => {
+    const onboardSkill = fs.readFileSync(
+      path.join(repoRoot, 'plugin', 'skills', 'onboard', 'SKILL.md'),
+      'utf-8',
+    );
+    const brandingGuide = fs.readFileSync(
+      path.join(repoRoot, 'plugin', 'skills', 'onboard', 'references', 'branding-guide.md'),
+      'utf-8',
+    );
+    const surface = `${onboardSkill}\n${brandingGuide}`;
+
+    expect(surface).toContain('Brief the user before asking any questions');
+    expect(surface).toContain('one free-form answer first');
+    expect(surface).toContain('at most 3 follow-up questions');
+    expect(surface).toContain('directly tell the agent what to change in `SERIES_GUIDE.md`');
+    expect(surface).not.toContain('10 questions');
+    expect(surface).not.toContain('Ask each question **one at a time**');
+  });
+
+  it('keeps every Studio-opening skill attached to an intent Monitor', () => {
+    const studioSkills = ['review', 'plan', 'onboard', 'slide'];
+    for (const skillName of studioSkills) {
+      const skill = fs.readFileSync(
+        path.join(repoRoot, 'plugin', 'skills', skillName, 'SKILL.md'),
+        'utf-8',
+      );
+
+      expect(skill, `${skillName} must check for reusable Studio/Monitor first`)
+        .toContain('Before opening or reusing Studio');
+      expect(skill, `${skillName} must start/reuse a Monitor when Studio is open`)
+        .toContain('Whenever Studio is opened or reused');
+      expect(skill, `${skillName} must use the Claude Monitor lifecycle, not a plain background shell`)
+        .toContain('Monitor');
+      expect(skill, `${skillName} monitor must create .ars/studio-intents before fs.watch`)
+        .toContain('fs.mkdirSync(dir, { recursive: true })');
+      expect(skill, `${skillName} must drain Studio intents through the CLI`)
+        .toContain('npx ars studio intent list --pending --json');
+    }
+
+    const audioSkill = fs.readFileSync(
+      path.join(repoRoot, 'plugin', 'skills', 'audio', 'SKILL.md'),
+      'utf-8',
+    );
+    expect(audioSkill).toContain('Studio review with a Monitor attached');
+    expect(audioSkill).toContain('If Studio is open but the Monitor is missing, start the Monitor immediately');
+
+    const slideSkill = fs.readFileSync(
+      path.join(repoRoot, 'plugin', 'skills', 'slide', 'SKILL.md'),
+      'utf-8',
+    );
+    expect(slideSkill).not.toContain('Do not start any intent watch loop');
+  });
+
+  it('keeps build status derived without a last-build cache file', () => {
+    const buildSkill = fs.readFileSync(
+      path.join(repoRoot, 'plugin', 'skills', 'build', 'SKILL.md'),
+      'utf-8',
+    );
+    const applyReviewSkill = fs.readFileSync(
+      path.join(repoRoot, 'plugin', 'skills', 'apply-review', 'SKILL.md'),
+      'utf-8',
+    );
+    const studioBase = fs.readFileSync(
+      path.join(repoRoot, 'src', 'engine', 'vite-studio-base.ts'),
+      'utf-8',
+    );
+    const buildView = fs.readFileSync(
+      path.join(repoRoot, 'src', 'engine', 'studio', 'views', 'BuildView.tsx'),
+      'utf-8',
+    );
+    const planView = fs.readFileSync(
+      path.join(repoRoot, 'src', 'engine', 'studio', 'views', 'PlanView.tsx'),
+      'utf-8',
+    );
+    const surface = `${buildSkill}\n${applyReviewSkill}\n${studioBase}\n${buildView}\n${planView}`;
+
+    expect(surface).not.toContain('last-build.json');
+    expect(surface).not.toContain('lastBuildAt');
+    expect(surface).not.toContain('LAST BUILD');
+    expect(surface).not.toContain('ready-for-review-with-warnings');
+    expect(surface).toContain('episode source file mtime');
   });
 
   it('keeps planning prompts on the Studio-first fast agenda path', () => {

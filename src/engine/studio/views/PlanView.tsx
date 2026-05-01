@@ -31,7 +31,6 @@ type PlanResponse = {
 };
 
 type BuildStatusLite = {
-  lastBuildAt?: string;
   episodeSourceMtime?: string;
   pendingIntentId?: string;
   state?: string;
@@ -104,7 +103,6 @@ export const PlanView: React.FC<PlanViewProps> = ({
       const payload = (await res.json()) as BuildStatusResponse;
       if (payload.build) {
         setBuildMeta({
-          lastBuildAt: payload.build.lastBuildAt,
           episodeSourceMtime: payload.build.episodeSourceMtime,
           pendingIntentId: payload.build.pendingIntentId,
           state: payload.build.state,
@@ -158,15 +156,15 @@ export const PlanView: React.FC<PlanViewProps> = ({
 
   const derivedDirty = (() => {
     if (dirtyHintFromShell) return true;
-    const built = buildMeta.lastBuildAt ? Date.parse(buildMeta.lastBuildAt) : NaN;
     const source = buildMeta.episodeSourceMtime ? Date.parse(buildMeta.episodeSourceMtime) : NaN;
-    if (Number.isFinite(built) && Number.isFinite(source)) return source > built;
-    return !buildMeta.lastBuildAt;
+    if (!Number.isFinite(source)) return true;
+    if (!plan?.mtime) return false;
+    return plan.mtime > source;
   })();
 
-  const lastBuiltLabel = buildMeta.lastBuildAt
-    ? new Date(buildMeta.lastBuildAt).toLocaleString()
-    : '從未 build';
+  const episodeSourceLabel = buildMeta.episodeSourceMtime
+    ? new Date(buildMeta.episodeSourceMtime).toLocaleString()
+    : '尚未產生';
 
   // Compute section anchors client-side as a fallback if server data is missing
   const sections = useMemo<MarkdownSection[]>(
@@ -250,9 +248,9 @@ export const PlanView: React.FC<PlanViewProps> = ({
 
         <div className="studio-plan-trigger">
           <div className="studio-plan-trigger-meta">
-            <span className="studio-plan-trigger-label">LAST BUILD</span>
-            <span className="studio-plan-trigger-time">{lastBuiltLabel}</span>
-            {derivedDirty && <span className="studio-plan-dirty">● plan 已變更</span>}
+            <span className="studio-plan-trigger-label">EPISODE SOURCE</span>
+            <span className="studio-plan-trigger-time">{episodeSourceLabel}</span>
+            {derivedDirty && <span className="studio-plan-dirty">● 需要 build</span>}
             {triggerError && (
               <span className="studio-plan-dirty" style={{ color: 'var(--color-negative, #8b5e3c)' }}>
                 {triggerError}

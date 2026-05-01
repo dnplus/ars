@@ -30,13 +30,24 @@ Skip both roles and you get a plan built on guesswork. Do one role's job twice a
 
 The plan is written to disk, but the user reads it in Studio. After the planner returns:
 
-1. Run `npx ars studio <epId> --phase plan` in the background (do not block on it). Tell the user the localhost URL printed in the output and that they can submit feedback on any section directly from the Plan view.
-2. Start an event-driven watch over `.ars/studio-intents/`:
+1. Make the episode context explicit:
+
+```bash
+npx ars workstate switch <epId> --stage plan
+```
+
+2. Before opening or reusing Studio, check whether this Claude session already has a running Studio process and Studio intent Monitor:
+   - If Studio is already open for this same `<epId>` and phase, reuse it. Do not start a duplicate Vite server just to get a fresh URL.
+   - If Studio is open for this same `<epId>` but no intent Monitor is running, keep the Studio process and start the Monitor immediately.
+   - If Studio or the Monitor is for a different episode, stop the old Monitor first, keep the explicit workstate switch above, then open/reuse Studio for this target.
+3. Run `npx ars studio <epId> --phase plan` in the background only when there is no reusable Studio process. Tell the user the localhost URL printed in the output and that they can submit feedback on any section directly from the Plan view.
+4. Whenever Studio is opened or reused, register an event-driven watch over `.ars/studio-intents/` **using the `Monitor` tool**:
 
 ```bash
 node -e "
 const fs = require('fs');
 const dir = '.ars/studio-intents';
+fs.mkdirSync(dir, { recursive: true });
 fs.watch(dir, (event, filename) => {
   if (filename && filename.endsWith('.json')) {
     console.log(filename);
@@ -48,7 +59,7 @@ process.stdout.write('watching\n');
 
 Each stdout line is a notification. On every notification:
 
-- **Stop condition**: if the user has moved on (`/ars:build` ran, the episode source was generated, or they explicitly said plan is done), stop the watch loop. Otherwise:
+- **Stage guard / stop condition**: continue only when `.ars/state/workstate.json` still points to this `<epId>` and `stage` is `plan` (or `plan:<epId>`). If the user has moved on (`/ars:build` ran, the episode source was generated, workstate points to another episode/stage, or they explicitly said plan is done), stop the Monitor cleanly. Otherwise:
 - Run `npx ars studio intent list --pending --json`. For each pending intent:
   - **`feedback.kind === 'build-trigger'`** — delegate to `/ars:apply-review <intent.id>`, which handles the build trigger and marks the intent processed. After it returns, stop the watch — plan phase is complete.
   - **`target.anchorType === 'markdown-section'` or `'plan'`** — this is a plan-section edit request. Read `.ars/episodes/<epId>/plan.md`, apply the change described in `feedback.message` to the anchored section (Studio sends `anchorMeta.title` + `anchorMeta.line`), save the file. Vite HMR re-renders the Plan view automatically. Then `npx ars studio intent clear <intent.id>`.

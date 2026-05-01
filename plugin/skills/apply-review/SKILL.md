@@ -34,7 +34,7 @@ Classify prepare intents first by reading `target.anchorMeta.hash`, then use `fe
 - For non-prepare intents, classify by reading `feedback.kind`, then `feedback.message`:
 - **Build trigger** — `feedback.kind === 'build-trigger'`. This comes from the Studio Build phase "觸發 Build" button, not from a review feedback form. Do NOT try to patch the episode source. Instead:
   1. Confirm `.ars/episodes/<target.epId>/plan.md` exists. If not, tell the user to run `/ars:plan <epId>` first and resolve the intent as a no-op without building.
-  2. Invoke `/ars:build <target.epId>`. The build skill handles its own workstate stage transitions and writes `.ars/episodes/<epId>/last-build.json` on completion — the Studio Build phase will reflect the stage / validation updates automatically.
+  2. Invoke `/ars:build <target.epId>`. The build skill handles its own workstate stage transitions; the Studio Build phase reflects `workstate.json`, pending build-trigger intents, and episode source mtime.
   3. After `/ars:build` returns, resolve the intent with a summary and validation evidence. Skip the rest of this classification — build-trigger intents do not route to episode / plan edits.
 - **Pronunciation fix** — `feedback.kind === 'other'` (or unspecified) AND message describes a TTS reading error ("XX 念錯"、"讀成了 YY"、"發音不對"、"斷句怪"、specific wrong pinyin). Do NOT edit the episode source. Instead:
   1. Open `cli/pronunciation_dict.yaml`.

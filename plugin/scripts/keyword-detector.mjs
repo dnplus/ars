@@ -14,7 +14,7 @@ const TRIGGER_RULES = [
       /設定.*系列/,
     ],
     suggestion:
-      'ARS: Detected first-run setup intent. Use /ars:onboard for the guided bootstrap flow, series setup, and Studio walkthrough.',
+      'ARS: Detected first-run setup intent. Run ars init <series> first, then use /ars:onboard for the guided Studio walkthrough, customization, and verify flow.',
   },
   {
     patterns: [
