@@ -100,7 +100,7 @@ describe('backupArsAssets', () => {
     fs.writeFileSync(filePath, contents, 'utf-8');
   }
 
-  it('snapshots engine plus .claude skills/agents and hook scripts into one timestamp directory', () => {
+  it('snapshots plugin-derived paths into snapshot/<targetRelPath> with a manifest', () => {
     const root = makeTempRoot('ars-backup-');
     seedFile(path.join(root, 'src', 'engine', 'marker.txt'), 'engine');
     // Each plugin skill lives at `.claude/skills/ars:<name>/SKILL.md`; the
@@ -112,47 +112,57 @@ describe('backupArsAssets', () => {
     seedFile(path.join(root, '.claude', 'agents', 'planner.md'), '# planner');
     seedFile(path.join(root, '.ars', 'hooks', 'scripts', 'session-start.mjs'), 'export {}');
 
-    const result = backupArsAssets(root);
+    // Without sourceRoot, only plugin-derived paths get snapshotted (engine
+    // requirement is satisfied by the seed file existing on disk; the
+    // package-mirror coverage is the sourceRoot path tested elsewhere).
+    const result = backupArsAssets({ root });
 
-    expect(fs.readFileSync(path.join(result.engineDir, 'marker.txt'), 'utf-8')).toBe('engine');
-    expect(result.claudeSkillsDir).toBeDefined();
+    // Manifest file lives at the timestamp root and lists every snapshotted entry.
+    expect(fs.existsSync(result.manifestPath)).toBe(true);
+    const manifest = JSON.parse(fs.readFileSync(result.manifestPath, 'utf-8'));
+    expect(manifest.schemaVersion).toBe(1);
+    expect(manifest.source).toBe('update');
+
+    const targetPaths = new Set(manifest.entries.map((e: { targetRelPath: string }) => e.targetRelPath));
+    expect(targetPaths.has('.claude/skills/ars:onboard')).toBe(true);
+    expect(targetPaths.has('.claude/skills/ars:plan')).toBe(true);
+    expect(targetPaths.has('.claude/agents')).toBe(true);
+    expect(targetPaths.has('.ars/hooks/scripts')).toBe(true);
+    // Non-ARS skill must not be in the manifest.
+    expect(targetPaths.has('.claude/skills/other')).toBe(false);
+
+    // Snapshot copies live under <timestampDir>/snapshot/<targetRelPath>/.
     expect(
-      fs.readFileSync(path.join(result.claudeSkillsDir!, 'ars:onboard', 'SKILL.md'), 'utf-8'),
+      fs.readFileSync(
+        path.join(result.timestampDir, 'snapshot', '.claude', 'skills', 'ars:onboard', 'SKILL.md'),
+        'utf-8',
+      ),
     ).toBe('# customised');
     expect(
-      fs.readFileSync(path.join(result.claudeSkillsDir!, 'ars:plan', 'SKILL.md'), 'utf-8'),
-    ).toBe('# plan-customised');
-    expect(fs.existsSync(path.join(result.claudeSkillsDir!, 'other'))).toBe(false);
-    expect(result.claudeAgentsDir).toBeDefined();
-    expect(
-      fs.readFileSync(path.join(result.claudeAgentsDir!, 'planner.md'), 'utf-8'),
+      fs.readFileSync(
+        path.join(result.timestampDir, 'snapshot', '.claude', 'agents', 'planner.md'),
+        'utf-8',
+      ),
     ).toBe('# planner');
-    expect(result.hookScriptsDir).toBeDefined();
-    expect(
-      fs.readFileSync(path.join(result.hookScriptsDir!, 'session-start.mjs'), 'utf-8'),
-    ).toBe('export {}');
 
-    // All snapshots live in the same timestamp folder so rollback hints stay coherent.
-    expect(result.engineDir.startsWith(result.timestampDir)).toBe(true);
-    expect(result.claudeSkillsDir!.startsWith(result.timestampDir)).toBe(true);
-    expect(result.claudeAgentsDir!.startsWith(result.timestampDir)).toBe(true);
-    expect(result.hookScriptsDir!.startsWith(result.timestampDir)).toBe(true);
+    // entryCount agrees with the manifest length.
+    expect(result.entryCount).toBe(manifest.entries.length);
   });
 
   it('skips optional asset roots that do not exist yet without crashing', () => {
     const root = makeTempRoot('ars-backup-partial-');
     seedFile(path.join(root, 'src', 'engine', 'marker.txt'), 'engine-only');
 
-    const result = backupArsAssets(root);
+    const result = backupArsAssets({ root });
 
-    expect(fs.existsSync(result.engineDir)).toBe(true);
-    expect(result.claudeSkillsDir).toBeUndefined();
-    expect(result.claudeAgentsDir).toBeUndefined();
-    expect(result.hookScriptsDir).toBeUndefined();
+    // Manifest exists even when only engine seeded.
+    expect(fs.existsSync(result.manifestPath)).toBe(true);
+    const manifest = JSON.parse(fs.readFileSync(result.manifestPath, 'utf-8'));
+    expect(manifest.entries).toEqual([]); // no plugin-derived paths existed yet
   });
 
   it('throws when src/engine/ is missing because the repo was never initialized', () => {
     const root = makeTempRoot('ars-backup-uninit-');
-    expect(() => backupArsAssets(root)).toThrow(/Run "npx ars init/);
+    expect(() => backupArsAssets({ root })).toThrow(/Run "npx ars init/);
   });
 });
