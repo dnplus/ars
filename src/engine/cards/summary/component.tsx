@@ -148,6 +148,8 @@ export const SummaryCardComponent: React.FC<
               fontWeight: 600,
               color: theme.colors.textLight,
               maxWidth: 1100,
+              alignSelf: "center",
+              textAlign: "center",
             }}
           >
             {data.cta}
@@ -160,6 +162,7 @@ export const SummaryCardComponent: React.FC<
               display: "flex",
               gap: 16,
               flexWrap: "wrap",
+              justifyContent: "center",
               marginTop: 8,
             }}
           >
@@ -192,6 +195,7 @@ export const SummaryCardComponent: React.FC<
               display: "flex",
               gap: 24,
               flexWrap: "wrap",
+              justifyContent: "center",
               marginTop: 8,
             }}
           >
