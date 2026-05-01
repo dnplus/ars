@@ -30,6 +30,7 @@ jobs:
         run: npm test
         env:
           ARS_SKIP_REMOTION_SKILL_INSTALL: "1"
+          ARS_SKIP_PREFLIGHT_CHECKS: "1"
 
       - name: Validate template episode
         run: npx ars episode validate template/ep-demo

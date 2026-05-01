@@ -20,6 +20,14 @@ function preflight(): void {
     process.exit(1);
   }
 
+  // Skip the external-dependency checks (Claude CLI, tmux) when running in
+  // CI / test environments that exercise `init` against a temp consumer repo
+  // but don't have the runtime tooling installed. This mirrors the existing
+  // ARS_SKIP_REMOTION_SKILL_INSTALL escape hatch used by series-workflow tests.
+  if (process.env.ARS_SKIP_PREFLIGHT_CHECKS === '1') {
+    return;
+  }
+
   const claude = spawnSync('claude', ['--version'], { stdio: 'pipe' });
   if (claude.status !== 0) {
     console.error('❌ Claude CLI not found in PATH.');
