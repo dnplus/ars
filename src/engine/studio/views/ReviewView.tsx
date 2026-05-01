@@ -715,12 +715,6 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
       : audioCapability.enabled
         ? '為整集生成語音與字幕'
         : (audioCapability.reason ?? '目前無法生成音訊');
-  const audioCapabilitySummary = !audioCapability.visible
-    ? (audioCapability.reason ?? 'Audio / TTS hidden')
-    : (audioCapability.enabled ? 'Audio / TTS enabled' : `Audio / TTS unavailable: ${audioCapability.reason ?? 'disabled'}`);
-  const publishCapabilitySummary = !publishCapability.visible
-    ? (publishCapability.reason ?? 'Publish hidden')
-    : (publishCapability.enabled ? 'YouTube publish enabled' : `YouTube publish unavailable: ${publishCapability.reason ?? 'disabled'}`);
 
   return (
     <ThemeProvider theme={theme}>
@@ -810,50 +804,6 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
           </div>
 
           <StatusBar state={statusState} detail={statusDetail} />
-
-          {onboardStatus.active && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 12,
-                padding: '10px 14px',
-                borderBottom: '1px solid var(--color-border-light)',
-                background: 'color-mix(in srgb, var(--color-card-header-bg) 82%, transparent)',
-                color: 'var(--color-text-on-dark)',
-              }}
-            >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-primary)' }}>
-                    Onboarding
-                  </span>
-                  <span style={{ fontSize: 12 }}>
-                    {onboardStatus.phaseLabel ?? 'Active'}
-                  </span>
-                  <span style={{ fontSize: 12, color: onboardStatus.sessionActive ? 'var(--color-positive)' : 'var(--color-warning)' }}>
-                    {onboardStatus.sessionActive ? 'monitor active' : 'session reconnecting'}
-                  </span>
-                  <span style={{ fontSize: 12, color: 'color-mix(in srgb, var(--color-text-on-dark) 72%, transparent)' }}>
-                    {onboardStatus.pendingIntents} pending comment{onboardStatus.pendingIntents === 1 ? '' : 's'}
-                  </span>
-                </div>
-                <div style={{ fontSize: 11, color: 'color-mix(in srgb, var(--color-text-on-dark) 70%, transparent)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {audioCapabilitySummary} · {publishCapabilitySummary} · series-level changes auto-refresh this preview
-                </div>
-              </div>
-              {onboardRefreshPending && (
-                <button
-                  type="button"
-                  className="studio-fix-banner-btn"
-                  onClick={() => window.location.reload()}
-                >
-                  重新載入預覽
-                </button>
-              )}
-            </div>
-          )}
 
           {/* Narration lives as subtitles inside the canvas now; the nav-level
               preview was removed to avoid double display. */}
