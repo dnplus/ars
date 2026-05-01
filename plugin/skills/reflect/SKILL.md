@@ -18,13 +18,15 @@ Behavior:
 - Resolve the active series from repo state. One repo maps to one active series.
 - Review the most recent 3-5 episode source files in `src/episodes/<series>/`.
 - Run `npx ars episode stats <series> --all --json` to inspect card usage, streaks, coverage, overused types, underused types, and gap signals.
-- Prefer a recent analytics report from `.ars/analytics/`. If none exists and the repo has YouTube analytics configured, run `/ars:analytics` first using the requested `--days` window (default 28). If analytics is unavailable, continue with an episode-only reflection and say so clearly.
-- Inspect recent processed Studio intents in `.ars/studio-intents/` as production-feedback evidence. Group them by `target.epId`, `target.anchorType`, `feedback.kind`, `feedback.severity`, and repeated message themes. Exclude `feedback.kind === 'build-trigger'` from heuristic analysis.
+- Prefer a current analytics report from `.ars/analytics/`. "Current" means generated today or within the last 24 hours. If the user passed `--fresh`, always run `/ars:analytics --days <N> --fresh` before reading old reports. If no current report exists and the repo has YouTube analytics configured, run `/ars:analytics` first using the requested `--days` window (default 28). If analytics is unavailable, continue with an episode-only reflection and say so clearly.
+- Inspect recent processed Studio intents in `.ars/studio-intents/` as production-feedback evidence. Group them by `target.epId`, `target.anchorType`, `feedback.kind`, `feedback.severity`, repeated message themes, and available `resolution.summary` / `resolution.changedFiles` / `resolution.beforeExcerpt` / `resolution.afterExcerpt`. Exclude `feedback.kind === 'build-trigger'` from heuristic analysis.
+- If a processed intent has no `resolution`, mark it as "intent-only evidence" in the memo. You may infer the rough problem from `feedback.message` and target metadata, but do not claim exact before/after.
+- Treat competitor research as an evidence source when the latest plan, episode, Studio intents, or existing artifacts mention competitors. Prefer durable reports under `.ars/competitor/` when present. If no report exists but source URLs or competitor artifacts are available, run the repo's competitor workflow and write/read a durable competitor report. If competitor evidence is unavailable, say so in the memo instead of silently omitting it.
 - When the latest episodes are not enough to explain a pattern, sample the corresponding `.ars/episodes/<epId>/plan.md` files to understand intended audience, angle, and CTA.
 
 Outputs:
-- Write a reflection memo to `.ars/reflect/<YYYY-MM-DD>-<days>d.md`
-- Unless the user passes `--no-guide-update`, patch `SERIES_GUIDE.md` with any high-confidence heuristic updates
+- Write a reflection memo to `.ars/reflect/<YYYY-MM-DD>-<days>d.md`. The memo is the reflection journal: observations, evidence, hypotheses, uncertainties, intent patterns, and rejected or still-unproven lessons all belong here.
+- Unless the user passes `--no-guide-update`, patch `SERIES_GUIDE.md` with high-confidence rule updates only. `SERIES_GUIDE.md` is not the journal; it should contain operational defaults future plan/build/review runs can follow.
 - Summarize the key changes in the Claude Code response
 
 Required memo sections:
@@ -37,9 +39,11 @@ Required memo sections:
 
 Evidence expectations:
 - Treat analytics as audience-response evidence.
+- Treat competitor reports as market/positioning evidence, not proof that the series must copy the competitor.
 - Treat episode stats as structure and visual-rhythm evidence.
 - Treat plans as intent and packaging evidence.
 - Treat Studio intents as production-friction evidence: what repeatedly required human correction before publish.
+- Treat Studio intent resolutions as the preferred before/after evidence for how a correction was actually applied.
 - In `## Evidence`, include any repeated Studio intent patterns that affected the reflection, such as "3 content intents across recent Claude Code episodes asked for workflow clarification" or "multiple visual intents were one-off screenshot cleanups and were not used for guide updates."
 
 Guide-update rules:
@@ -54,6 +58,7 @@ Guide-update rules:
 - Distinguish packaging hypotheses from content hypotheses. If the data only shows title/thumbnail style effects, do not pretend it proved a narrative rule.
 - Do **not** promote one-off Studio intents directly into `SERIES_GUIDE.md`. Single factual fixes, screenshot masking mistakes, pronunciation fixes, and isolated taste calls belong in the memo unless the same pattern repeats across episodes.
 - If the evidence is weak or conflicted, leave `SERIES_GUIDE.md` unchanged and capture the uncertainty in the memo instead.
+- Every change to `SERIES_GUIDE.md` must be phrased as a rule, default, or checklist item that a future agent can apply. Do not add raw observations like "EP030 needed many fixes" or unresolved hypotheses.
 
 Reflection heuristics:
 - Treat sample size honestly:

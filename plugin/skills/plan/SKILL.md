@@ -68,6 +68,7 @@ The watch loop runs until `/ars:build` fires (via build-trigger intent or the us
 - Optimize for a fast first agenda. If the user pasted enough source material, the planner should write the short Studio-reviewable plan directly and leave deeper research gaps in `## Reminders` instead of blocking on exhaustive sourcing.
 - Planning is read-only with respect to episode implementation. No `ep.ts` content, no step payloads, no narration.
 - Custom cards are encouraged when a built-in cannot express the core visual in one glance. See `references/custom-card-guide.md`.
+- If a visual beat wants an `image` but no concrete asset is available yet, record the desired visual clearly in `## Reminders` or the Structure row. A simple generated SVG image asset is an acceptable build-time fallback for abstract scenes, diagrams, symbolic hero visuals, or placeholders that need more shape than plain text.
 - Do not create a repo-level `todo.json`. Session todos only.
 - If the planner returns a plan that reads like a script (paragraphs, verbatim narration, per-step timings, restated series rules), re-delegate with the specific bloat quoted and the sentence "這份讀起來像腳本不是 agenda，改成方向式摘要".
 

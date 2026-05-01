@@ -41,12 +41,16 @@ npx ars workstate set --stage "ready-for-review:<epId>"   # after validate passe
 npx ars workstate set --stage "failed:<epId>"
 ```
 
+`workstate set` infers the episode context from `<phase>:<epId>`. When switching from one episode to another outside the normal build transition, make the handoff explicit with `npx ars workstate switch <epId> --stage <stage>` before editing, validating, generating audio, reviewing, preparing, or publishing the new episode.
+
 ## Phase 1 — Build pending custom cards (if any)
 
 Before writing `ep.ts`, read the `## New card` table in `.ars/episodes/<epId>/plan.md`.
 If the table contains real entries, build each card inline using the rules below — do NOT ask the user to run `/ars:new-card` separately.
 
 Before choosing built-in cards for non-new-card steps, also read `references/card-selection.md` for cross-card heuristics. If `SERIES_GUIDE.md` defines its own card preferences (e.g. `mockApp > image > timeline`, `mermaid > flowchart`), the series ordering wins over the defaults in that reference.
+
+If the approved plan names `markdown` but the row's Visual / Goal is really a before-after, prompt-to-result, input-output, relationship mock, or abstract concept diagram, you may refine the implementation to `image` with a generated SVG asset. This is a card-selection refinement, not a narrative change. Keep the beat's meaning identical and update the plan's Card / Notes if the change is material.
 
 For each new-card row:
 
@@ -94,7 +98,8 @@ For each visual asset the plan calls for:
 1. **Check the plan's `## References`** for a matching URL. If found, download it to `public/episodes/<series>/<asset-name>.<ext>` using `curl -sSL -o ...`. Prefer local paths over URLs — URLs rot and Remotion render is offline.
 2. **If the step is a live product / site / dashboard and no static image suffices**, open Playwright, capture the exact frame you need (login / navigate / wait / screenshot), save to `public/episodes/<series>/<asset-name>.png`.
 3. **If the step needs counter-examples / "bad" references** that plan did not source (common for A-vs-B hero visuals), run a targeted WebSearch image query and pick a usable result. Download it.
-4. **Only if none of the above yields an asset** — reserve a `PLACEHOLDER_<descriptive-name>.<ext>` filename to use later. Mark the step now in your session todos so you remember to set the `caption` field during Phase 3.
+4. **If no external asset exists but the visual is abstract / symbolic / diagram-like**, generate a small SVG image asset under `public/episodes/<series>/<asset-name>.svg` and use the `image` card. Keep it contentful and simple: labels, shapes, arrows, icons, or a branded composition that clarifies the beat. Do not use this to fake real screenshots, people, products, logos, or sourced evidence.
+5. **Only if none of the above yields an asset** — reserve a `PLACEHOLDER_<descriptive-name>.<ext>` filename to use later. Mark the step now in your session todos so you remember to set the `caption` field during Phase 3.
 
 Record the resolved asset paths (or placeholder names) so Phase 3 can wire them into `ep.ts` directly.
 

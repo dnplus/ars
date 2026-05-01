@@ -15,14 +15,15 @@ Behavior:
 - Resolve the requested intent by id, or choose the latest unprocessed intent when the argument is `latest` or omitted.
 - When the argument is `all`, confirm `.ars/studio-intents/_session-end.flag` exists before proceeding. Treat it as the signal that the review pass is closed and the remaining intents should be batch-applied.
 - Read exactly one Studio intent from `.ars/studio-intents/` and inspect its `target`, `source`, `feedback`, and optional `attachments`.
+- Before editing, read `.ars/state/workstate.json` when it exists. If it is active and contains `episodeId`, that `episodeId` must match the intent's `target.epId`. For cross-episode work, stop and ask for an explicit episode-context switch (usually `npx ars workstate switch <epId> --stage review`) before applying the intent. Do not let an IDE-opened file, unrelated pending intent, or stale statusline silently change the target episode.
 - If `attachments.screenshotPath` is present, read it before making changes.
 
 Classify the intent first by reading `feedback.kind`, then `feedback.message`:
 
 - **Build trigger** — `feedback.kind === 'build-trigger'`. This comes from the Studio Build phase "觸發 Build" button, not from a review feedback form. Do NOT try to patch the episode source. Instead:
-  1. Confirm `.ars/episodes/<target.epId>/plan.md` exists. If not, tell the user to run `/ars:plan <epId>` first and mark the intent processed without building.
+  1. Confirm `.ars/episodes/<target.epId>/plan.md` exists. If not, tell the user to run `/ars:plan <epId>` first and resolve the intent as a no-op without building.
   2. Invoke `/ars:build <target.epId>`. The build skill handles its own workstate stage transitions and writes `.ars/episodes/<epId>/last-build.json` on completion — the Studio Build phase will reflect the stage / validation updates automatically.
-  3. After `/ars:build` returns, mark the intent processed by writing `processedAt` with an ISO timestamp. Skip the rest of this classification — build-trigger intents do not route to episode / plan edits.
+  3. After `/ars:build` returns, resolve the intent with a summary and validation evidence. Skip the rest of this classification — build-trigger intents do not route to episode / plan edits.
 - **Pronunciation fix** — `feedback.kind === 'other'` (or unspecified) AND message describes a TTS reading error ("XX 念錯"、"讀成了 YY"、"發音不對"、"斷句怪"、specific wrong pinyin). Do NOT edit the episode source. Instead:
   1. Open `cli/pronunciation_dict.yaml`.
   2. Decide the correct pinyin yourself from the word/context (tone numbers 1-5; 5 = neutral). For English acronyms, decide between letter-by-letter `"GB/G B"` or full word `"GB/Gigabyte"` based on the feedback.
@@ -43,7 +44,15 @@ Classify the intent first by reading `feedback.kind`, then `feedback.message`:
   - If validation fails, fix the targeted step until validation passes or report the blocking reason.
   - If the content change also changed narration text, offer to re-run `npx ars audio generate <epId> --step <stepId>` since the audio for that step is now stale.
 
-After any fix kind, mark the intent processed by writing `processedAt` with an ISO timestamp. Do not delete the intent file.
+After any fix kind, resolve the intent with durable evidence. Do not delete the intent file.
+
+Resolution requirements:
+- Do not use `npx ars studio intent clear <id>` after applying a fix. `clear` is reserved for explicit skips or legacy/manual maintenance.
+- Use `npx ars studio intent resolve <id> --summary <text>` so the intent gets both `processedAt` and `resolution`.
+- For edits, include `--changed-file <path>` for each touched file, plus a short `--before <text>` and `--after <text>` excerpt that shows the meaningful change. Keep excerpts concise enough for JSON and CLI arguments.
+- Include `--validation <text>` with the validation command/result, such as `npx ars episode validate ep030 passed` or `audio regenerated for step-03`.
+- If the intent is a no-op, duplicate, or cannot be applied, still use `resolve` with a summary that explains why and any validation or inspection performed.
+- Each intent in batch mode needs its own resolution. Do not rely on the chat transcript, tmux history, or a final summary as the only record.
 
 Batch mode:
 - `/ars:apply-review all` processes all pending intents in batch.

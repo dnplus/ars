@@ -167,13 +167,14 @@ Each stdout line is a notification. On every notification:
 2. Run `npx ars studio intent list --pending --json`.
 3. For each pending intent targeting the active preview episode:
    - If it is a step-scoped preview fix, delegate to `/ars:apply-review <intent.id>` so the preview updates immediately.
-   - If it is a series-level branding/default request (theme, VTuber, copy defaults, SERIES_GUIDE guidance), patch the owning files directly (`series-config.ts`, `SERIES_GUIDE.md`, shared assets when needed), then run `npx ars studio intent clear <intent.id>`.
+   - If it is a series-level branding/default request (theme, VTuber, copy defaults, SERIES_GUIDE guidance), patch the owning files directly (`series-config.ts`, `SERIES_GUIDE.md`, shared assets when needed), then run `npx ars studio intent resolve <intent.id> --summary <text> --changed-file <path> --before <text> --after <text> --validation <text>`.
 4. After any series-level change, tell the user to refresh the still-open Studio tab and keep the monitor loop running.
 
 Monitor rules:
 
 - The monitor is proactive. Do not wait for the user to mention Studio comments in chat; drain pending intents whenever the watcher fires.
-- Before leaving Phase 3 customize, run `npx ars studio intent list --pending --json` one more time and clear the queue so verify does not inherit stale preview comments.
+- Do not use `npx ars studio intent clear <id>` for applied preview/customize changes. Resolved intents should carry `resolution` evidence so later reflect runs can learn from them even after agent context compaction.
+- Before leaving Phase 3 customize, run `npx ars studio intent list --pending --json` one more time and resolve every actionable intent so verify does not inherit stale preview comments. Only use `clear` for an explicit skip/no-op after recording the reason elsewhere.
 - Keep the same monitor alive through Phase 4 verify unless the stage guard tells it to stop.
 
 ### from template

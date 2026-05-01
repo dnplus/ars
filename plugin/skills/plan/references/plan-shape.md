@@ -63,6 +63,8 @@ Column rules:
 - `Card` — card name only. Must come from `ars card list`, OR be prefixed `(NEW)` with a matching entry in `## New card`
 - `Notes` — one phrase of direction or constraint. No narration, no per-beat timings
 
+For abstract visual relationships that do not need a new runtime card, use `image` and say `generated SVG` in `Visual` or `Notes` (for example: prompt→result mock, before/after concept, input→output system sketch). Do this when markdown would become a wall of text; keep `markdown` for compact editable wording, simple tables, and exact lists.
+
 If a cell needs more than one sentence, either trim it or drop that row out of the table and write it as a numbered block under the table — don't pack paragraphs into cells.
 
 Structure row count roughly tracks review complexity, not final video length:

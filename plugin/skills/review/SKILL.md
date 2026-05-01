@@ -8,18 +8,27 @@ effort: low
 
 ## Setup
 
+Before opening Studio, make the episode context explicit:
+
+```bash
+npx ars workstate switch <epId> --stage review
+```
+
+If an existing review monitor is running for a different episode, stop that monitor before starting this one. Opening an episode file in the IDE, seeing an unrelated pending intent, or seeing a different episode in the statusline is only a weak signal; never switch review targets from those signals alone.
+
 Run `npx ars studio <epId> --phase review` in the background (do not block on it).
 
 Tell the user the Studio URL printed in the output and that they can submit feedback directly from the review UI.
 
 ## Intent watch loop
 
-After opening the Studio, start an event-driven watch over `.ars/studio-intents/`:
+After opening the Studio, register an event-driven watch over `.ars/studio-intents/` **using the `Monitor` tool** (not `Bash run_in_background` — Monitor is the only thing that converts each stdout line into a notification you receive). The script must `mkdirSync` the directory first, because `fs.watch` throws `ENOENT` if the dir does not exist yet on first review:
 
 ```bash
 node -e "
 const fs = require('fs');
 const dir = '.ars/studio-intents';
+fs.mkdirSync(dir, { recursive: true });
 fs.watch(dir, (event, filename) => {
   if (filename && filename.endsWith('.json')) {
     console.log(filename);
@@ -31,23 +40,27 @@ process.stdout.write('watching\n');
 
 Each stdout line is a notification. On every notification:
 
-1. **Stage guard**: Check that the current stage is still `"review"` (read `.ars/state/workstate.json`). If not, stop the watch loop.
+1. **Stage guard**: Check `.ars/state/workstate.json`. Continue only when it is active, `stage` is `review` (or `review:<epId>`), and `episodeId` matches this review target. If the workstate points at another episode, stop this monitor; that is a normal explicit episode handoff.
 2. Run `npx ars studio intent list --pending --json` to get all pending intents.
 3. For each pending intent:
-   - Read `src/episodes/<series>/<epId>.ts`
-   - If the intent has an attachment, read it together with `feedback.message` to classify: if feedback implies adding a new slide/step ("插這張", "加一頁", "insert"), treat the attachment as the asset — copy it to `public/episodes/<series>/<epId>/` and use an `image` card. If feedback describes a desired style or points out a bug, treat it as reference or evidence instead.
-   - Apply the fix described in `intent.feedback.message` to the step matching `intent.target.anchorId` (or `intent.target.stepId` for legacy intents)
-   - Save the file (Vite HMR will reload the Studio automatically)
-   - Run `npx ars studio intent clear <intent.id>` to mark it processed
+   - Ignore intents whose `target.series` / `target.epId` do not match this review target. Report unrelated backlog once, then leave it alone.
+   - Delegate to `/ars:apply-review <intent.id>` so the fix uses the shared routing rules for visual/content/pronunciation/build-trigger intents.
+   - Confirm the intent now has `processedAt` and a `resolution` by running `npx ars studio intent show <intent.id>` if the apply step did not print the resolved payload.
+   - If the intent is still pending, surface the blocker instead of silently continuing.
 
 ## Rules
 
 - Always check the stage guard before processing intents on each notification.
+- Cross-episode review work must begin with an explicit workstate switch. If the user asks to move from ep030 to ep029, first stop the old monitor, run `npx ars workstate switch ep029 --stage review`, then open/reuse Studio for ep029 and start a new target-bound monitor.
 - Always use `npx ars studio intent list --pending --json` — never curl the vite server directly.
 - Run `npx ars studio` in the background so it doesn't block the watch loop.
+- Register the watch script via the `Monitor` tool, not `Bash run_in_background`. Only `Monitor` turns each stdout line into a notification.
+- The watch loop is a `Monitor` lifecycle, not a Bash process. When the stage guard says stop, stop the Monitor cleanly — that is the normal exit path, not a failure. Only treat a Monitor exit as an error if the stage is still `review` when it dies; in that case re-register it.
 - `/ars:review` is the public Studio review entrypoint. The CLI alias `ars review ...` still exists for compatibility, but the review surface itself is Studio.
+- Apply fixes through `/ars:apply-review` unless you are handling a repo setup bug outside the episode source. That skill owns intent routing, validation, and resolution records.
 - Apply fixes conservatively: only change what the feedback message describes, do not restructure unrelated steps.
 - If a fix is ambiguous, apply best-effort and surface what you changed so the user can verify in the Studio.
+- A processed Studio intent must normally include `resolution`. Plain `npx ars studio intent clear <id>` is only for explicit skips or maintenance, not successful review fixes.
 - Review is an iterative loop, not a single pass. It commonly spans two rounds:
   1. **Visual round** — user checks visuals before audio is generated. Intents are usually content / layout fixes.
   2. **Audio round** — after the Studio's full-audio generation button or `/ars:audio <epId>` runs, the Studio plays TTS output while the episode is still in review. Intents at this point are often pronunciation fixes (see `/ars:apply-review` for how those route to `cli/pronunciation_dict.yaml` instead of `ep.ts`).

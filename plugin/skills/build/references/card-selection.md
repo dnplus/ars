@@ -14,10 +14,11 @@ Don't start from "which card is fanciest". Start from what the segment is **abou
 |---|---|---|
 | App / product surface (chat, terminal, browser, dashboard) | `mockApp` | `image` (real screenshot) |
 | Real screenshots, photos, external visuals | `image` | `mockApp` (browser snapshot mode) |
+| Abstract visual relation / concept mock / before→after | `image` with a generated SVG asset | `compare` / `markdown` if the content is mostly text |
 | Stage progression / layers / 3-5 big concepts | `timeline` | `markdown` (table) |
 | Static relationship / architecture / sequence / class diagram | `mermaid` | `flowchart` (only if step-reveal matters) |
 | A vs B head-to-head | `compare` | `markdown` table (3+ columns) |
-| Multi-column data / decision matrix / mapping | `markdown` table | `compare` (only true 2-col head-to-head) |
+| Multi-column data / decision matrix / mapping | `markdown` table | generated SVG `image` when spatial layout matters; `compare` only for true 2-col head-to-head |
 | Single-shot impact / chapter transition / punchline | `ticker` | `cover` (episode start only) |
 | Counted KPIs / 1-3 standout numbers | `stats` | `mockApp` dashboard (numbers + chart together) |
 | Code with syntax highlighting | `code` | (none — code goes here) |
@@ -32,10 +33,11 @@ These are portable defaults. Series may flip any of them:
 
 - **App-like content** → `mockApp > image > timeline`
 - **Diagram content** → `mermaid > flowchart`
+- **Visual concept / before-after / relationship mock** → generated SVG `image > markdown`
 - **Numeric content** → `chart / dashboard > stats`
 - **Multi-column data** → `markdown table > compare`
 
-Reasoning: `mockApp` carries product texture (frame, address bar, traffic lights) that `image` can fake but rarely matches. `mermaid` is faster to author and less error-prone than `flowchart` for static structure. Dashboard composition (numbers + chart + insight) reads better than `stats` alone for KPI segments.
+Reasoning: `mockApp` carries product texture (frame, address bar, traffic lights) that `image` can fake but rarely matches. `mermaid` is faster to author and less error-prone than `flowchart` for static structure. A generated SVG image can turn a relation into one memorable frame when markdown would only become a text card. Dashboard composition (numbers + chart + insight) reads better than `stats` alone for KPI segments.
 
 ---
 
@@ -76,6 +78,33 @@ One-line rule: if the audience needs to **walk along the arrows step by step wit
 Hard rules:
 - `sequenceDiagram` / `classDiagram` / `ER` → must use `mermaid`.
 - General "process with 3-5 boxes" → default to `mermaid` first; promote to `flowchart` only when the step-by-step reveal is itself the point.
+
+---
+
+## Generated SVG image vs markdown
+
+Treat generated SVG assets as first-class `image` card material, not only as a placeholder fallback. The question is whether the beat is primarily a **visual relationship** or primarily **editable text**.
+
+Prefer generated SVG `image` over `markdown` when:
+
+- The beat is a before→after, prompt→result, input→output, system→effect, or similar relationship that should land in one glance.
+- A markdown card would mostly repeat the narration or become a dense bullet/table wall.
+- The visual can be truthfully represented as an abstract mock, branded diagram, UI sketch, or symbolic scene without pretending to be real sourced evidence.
+- The episode needs a visual anchor and nearby cards are not already a run of static image cards.
+
+Prefer `markdown` when:
+
+- The content is a compact list, quote, table, command snippet, or checklist whose value is the exact wording.
+- The user is likely to revise the text live in Studio and needs clean section-level editability.
+- The card is a light transition or support note that does not deserve a full custom visual.
+- The surrounding run already contains multiple image/SVG cards; use markdown, mermaid, compare, or another card to restore pacing.
+
+Generated SVG image quality bar:
+
+- Use a 16:9 canvas such as `1920x1080`, align to the series palette, and keep text large enough for video.
+- Keep it contentful: labels, arrows, boxes, callouts, charts, or mock UI that clarifies the beat.
+- Do not generate SVGs that fake real screenshots, real people, product logos, or sourced evidence. Use screenshots or citations for those.
+- Avoid making every SVG the same two-column poster. Vary composition when several appear in one episode.
 
 ---
 
@@ -137,6 +166,7 @@ If `flowchart` actually fits, default `flowchartDirection: 'LR'` for 3+ layers. 
 If two adjacent steps use the same card type, look at whether one of them should switch:
 
 - Two `markdown` cards back to back → second should usually be a visual card (`mockApp` / `image` / `mermaid` / `compare`)
+- Three `image` / generated SVG cards in a row → at least one should usually become `markdown`, `mermaid`, `compare`, or a real screenshot unless the sequence is intentionally visual.
 - Two `ticker` in a row → one of them is probably regular content trying to look big
 - Two `compare` in a row → at least one is probably forced; check for fake comparison
 
@@ -149,6 +179,7 @@ Pacing rule of thumb: every 3-4 steps should land at least one visual card. The 
 This is common for hero visuals and counter-examples. Don't downgrade to a text card — flag it.
 
 In `/ars:build` Phase 2 (Asset prep), the asset is sourced first. If sourcing fails:
+- For abstract / symbolic / diagram-like visuals, generate a small local SVG image asset and keep using the `image` card
 - Use a `PLACEHOLDER_<descriptive-name>.<ext>` filename
 - Put what's needed into the step's `caption` field
 - If it's the hero visual, this becomes a build blocker per the SKILL's placeholder policy
