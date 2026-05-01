@@ -565,8 +565,11 @@ export function parseArsCommand(command, activeSeries) {
     { regex: /(?:^|\s)(?:npx\s+)?ars\s+episode\s+create\s+([^\s]+)/i, stage: 'draft', action: 'episode-create' },
     { regex: /(?:^|\s)(?:npx\s+)?ars\s+episode\s+(?:validate|stats)\s+([^\s]+)/i, stage: null, action: 'episode-validate' },
     { regex: /(?:^|\s)(?:npx\s+)?ars\s+build\s+([^\s]+)/i, stage: 'build', action: 'build' },
+    { regex: /(?:^|\s)(?:npx\s+)?ars\s+studio\s+([^\s]+)(?=.*--phase\s+review)/i, stage: 'review', action: 'review' },
     { regex: /(?:^|\s)(?:npx\s+)?ars\s+review\s+open\s+([^\s]+)/i, stage: 'review', action: 'review' },
     { regex: /(?:^|\s)(?:npx\s+)?ars\s+review\s+close\s+([^\s]+)/i, stage: 'prepare-youtube', action: 'review-close' },
+    { regex: /(?:^|\s)(?:npx\s+)?ars\s+workstate\s+switch\s+([^\s]+)(?=.*--stage\s+([^\s]+))/i, stage: null, action: 'episode-switch' },
+    { regex: /(?:^|\s)(?:npx\s+)?ars\s+workstate\s+set(?=.*--stage\s+([^\s:]+:([^\s:]+)(?::[^\s]+)?))/i, targetGroup: 2, stageGroup: 1, stage: null, action: 'workstate-set' },
     { regex: /(?:^|\s)(?:npx\s+)?ars\s+prepare\s+youtube\s+([^\s]+)/i, stage: 'prepare-youtube', action: 'prepare-youtube' },
     { regex: /(?:^|\s)(?:npx\s+)?ars\s+publish\s+package\s+([^\s]+)/i, stage: 'package', action: 'publish-package' },
     { regex: /(?:^|\s)(?:npx\s+)?ars\s+publish\s+youtube\s+([^\s]+)/i, stage: 'publish-youtube', action: 'publish-youtube' },
@@ -578,13 +581,14 @@ export function parseArsCommand(command, activeSeries) {
     if (!match) {
       continue;
     }
-    const target = parseTarget(match[1], activeSeries);
+    const targetValue = match[pattern.targetGroup ?? 1];
+    const target = parseTarget(targetValue, activeSeries);
     if (!target) {
       return null;
     }
     return {
       ...target,
-      stage: pattern.stage,
+      stage: pattern.stage ?? match[pattern.stageGroup ?? 2] ?? null,
       lastAction: pattern.action,
       command,
     };
@@ -632,11 +636,12 @@ const CYAN = '\x1b[36m';
  */
 function stageToStep(stage) {
   if (!stage) return -1;
-  if (stage === 'idle' || stage === 'draft' || stage === 'plan') return 0;
-  if (stage === 'build') return 1;
-  if (stage === 'review') return 2;
-  if (stage === 'prepare-youtube' || stage === 'package') return 3;
-  if (stage === 'publish-youtube') return 4;
+  const normalized = String(stage).split(':')[0];
+  if (normalized === 'idle' || normalized === 'draft' || normalized === 'plan') return 0;
+  if (normalized === 'build' || normalized === 'building' || normalized === 'validating') return 1;
+  if (normalized === 'review' || normalized === 'ready-for-review' || normalized === 'ready-for-review-with-warnings') return 2;
+  if (normalized === 'prepare-youtube' || normalized === 'package') return 3;
+  if (normalized === 'publish-youtube') return 4;
   return -1;
 }
 

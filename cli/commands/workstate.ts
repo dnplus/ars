@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { getRepoRoot, readArsConfig, writeArsConfig, configExists } from '../lib/ars-config';
+import { resolveEpisodeTarget } from '../lib/context';
 
 const WORKSTATE_VERSION = 1;
 
@@ -10,6 +11,7 @@ Usage: npx ars workstate <subcommand> [options]
 Subcommands:
   get                       Print current workstate as JSON
   set --stage <s>           Write workstate with given stage
+  switch <epId> --stage <s> Write workstate for an explicit episode context
   clear                     Write workstate with active:false, stage:idle
   clear --onboarded         Same as clear, but also stamp onboardedAt
   stamp --field customized  Stamp project.customizedAt without touching workstate
@@ -36,6 +38,10 @@ export async function run(args: string[]): Promise<void> {
 
   if (subcommand === 'set') {
     return runSet(rest);
+  }
+
+  if (subcommand === 'switch') {
+    return runSwitch(rest);
   }
 
   if (subcommand === 'clear') {
@@ -76,6 +82,11 @@ function runSet(args: string[]): void {
     process.exit(1);
   }
 
+  const inferredTarget = inferTargetFromStage(stage);
+  const target = inferredTarget
+    ? resolveEpisodeTarget(inferredTarget, getRepoRoot())
+    : null;
+
   const workstatePath = getWorkstatePath();
   fs.mkdirSync(path.dirname(workstatePath), { recursive: true });
 
@@ -83,11 +94,56 @@ function runSet(args: string[]): void {
     version: WORKSTATE_VERSION,
     active: true,
     stage,
+    ...(target ? { seriesId: target.series, episodeId: target.epId } : {}),
     updatedAt: new Date().toISOString(),
   };
 
   fs.writeFileSync(workstatePath, `${JSON.stringify(workstate, null, 2)}\n`, 'utf-8');
   console.log(`✅ workstate stage = ${stage}`);
+}
+
+function runSwitch(args: string[]): void {
+  const targetArg = args[0];
+  if (!targetArg || targetArg.startsWith('--')) {
+    console.error('Error: switch requires <epId>');
+    console.log('Usage: npx ars workstate switch <epId> --stage <stage>');
+    process.exit(1);
+  }
+
+  const stageIndex = args.indexOf('--stage');
+  if (stageIndex === -1 || !args[stageIndex + 1]) {
+    console.error('Error: --stage <stage> is required');
+    process.exit(1);
+  }
+
+  const stage = args[stageIndex + 1];
+  if (!stage.trim()) {
+    console.error('Error: stage must be a non-empty string');
+    process.exit(1);
+  }
+
+  const root = getRepoRoot();
+  const target = resolveEpisodeTarget(targetArg, root);
+  const workstatePath = getWorkstatePath();
+  fs.mkdirSync(path.dirname(workstatePath), { recursive: true });
+
+  const workstate = {
+    version: WORKSTATE_VERSION,
+    active: true,
+    stage,
+    seriesId: target.series,
+    episodeId: target.epId,
+    updatedAt: new Date().toISOString(),
+  };
+
+  fs.writeFileSync(workstatePath, `${JSON.stringify(workstate, null, 2)}\n`, 'utf-8');
+  console.log(`✅ workstate episode = ${target.series}/${target.epId}`);
+  console.log(`✅ workstate stage = ${stage}`);
+}
+
+function inferTargetFromStage(stage: string): string | null {
+  const match = stage.match(/^[a-z-]+:([^:]+)(?::.*)?$/);
+  return match?.[1] ?? null;
 }
 
 function runClear(onboarded: boolean): void {

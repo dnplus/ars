@@ -48,6 +48,36 @@ afterEach(() => {
 });
 
 describe('npx ars workstate', () => {
+  it('set infers episode context from phase-qualified stages', () => {
+    const repoDir = makeConsumerRepo();
+    runCli(repoDir, ['init', 'demo-series', '--yes']);
+
+    runCli(repoDir, ['workstate', 'set', '--stage', 'ready-for-review:ep030']);
+
+    const workstate = JSON.parse(
+      fs.readFileSync(path.join(repoDir, '.ars', 'state', 'workstate.json'), 'utf-8'),
+    );
+    expect(workstate.stage).toBe('ready-for-review:ep030');
+    expect(workstate.seriesId).toBe('demo-series');
+    expect(workstate.episodeId).toBe('ep030');
+  });
+
+  it('switch writes an explicit episode context before cross-episode work', () => {
+    const repoDir = makeConsumerRepo();
+    runCli(repoDir, ['init', 'demo-series', '--yes']);
+
+    const output = runCli(repoDir, ['workstate', 'switch', 'ep029', '--stage', 'review']);
+
+    expect(output).toMatch(/workstate episode = demo-series\/ep029/);
+    const workstate = JSON.parse(
+      fs.readFileSync(path.join(repoDir, '.ars', 'state', 'workstate.json'), 'utf-8'),
+    );
+    expect(workstate.stage).toBe('review');
+    expect(workstate.seriesId).toBe('demo-series');
+    expect(workstate.episodeId).toBe('ep029');
+    expect(workstate.active).toBe(true);
+  });
+
   it('stamp --field customized writes project.customizedAt without touching the workstate stage', () => {
     const repoDir = makeConsumerRepo();
     runCli(repoDir, ['init', 'demo-series', '--yes']);
