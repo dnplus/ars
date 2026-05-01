@@ -1,4 +1,6 @@
 import path from 'path';
+import fs from 'fs';
+import { spawnSync } from 'child_process';
 import { CONFIG_SCHEMA_VERSION } from '../lib/ars-config';
 import {
   ArsAssetBackup,
@@ -26,6 +28,7 @@ Options:
   --force            Refresh engine, CLAUDE.md, and version metadata
   --force-engine     Refresh engine and version metadata
   --force-claude-md  Rebuild the ARS block in CLAUDE.md
+  --no-pull          Skip the git pull on the linked ARS source repo
   -q, --quiet        Suppress non-error output
 `;
 
@@ -34,6 +37,7 @@ export interface UpdateOptions {
   forceEngine: boolean;
   forceClaudeMd: boolean;
   quiet: boolean;
+  pull: boolean;
 }
 
 export async function run(args: string[]) {
@@ -153,6 +157,9 @@ Promise<{
   const root = options.root ?? getTargetRepoRoot();
   const runtime = getRuntimePackageInfo(import.meta.url);
   const sourceRoot = locateSourcePackageRoot(import.meta.url);
+  if (options.pull) {
+    pullSourceRepo(sourceRoot, options.quiet);
+  }
   // Snapshot every ARS-owned asset BEFORE any sync runs. `.claude/` is in the
   // consumer-repo .gitignore, so without this backup `git restore` cannot
   // recover user customizations to `.claude/skills/ars/` or `.claude/agents/`.
@@ -211,5 +218,46 @@ function parseOptions(args: string[]): UpdateOptions {
     forceEngine: args.includes('--force-engine'),
     forceClaudeMd: args.includes('--force-claude-md'),
     quiet: args.includes('--quiet') || args.includes('-q'),
+    pull: !args.includes('--no-pull'),
   };
+}
+
+function pullSourceRepo(sourceRoot: string, quiet: boolean): void {
+  if (!fs.existsSync(path.join(sourceRoot, '.git'))) {
+    if (!quiet) {
+      console.log(`ℹ️  Skipping git pull: ${sourceRoot} is not a git repo.`);
+    }
+    return;
+  }
+
+  const status = spawnSync('git', ['status', '--porcelain'], {
+    cwd: sourceRoot,
+    encoding: 'utf-8',
+  });
+  if (status.status !== 0) {
+    console.warn(`⚠️  Skipping git pull: failed to read git status in ${sourceRoot}.`);
+    return;
+  }
+  if (status.stdout.trim().length > 0) {
+    console.warn(
+      `⚠️  Skipping git pull: ${sourceRoot} has uncommitted changes. ` +
+        'Commit or stash them, or rerun with --no-pull.',
+    );
+    return;
+  }
+
+  if (!quiet) {
+    console.log(`⏬ Pulling latest ARS source in ${sourceRoot}...`);
+  }
+  const pull = spawnSync('git', ['pull', '--ff-only'], {
+    cwd: sourceRoot,
+    stdio: quiet ? 'pipe' : 'inherit',
+    encoding: 'utf-8',
+  });
+  if (pull.status !== 0) {
+    console.warn(
+      `⚠️  git pull failed in ${sourceRoot}. Continuing with current source. ` +
+        'Run `git pull` manually and re-run `ars update` to get the newest version.',
+    );
+  }
 }
