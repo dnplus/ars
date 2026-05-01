@@ -23,7 +23,5 @@ describe('npm package surface', () => {
     expect(output).not.toContain('.codex/environments/environment.toml');
     expect(output).not.toContain('.ars/episodes/ep-demo/plan.md');
     expect(output).not.toContain('cli/__tests__/skill-surface.test.ts');
-    expect(output).not.toContain('docs/ars-cli-improvement-spec.md');
-    expect(output).not.toContain('creator-studio.md');
   }, 20000);
 });

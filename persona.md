@@ -34,11 +34,11 @@
 
 - Node.js >= 22.12.0
 - Claude Code CLI（plugin 是主要介面，沒裝就沒 skill 可用）
-- YouTube channel + OAuth（core 唯一的 publish target）
-- MiniMax TTS API key（目前 beta 只有這條語音路線）
 
 加分項（沒有也能起步，但 ARS 預設你會有）：
 
+- YouTube channel + OAuth — core 唯一的 publish target；只 build / review 可先不接
+- MiniMax TTS API key — 目前 beta 唯一內建語音路線；不產語音可先略過
 - Notion workspace — `/ars:plan` 可以直接吃 Notion URL（透過 MCP）
 - 清楚的系列主題軸（科技、開發教學、產業分析…）
 - VTuber 角色 或 品牌視覺系統 — `shell.config.vtuber` 是一級 feature
@@ -48,7 +48,7 @@
 
 - 一個 repo = 一個 series：視覺風格、VTuber、語氣全寫在 `SERIES_GUIDE.md`，跨集保持一致
 - 從 Notion / URL / 筆記一路到 YouTube publish 的 agent-assisted 流水線
-- Studio 作為 plan / build / review 三階段的視覺檢查面：從 `plan.md` live preview、build 子狀態可觀察、到 review player 都在同一個 shell，搭配 Studio intent 回饋迴圈—— 告別「render → 看 → 改 → render」的等待
+- Studio 作為 episode workflow 的視覺檢查面：從 `plan.md` live preview、build 子狀態、review player、語音檢查，到 prepare / publish 前的 metadata 套用，都在同一個 shell，搭配 Studio intent 回饋迴圈
 - YouTube analytics 透過 `/ars:reflect` 回灌系列策略，讓題材選擇不只靠直覺
 
 ## 為什麼是這樣設計
@@ -59,10 +59,10 @@
 
 ## 實戰證據
 
-**人蔘 Try Catch**（@ginsengtrycatch）就是 ARS 的 dogfood 系列。`ep-demo` 裡的真實數字：
+**人蔘 Try Catch**（@ginsengtrycatch）就是 ARS 的 dogfood 系列。`ep-demo` 保留了一組實際頻道 snapshot，作為這套 workflow 已跑過真實內容週期的證據：
 
-- 累計 37 部影片、383 訂閱、約 1.9 萬次觀看
-- 近 30 天 snapshot：11,875 views、淨訂閱 +312
-- 節目編號落在 ep025 附近，代表這套 workflow 已經壓力測試了 20+ 輪完整週期 — onboard、plan、review、publish、reflect 都跑過真實使用場景
+- 穩定累積多集正式影片，而不是只為 demo 做一支樣片
+- onboard、plan、build、review、prepare、publish、reflect 都跑過真實使用場景
+- 系列 guide、custom cards、語音、metadata、analytics reflection 都能跨集累積
 
 如果你的輪廓對得上，這就是為你做的。
