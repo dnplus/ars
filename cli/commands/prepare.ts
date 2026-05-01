@@ -279,7 +279,7 @@ function buildYoutubePrepareArtifact(episode: LoadedEpisode): YoutubePrepareArti
       tags: [],
     },
     contextMarkdownPath,
-    note: 'Claude Code /ars:prepare-youtube will fill youtube.candidates[] and the user picks one (youtube.selected), which flattens to youtube.title/description/tags.',
+    note: 'Claude Code /ars:prepare-youtube will fill youtube.candidates[]; selection applies metadata.youtube in the episode source and mirrors the applied values here.',
   };
 }
 
@@ -323,7 +323,7 @@ function buildYoutubePrepareMarkdown(artifact: YoutubePrepareArtifact): string {
     '## TODO: YouTube Candidates',
     '> /ars:prepare-youtube 會在此產生 youtube-1 / youtube-2 / youtube-3 三個候選。',
     '> 每個候選需包含 Title / Tags / Rationale / Warnings / Description（description 末尾必含 Chapters 區塊）。',
-    '> 使用者挑選後，skill 會把選中候選 flatten 到 artifact.youtube.title/description/tags 並將 status 設為 ready。',
+    '> 使用者挑選後，skill 會把選中候選套用到 episode metadata.youtube，並同步 artifact.youtube/title/description/tags 將 status 設為 ready。',
     '',
     'TODO: Claude Code will fill this via /ars:prepare-youtube skill.',
     '',

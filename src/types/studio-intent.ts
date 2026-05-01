@@ -22,12 +22,23 @@ export interface StudioIntentTarget {
 }
 
 export interface StudioIntentSource {
-  ui: 'studio' | 'plan' | 'build' | 'review';
+  ui: 'studio' | 'plan' | 'build' | 'review' | 'prepare';
   hash?: string;
 }
 
 export interface StudioIntentFeedback {
-  kind: 'visual' | 'content' | 'timing' | 'plan-section' | 'build-trigger' | 'other';
+  kind:
+    | 'visual'
+    | 'content'
+    | 'timing'
+    | 'plan-section'
+    | 'build-trigger'
+    | 'prepare-generate'
+    | 'prepare-select'
+    | 'prepare-edit'
+    /** @deprecated Use prepare-generate, prepare-select, or prepare-edit. */
+    | 'prepare-trigger'
+    | 'other';
   message: string;
   severity: 'low' | 'medium' | 'high';
 }

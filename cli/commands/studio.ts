@@ -43,14 +43,14 @@ Intent subcommands:
   intent create [options]                 Create a Studio intent
 
 Intent create options:
-  --from <studio|plan|build|review>
+  --from <studio|plan|build|review|prepare>
   --series <series>
   --ep <epId>
   --anchor-type <step|card|markdown-section|plan|episode>
   --anchor-id <id>
   --step <stepId>                         Shortcut: sets anchor-type=step, anchor-id=<stepId>
   --message <text>
-  --kind <visual|content|timing|plan-section|other>
+  --kind <visual|content|timing|plan-section|build-trigger|prepare-generate|prepare-select|prepare-edit|other>
   --severity <low|medium|high>
   --hash <hash>
   --screenshot-path <path>
@@ -65,13 +65,18 @@ Intent resolve options:
   --validation <text>
 `;
 
-const SOURCE_UI_VALUES = new Set<StudioIntentSource['ui']>(['studio', 'plan', 'build', 'review']);
+const SOURCE_UI_VALUES = new Set<StudioIntentSource['ui']>(['studio', 'plan', 'build', 'review', 'prepare']);
 const ANCHOR_TYPE_VALUES = new Set<StudioIntentAnchorType>(['step', 'card', 'markdown-section', 'plan', 'episode']);
 const FEEDBACK_KIND_VALUES = new Set<StudioIntentFeedback['kind']>([
   'visual',
   'content',
   'timing',
   'plan-section',
+  'build-trigger',
+  'prepare-generate',
+  'prepare-select',
+  'prepare-edit',
+  'prepare-trigger',
   'other',
 ]);
 const FEEDBACK_SEVERITY_VALUES = new Set<StudioIntentFeedback['severity']>([
@@ -336,6 +341,7 @@ async function createIntent(args: string[]): Promise<void> {
       epId: opts.epId,
       anchorType: opts.anchorType,
       anchorId: opts.anchorId,
+      anchorMeta: opts.hash ? { hash: opts.hash } : undefined,
       stepId: opts.anchorType === 'step' ? opts.anchorId : undefined,
     },
     source: { ui: opts.from, hash: opts.hash },

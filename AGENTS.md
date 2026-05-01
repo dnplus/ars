@@ -13,6 +13,8 @@ Key paths:
 - `src/engine/cards/registry.ts` — Runtime card registry (Vite/browser only, `import.meta.glob`)
 - `src/engine/shared/card-catalog.ts` — CLI-only static card metadata (`CARD_CATALOG`, not a runtime registry)
 - `src/engine/shared/types.ts` — Source of truth for `Episode`, `Step`, `ShellConfig`, `SeriesConfig`
+- `src/types/studio-intent.ts` — Source of truth for Studio intent schema shared by Studio and CLI
+- `src/studio/studio-intents.ts` — Node-side helpers for creating, listing, and resolving Studio intents
 - `src/episodes/template/` — Template series used for smoke testing
 - `cli/` — Node.js CLI (`npx ars <command>`)
 - `plugin/skills/` — Claude Code slash commands (shared via the ARS plugin)
@@ -68,6 +70,22 @@ export const cardSpec = {
 - `card-catalog.ts` (`CARD_CATALOG` array) is CLI-only. Never import it in browser/Remotion code.
 - `cards/registry.ts` (`CARD_REGISTRY` Map) is Vite/browser-only. Never import it in CLI/Node code.
 - For SVG-heavy chart cards, avoid fractional text positioning. If you render SVG `<text>` labels, ticks, legends, or axis titles, especially with `textAnchor="middle"`, snap `x` / `y` to integer pixels and prefer `textRendering="geometricPrecision"` to reduce render shimmer in encoded video.
+
+---
+
+## Studio Intent & Workstate Contract
+
+Studio uses `StudioIntent` as the shared channel for plan, build, review, and prepare actions. Treat pending intents as work requests from the user, not passive telemetry.
+
+Invariants:
+- `feedback.kind` is authoritative for non-prepare intents. For prepare intents, route by `target.anchorMeta.hash` first, then `feedback.kind`, then message text.
+- `prepare:*` hashes belong to YouTube prepare metadata. Do not patch narration, step content, or card visuals for a prepare intent unless the message explicitly asks for that.
+- Use `prepare-generate`, `prepare-select`, and `prepare-edit` for new prepare intents. Legacy `prepare-trigger` is ambiguous and must be interpreted by hash, never by label alone.
+- `prepare:youtube:generate` means run `/ars:prepare-youtube` to generate candidates from the prepare context.
+- `prepare:<candidateId>:select` means apply that candidate to the episode source `metadata.youtube` and mirror the prepare artifact to match.
+- After successful handling, resolve intents with `npx ars studio intent resolve <id> --summary ...`; include changed files and before/after evidence when meaningful. Use clearing only for explicit skips or legacy cleanup.
+- Cross-episode work must begin with `npx ars workstate switch <epId> --stage <stage>` or an equivalent skill command that performs the switch. Do not infer the active episode from an IDE-opened file, stale statusline, or unrelated pending intent.
+- `npx ars workstate set --stage "<phase>:<epId>"` infers `seriesId` and `episodeId`; keep monitor stages target-bound when switching phases.
 
 ---
 
@@ -153,6 +171,8 @@ There is a lightweight automated test suite (`npm test`). Verification baseline 
 2. `npx ars episode validate template/ep-demo` — must pass without errors
 3. Remotion studio renders `ep-demo` without throwing (manual check or `remotion bundle`)
 4. `npm test` — should pass before shipping workflow or registry changes
+
+For Studio, intent, or Vite shell changes, also run `npm run build:studio`.
 
 When adding a new card type, also verify:
 - `npx ars episode stats template --all` lists the new type

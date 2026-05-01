@@ -18,8 +18,20 @@ Behavior:
 - Before editing, read `.ars/state/workstate.json` when it exists. If it is active and contains `episodeId`, that `episodeId` must match the intent's `target.epId`. For cross-episode work, stop and ask for an explicit episode-context switch (usually `npx ars workstate switch <epId> --stage review`) before applying the intent. Do not let an IDE-opened file, unrelated pending intent, or stale statusline silently change the target episode.
 - If `attachments.screenshotPath` is present, read it before making changes.
 
-Classify the intent first by reading `feedback.kind`, then `feedback.message`:
+Classify prepare intents first by reading `target.anchorMeta.hash`, then use `feedback.kind`, then `feedback.message`. Do not infer prepare action from the label alone.
 
+- **Prepare action / prepare metadata fix** — `target.anchorMeta.hash` starts with `prepare:` OR `feedback.kind` is `prepare-generate`, `prepare-select`, `prepare-edit`, or legacy `prepare-trigger`. This comes from the Studio Prepare UI. Do NOT treat it as an episode narration/content fix.
+  - `feedback.kind === 'prepare-generate'` should normally pair with hash `prepare:youtube:generate`.
+  - `feedback.kind === 'prepare-select'` should normally pair with hash `prepare:<candidateId>:select`.
+  - `feedback.kind === 'prepare-edit'` should normally pair with hash `prepare:<candidateId>:title`, `prepare:<candidateId>:description`, `prepare:<candidateId>:tags`, or `prepare:<candidateId>:card`.
+  - Legacy `feedback.kind === 'prepare-trigger'` is ambiguous. Always route it by `target.anchorMeta.hash`; never assume it means generate or a duplicate button press.
+  - If hash is `prepare:youtube:generate`, run `/ars:prepare-youtube <target.epId>` so Claude Code generates the candidates and writes `output/publish/<series>/<epId>/prepare-youtube.json` plus `.md`.
+  - If hash is `prepare:<candidateId>:select`, read `output/publish/<series>/<epId>/prepare-youtube.json`, find the candidate, and apply it to `metadata.youtube` in `src/episodes/<series>/<epId>.ts`. Then update the prepare artifact so `status: "ready"`, `youtube.selected`, and flattened `youtube.title` / `youtube.description` / `youtube.tags` mirror the applied episode metadata. Studio should display the applied ep metadata after HMR, not just the selected candidate.
+  - If hash is `prepare:<candidateId>:title`, `prepare:<candidateId>:description`, `prepare:<candidateId>:tags`, or `prepare:<candidateId>:card`, edit the matching candidate in the prepare artifact. If that candidate is already selected/applied, also update `metadata.youtube` to keep the episode source as the source of truth.
+  - If a generate intent already has usable candidates, resolve it as already handled with evidence instead of clearing it. If a select intent was submitted, apply or resolve it; never clear it as a duplicate generate action.
+  - After metadata changes, run `npx ars episode validate <target.epId>`.
+  - Resolve the intent with changed files, before/after excerpts, and validation. Never patch narration steps for prepare intents unless the feedback explicitly says to change the episode content itself.
+- For non-prepare intents, classify by reading `feedback.kind`, then `feedback.message`:
 - **Build trigger** — `feedback.kind === 'build-trigger'`. This comes from the Studio Build phase "觸發 Build" button, not from a review feedback form. Do NOT try to patch the episode source. Instead:
   1. Confirm `.ars/episodes/<target.epId>/plan.md` exists. If not, tell the user to run `/ars:plan <epId>` first and resolve the intent as a no-op without building.
   2. Invoke `/ars:build <target.epId>`. The build skill handles its own workstate stage transitions and writes `.ars/episodes/<epId>/last-build.json` on completion — the Studio Build phase will reflect the stage / validation updates automatically.

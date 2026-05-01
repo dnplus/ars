@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActionBar } from './ActionBar';
 import { INTENT_SUBMITTED_EVENT } from '../constants';
 import type { PreparedYoutubeCandidate, YoutubePrepareArtifact } from '../../../studio/prepare-youtube-artifact';
+import type { EpisodeMetadata } from '../../shared/types';
 import type { ReviewIntent } from '../../../types/review-intent';
 
 type JobState = {
@@ -45,6 +46,7 @@ type PrepareRunnerProps = {
   onClose: () => void;
   series: string;
   epId: string;
+  episodeYoutube?: EpisodeMetadata['youtube'];
 };
 
 const POLL_INTERVAL_MS = 1500;
@@ -54,6 +56,7 @@ export const PrepareRunner: React.FC<PrepareRunnerProps> = ({
   onClose,
   series,
   epId,
+  episodeYoutube,
 }) => {
   const [plan, setPlan] = useState<PreparePlan | null>(null);
   const [artifact, setArtifact] = useState<YoutubePrepareArtifact | null>(null);
@@ -174,46 +177,68 @@ export const PrepareRunner: React.FC<PrepareRunnerProps> = ({
     }
   }, [series, epId]);
 
+  const submitPrepareIntent = useCallback(async (
+    message: string,
+    hash: string,
+    title: string,
+    kind: ReviewIntent['feedback']['kind'],
+  ) => {
+    const res = await fetch('/__ars/studio-intent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: 'prepare',
+        series,
+        epId,
+        anchorType: 'episode',
+        anchorId: epId,
+        anchorMeta: { title, hash },
+        kind,
+        severity: 'medium',
+        message,
+      }),
+    });
+    const payload = (await res.json()) as { ok: boolean; intent?: { id: string }; error?: string };
+    if (!res.ok || !payload.intent) throw new Error(payload.error ?? `${res.status}`);
+    window.dispatchEvent(new CustomEvent(INTENT_SUBMITTED_EVENT));
+    await loadArtifact();
+  }, [series, epId, loadArtifact]);
+
   const generateCandidates = useCallback(async () => {
     setBusy('candidates');
     setError(null);
     try {
-      const res = await fetch('/__ars/prepare-candidates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ series, epId }),
-      });
-      const payload = (await res.json()) as { ok: boolean; artifact?: YoutubePrepareArtifact; error?: string };
-      if (!res.ok || !payload.artifact) throw new Error(payload.error ?? `${res.status}`);
-      setArtifact(payload.artifact);
-      setPhase('select');
+      await submitPrepareIntent(
+        `Generate YouTube metadata candidates for ${series}/${epId}. Run /ars:prepare-youtube ${epId} and write prepare-youtube.json/md.`,
+        'prepare:youtube:generate',
+        'Prepare YouTube candidates',
+        'prepare-generate',
+      );
       await loadPlan();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(null);
     }
-  }, [series, epId, loadPlan]);
+  }, [series, epId, submitPrepareIntent, loadPlan]);
 
   const selectCandidate = useCallback(async (candidateId: string) => {
     setBusy('select');
     setError(null);
     try {
-      const res = await fetch('/__ars/prepare-select', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ series, epId, candidateId }),
-      });
-      const payload = (await res.json()) as { ok: boolean; artifact?: YoutubePrepareArtifact; error?: string };
-      if (!res.ok || !payload.artifact) throw new Error(payload.error ?? `${res.status}`);
-      setArtifact(payload.artifact);
+      await submitPrepareIntent(
+        `Apply YouTube candidate ${candidateId} for ${series}/${epId}. Update episode metadata.youtube, then refresh prepare artifact from the applied metadata.`,
+        `prepare:${candidateId}:select`,
+        `${candidateId} · apply`,
+        'prepare-select',
+      );
       await loadPlan();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(null);
     }
-  }, [series, epId, loadPlan]);
+  }, [series, epId, submitPrepareIntent, loadPlan]);
 
   if (!open) return null;
 
@@ -304,9 +329,9 @@ export const PrepareRunner: React.FC<PrepareRunnerProps> = ({
                   type="button"
                   className="studio-pin-popover-btn primary"
                   onClick={() => void generateCandidates()}
-                  disabled={busy !== null}
+                  disabled={busy !== null || pendingPrepareIntents > 0}
                 >
-                  {busy === 'candidates' ? '產生中…' : '產生 3 個候選'}
+                  {busy === 'candidates' ? '通知中…' : '請 Claude Code 產生候選'}
                 </button>
               ) : (
                 <button
@@ -344,9 +369,14 @@ export const PrepareRunner: React.FC<PrepareRunnerProps> = ({
                 有 {pendingPrepareIntents} 筆 prepare 留言尚未處理；候選內容會在後台修改後自動刷新。
               </div>
             )}
-            {selectedCandidate && (
+            {episodeYoutube && (
               <div className="studio-action-modal-warn">
-                已選定 <strong>{selectedCandidate.id}</strong>：{selectedCandidate.title}
+                已套用到 ep metadata：<strong>{episodeYoutube.title}</strong>
+              </div>
+            )}
+            {!episodeYoutube && selectedCandidate && (
+              <div className="studio-action-modal-warn">
+                已選定 <strong>{selectedCandidate.id}</strong>，等待 Claude Code 套用到 ep metadata。
               </div>
             )}
             <div className="studio-action-modal-actions">
@@ -357,9 +387,9 @@ export const PrepareRunner: React.FC<PrepareRunnerProps> = ({
                 type="button"
                 className="studio-pin-popover-btn"
                 onClick={() => void generateCandidates()}
-                disabled={busy !== null}
+                disabled={busy !== null || pendingPrepareIntents > 0}
               >
-                {busy === 'candidates' ? '重產中…' : '重產候選'}
+                {busy === 'candidates' ? '通知中…' : '請 Claude Code 重產'}
               </button>
               <button
                 type="button"
@@ -432,10 +462,10 @@ const PrepareCandidateCard: React.FC<{
                 hash: `prepare:${candidate.id}:card`,
               },
             }}
-            source="review"
+            source="prepare"
             series={series}
             epId={epId}
-            kind="content"
+            kind="prepare-edit"
             glyph="📝"
             fixCount={pendingCardCount}
           />
@@ -447,7 +477,7 @@ const PrepareCandidateCard: React.FC<{
         onClick={onSelect}
         disabled={selecting}
       >
-        {selected ? '已選定' : '選這個'}
+        {selected ? '已選定' : '請 Claude Code 套用'}
       </button>
     </div>
 
@@ -505,10 +535,10 @@ const PrepareField: React.FC<{
             hash,
           },
         }}
-        source="review"
+        source="prepare"
         series={series}
         epId={epId}
-        kind="content"
+        kind="prepare-edit"
         glyph="💬"
         fixCount={pendingCount}
       />

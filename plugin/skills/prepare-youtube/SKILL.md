@@ -8,7 +8,7 @@ effort: medium
 
 Run `npx ars prepare youtube <epId>` from the repo root.
 
-This CLI call creates `output/publish/<activeSeries>/<epId>/prepare-youtube.md` and `prepare-youtube.json`. The JSON contains `chapters` (timestamps derived from step durations / subtitles) and empty `youtube.candidates[]` + `youtube.selected: null`. The skill then fills candidates, presents them to the user, waits for a pick, and flattens the selection.
+This CLI call creates `output/publish/<activeSeries>/<epId>/prepare-youtube.md` and `prepare-youtube.json`. The JSON contains `chapters` (timestamps derived from step durations / subtitles) and empty `youtube.candidates[]` + `youtube.selected: null`. The skill then fills candidates, presents them to the user, waits for a pick, applies the selected candidate to `metadata.youtube` in the episode source, and mirrors that applied metadata back into the prepare artifact.
 
 ## Two-pass flow
 
@@ -61,14 +61,19 @@ Triggered when the user replies with a candidate id (or "選 1" / "用 2" / simi
 3. Update the JSON:
    - `status: "ready"`
    - `youtube.selected: "<chosen id>"`
-   - `youtube.title`, `youtube.description`, `youtube.tags` = flattened fields from the selected candidate (this is what `publish youtube` reads)
-4. Update the markdown: prepend a `## Selected` block near the top showing which candidate is chosen. Keep the full candidates section below for audit.
-5. Report to the user: chosen id, final title, and remind them `/ars:publish-youtube <epId>` is next. Do not auto-publish.
+   - `youtube.title`, `youtube.description`, `youtube.tags` = flattened fields from the selected candidate, matching the episode source metadata
+4. Update `src/episodes/<activeSeries>/<epId>.ts` so `metadata.youtube.title`, `metadata.youtube.description`, and `metadata.youtube.tags` match the selected candidate. The episode source is the applied metadata source of truth shown by Studio after selection.
+5. Update the markdown: prepend a `## Selected` block near the top showing which candidate is chosen. Keep the full candidates section below for audit.
+6. Run `npx ars episode validate <epId>`.
+7. Report to the user: chosen id, final title, and remind them `/ars:publish-youtube <epId>` is next. Do not auto-publish.
 
 ## Rules
 
 - Treat prepare as the mandatory first stage of the YouTube flow.
 - The CLI command is idempotent and safe to re-run; re-running preserves existing candidates if they are still good, or the skill can regenerate them on explicit user request ("重跑", "換一批").
 - If the user edits a candidate by hand (tweaks title/tags in JSON) and says "用這個", treat it as selection — still flatten to title/description/tags and mark ready.
+- Studio Prepare may submit prepare intents instead of the user invoking this skill directly. Treat `prepare:youtube:generate` / `feedback.kind === 'prepare-generate'` as Pass 1 and `prepare:<candidateId>:select` / `feedback.kind === 'prepare-select'` as Pass 2.
+- Legacy `feedback.kind === 'prepare-trigger'` is ambiguous. Always inspect `target.anchorMeta.hash` before deciding whether the intent is generate, select, or edit.
+- When this skill is invoked because of a Studio intent, resolve that intent with `npx ars studio intent resolve ...` after the matching pass. Do not use `clear` for generated candidates, selected candidates, or no-op duplicate prepare actions.
 - Never generate chapter timestamps yourself. Only copy from `artifact.chapters`.
 - Leave the artifact in human-review state after pass 1; do not auto-publish after pass 2 either.

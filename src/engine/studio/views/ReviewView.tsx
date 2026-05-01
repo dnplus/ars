@@ -619,11 +619,12 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
     void player.play();
   }, [currentIndex]);
 
-  // Auto-play can walk the episode step-by-step; otherwise pause on last frame.
+  // Auto-play can walk the episode step-by-step; otherwise leave the player
+  // paused where Remotion ended it. Avoid seekTo() here: seeking to the final
+  // frame from an `ended` handler re-dispatches `ended` in the Player.
   useEffect(() => {
     const player = playerRef.current;
     if (!player) return;
-    const lastFrame = durationInFrames - 1;
     const handleEnded = () => {
       if (autoPlayAll && currentIndex < totalSteps - 1) {
         next();
@@ -631,7 +632,6 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
       }
 
       player.pause();
-      player.seekTo(lastFrame);
       if (autoPlayAll) {
         setAutoPlayAll(false);
       }
@@ -1081,6 +1081,7 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
           onClose={() => setPrepareModalOpen(false)}
           series={fallbackSeries}
           epId={fallbackEpId}
+          episodeYoutube={draftEpisode.metadata.youtube}
         />
       )}
       {publishCapability.visible && (

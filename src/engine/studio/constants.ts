@@ -11,4 +11,8 @@ export const KIND_LABELS: Record<ReviewIntentFeedback['kind'], string> = {
   timing: '時序',
   'plan-section': '段落',
   'build-trigger': 'Build',
+  'prepare-generate': 'Prepare',
+  'prepare-select': 'Select',
+  'prepare-edit': 'Edit',
+  'prepare-trigger': 'Prepare',
 };
