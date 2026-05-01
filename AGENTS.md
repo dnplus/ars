@@ -106,6 +106,7 @@ export const cardSpec = {
 - Core engine cards (`src/engine/cards/`) must never import from `src/episodes/`.
 - `card-catalog.ts` (`CARD_CATALOG` array) is CLI-only. Never import it in browser/Remotion code.
 - `cards/registry.ts` (`CARD_REGISTRY` Map) is Vite/browser-only. Never import it in CLI/Node code.
+- `npx ars card list` is the operational source of truth for available built-in and series-scoped cards. Do not invent portable guidance around card names that are not listed there; use `markdown`, `image`, or `mermaid`, or propose a series-scoped custom card.
 - For SVG-heavy chart cards, avoid fractional text positioning. If you render SVG `<text>` labels, ticks, legends, or axis titles, especially with `textAnchor="middle"`, snap `x` / `y` to integer pixels and prefer `textRendering="geometricPrecision"` to reduce render shimmer in encoded video.
 
 ---
@@ -123,6 +124,15 @@ Invariants:
 - After successful handling, resolve intents with `npx ars studio intent resolve <id> --summary ...`; include changed files and before/after evidence when meaningful. Use clearing only for explicit skips or legacy cleanup.
 - Cross-episode work must begin with `npx ars workstate switch <epId> --stage <stage>` or an equivalent skill command that performs the switch. Do not infer the active episode from an IDE-opened file, stale statusline, or unrelated pending intent.
 - `npx ars workstate set --stage "<phase>:<epId>"` infers `seriesId` and `episodeId`; keep monitor stages target-bound when switching phases.
+
+Onboarding uses the same Studio intent channel but has different routing:
+
+- `ep-demo` is the template preview surface during `/ars:onboard`, not a production episode.
+- During `onboard-walkthrough`, Studio comments should be collected or deferred; do not patch files unless the user explicitly asks.
+- During `onboard-customize`, comments default to series-level template work. Route recurring visual/style requests to `series-config.ts`, `SERIES_GUIDE.md`, shared assets, or series-scoped cards under `src/episodes/<series>/cards/`.
+- If the built-in card cannot express the requested recurring behavior, create a series-scoped card override with the same `cardSpec.type` instead of patching only `ep-demo.ts`.
+- Treat comments as demo-local only when the user clearly says the change is temporary or only for the current page.
+- Studio's in-app status strip can report frontend polling and onboard Studio connectivity, but it is not proof that an external `npx ars studio intent watch` process or Claude Code Monitor is alive.
 
 ---
 

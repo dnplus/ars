@@ -151,7 +151,7 @@ Do not name cards that are not in `npx ars card list`. If you want an A/B compar
 
 ### `ticker` — never as subtitles
 
-Ticker derives its punch from **scarcity**. The most common failure: `narration` and `cardContent` are the same string, so ticker becomes a captioning machine.
+Ticker derives its punch from **scarcity**. The most common failure: `narration` and `data.content` are the same string, so ticker becomes a captioning machine.
 
 ```
 ✅ ticker, no narration, 3-5s         (let the words land in silence)

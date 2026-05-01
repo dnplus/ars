@@ -24,7 +24,7 @@ ars
 進去之後在 Claude Code 裡跑：
 
 ```text
-/ars:onboard          # 走一遍 demo、設定品牌
+/ars:onboard          # 開啟 ep-demo 模板預覽，用 Studio 留言設定系列風格
 /ars:plan ep001       # 規劃第一集
 /ars:build ep001      # 產生影片
 /ars:review ep001     # 開 Studio 審稿
@@ -44,6 +44,12 @@ ars doctor            # 檢查環境、credentials、檔案結構
 - **YouTube 上傳**：`ars auth youtube` 走 OAuth
 
 兩個都不設也能跑 demo，只是不會有語音、不能上傳。
+
+## Onboard 怎麼看
+
+`/ars:onboard` 會把 `ep-demo` 當成預設模板展示頁面打開。先瀏覽每種卡片，看到不符合系列風格的地方，就在 Studio 下方留言或選取畫面元件留言。
+
+Onboard customize 階段的留言預設會變成系列模板修改，例如 `series-config.ts`、`SERIES_GUIDE.md`、共用素材，或 `src/episodes/<series>/cards/` 裡的系列卡片 override。只有臨時修展示頁時，才在留言裡說「只改這一頁」。
 
 ## 詳細文件
 

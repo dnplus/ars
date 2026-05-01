@@ -52,7 +52,7 @@ Agents should not publish to npm, create public release tags, or push release ta
 Treat these as release-sensitive surfaces:
 
 - `ars init`, `ars update`, `ars studio`, `ars prepare`, `ars publish`
-- `.ars/config.json`, `.ars/version.json`, workstate, and Studio intent schemas
+- `.ars/config.json`, `.ars/.ars-version.json`, workstate, and Studio intent schemas
 - `src/engine/shared/types.ts`
 - card `spec.ts` and registry contracts
 - generated support files copied by `syncEngineFiles`

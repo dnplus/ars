@@ -112,14 +112,19 @@ export function listStudioIntentRecords(rootDir = process.cwd()): StudioIntentRe
     .filter((fileName) => fileName.endsWith('.json'))
     .sort((a, b) => b.localeCompare(a));
 
-  return fileNames.map((fileName) => {
+  return fileNames.flatMap((fileName) => {
     const filePath = path.join(dir, fileName);
-    const raw = fs.readFileSync(filePath, 'utf-8');
-
-    return {
-      intent: JSON.parse(raw) as StudioIntent,
-      filePath,
-    };
+    try {
+      const raw = fs.readFileSync(filePath, 'utf-8');
+      return [{
+        intent: JSON.parse(raw) as StudioIntent,
+        filePath,
+      }];
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn(`[ars] skipping malformed studio intent ${fileName}: ${message}`);
+      return [];
+    }
   });
 }
 
