@@ -245,12 +245,31 @@ export async function run(args: string[]) {
   console.log(`ℹ️  Series will be auto-discovered by Root.tsx require.context`);
   console.log(`ℹ️  Audio/TTS selection is stored in series-config.ts. Choose minimax during init, or enable it later when you're ready to wire MiniMax.`);
 
+  const channelLabel = result.config.project?.channelName ?? 'template default';
+  const ttsLabel = result.ttsProvider === 'minimax'
+    ? 'MiniMax enabled'
+    : 'disabled for now';
+  const youtubeLabel = result.config.publish.youtube.enabled
+    ? 'enabled'
+    : 'disabled for now';
+
   console.log(`
 🎉 Series "${targetSeries}" initialized!
 
+Initial decisions:
+  • Channel display name: ${channelLabel}
+  • Layout: ${result.shellLayout}
+  • Audio/TTS: ${ttsLabel}
+  • YouTube publish: ${youtubeLabel}
+
+What init finished:
+  • Created the repo scaffold, ARS engine, plugin skills, and demo episode
+  • Set "${targetSeries}" as project.activeSeries
+  • Left brand voice, colors, assets, and SERIES_GUIDE.md for /ars:onboard
+
 Next steps:
   1. Run \`ars\` to launch Claude Code with the ARS plugin
-  2. Run /ars:onboard — interview-driven setup for theme, brand, and VTuber
+  2. Run /ars:onboard — open the Studio demo and tune theme, brand, and VTuber
   3. Run /ars:plan <topic> — paste URLs, notes, or ideas to plan your first episode
 `);
 }

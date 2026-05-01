@@ -273,18 +273,30 @@ async function promptForConfig(): Promise<{
   const rl = createInterface({ input, output });
 
   try {
+    console.log(`
+ARS init will create the repo scaffold and lock in a few repo-level defaults.
+
+These are not the branding interview. Choose the defaults if you are unsure;
+/ars:onboard will tune voice, colors, assets, and SERIES_GUIDE.md after the
+demo opens in Studio.
+`.trim());
+
+    console.log('\nAudio/TTS controls whether Studio shows audio tools and whether doctor checks MiniMax credentials. Choose none if you want to start with the demo first.');
     const ttsProvider = await promptChoice(
       rl,
       'TTS provider',
       ['none', 'minimax'] as const,
       'none' as const,
     );
+    console.log('\nYouTube publishing controls whether prepare/publish checks are part of this repo. You can leave it off and enable it later.');
     const youtubeEnabled = await promptBooleanWithRl(
       rl,
       'Enable YouTube publishing?',
       defaults.publish.youtube.enabled,
     );
+    console.log('\nChannel name is the display name written into the generated series defaults. Brand tone is tuned later in /ars:onboard.');
     const channelName = (await rl.question('Channel name (display name shown on episodes): ')).trim();
+    console.log('\nLayout chooses the initial video container. streaming is for horizontal explainers; shorts is for short-form vertical output.');
     const shellLayout = await promptChoice(
       rl,
       'Layout',
