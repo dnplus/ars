@@ -111,6 +111,22 @@ describe('plugin skill surface', () => {
     expect(output).toContain('/ars:reflect');
   });
 
+  it('documents competitor research as a reflect-owned helper, not a standalone skill', () => {
+    const reflectSkill = fs.readFileSync(
+      path.join(repoRoot, 'plugin', 'skills', 'reflect', 'SKILL.md'),
+      'utf-8',
+    );
+    const rootCli = fs.readFileSync(path.join(repoRoot, 'cli', 'index.ts'), 'utf-8');
+    const skillDirs = fs.readdirSync(path.join(repoRoot, 'plugin', 'skills'), { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name);
+
+    expect(skillDirs).not.toContain('competitor');
+    expect(reflectSkill).toContain('npx ars competitor search');
+    expect(reflectSkill).toContain('There is no separate `/ars:competitor` workflow');
+    expect(rootCli).toContain('Helper for /ars:reflect');
+  });
+
   it('keyword detector recommends analytics for performance-report prompts', () => {
     const scriptPath = path.join(repoRoot, 'plugin', 'scripts', 'keyword-detector.mjs');
     const payload = JSON.stringify({

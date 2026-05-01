@@ -106,7 +106,7 @@ References:
 
 - **Primitives only**: Never import from deleted legacy cards (ThreeSceneCard, SkiaMatrixRain, etc.)
 - **Theme tokens only**: All colors from `theme.colors.*` — never hardcoded hex values
-- **Zod schema required**: Every CardSpec must have a schema for agent validation
+- **Zod schema required for generated cards**: Existing legacy specs without schemas are warnings, but this skill must create new cards with schemas so agents can validate payloads.
 - **agentHints required**: Helps the AI agent know when and how to use this card
 - **Series-scoped**: Cards go in `src/episodes/<active-series>/cards/`, not in the engine
 - **No manual registry**: The glob auto-registers — just create the files

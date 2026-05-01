@@ -16,7 +16,7 @@ Run `npx ars update` when any of these are true:
 - `npx ars doctor` reports the version metadata in `.ars/.ars-version.json` is stale relative to the installed runtime.
 - The user reports the engine, studio, or plugin skills feel out of sync with the current package.
 
-Do **not** run `update` to bootstrap a new repo. For first-time setup use `/ars:onboard` (interactive) or `npx ars init <series>` / `npx -y agentic-remotion-studio init <series>` (deterministic). `update` requires a repo that has already been initialized.
+Do **not** run `update` to bootstrap a new repo. For first-time setup use `npx ars init <series>` / `npx -y agentic-remotion-studio init <series>` first, then launch `ars` and run `/ars:onboard` for customization. `update` requires a repo that has already been initialized.
 
 ## What it does
 
@@ -48,7 +48,7 @@ It **does** overwrite ARS-owned scaffolding even when the user has customized it
 
 When the user invokes `/ars:update`:
 
-1. Confirm the repo is initialized: check `.ars/config.json` exists. If it does not, tell the user to run `/ars:onboard` or `npx ars init <series>` instead — `update` is not a bootstrap command.
+1. Confirm the repo is initialized: check `.ars/config.json` exists. If it does not, tell the user to run `npx ars init <series>` instead — `update` is not a bootstrap command and `/ars:onboard` needs init output to exist first.
 2. Run `npx ars update` from the repo root and surface the output verbatim.
 3. After it completes, summarize:
    - the path of the new backup under `.ars/backups/<timestamp>/`

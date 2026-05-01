@@ -182,7 +182,7 @@ function runStamp(args: string[]): void {
   }
 
   if (!configExists()) {
-    console.error('Error: .ars/config.json not found. Run /ars:onboard or `npx ars init <series>` first.');
+    console.error('Error: .ars/config.json not found. Run `npx ars init <series>` first, then /ars:onboard.');
     process.exit(1);
   }
 

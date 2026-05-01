@@ -19,7 +19,7 @@ export const cardSpec = {
       "Leave mascotUrl unset to auto-inject shell.config.vtuber.openImg.",
       "A/B playbook — v1: direct title + mascot; v2: rhetorical hook + mascotUrl:'none'; v3: 3–4 char punch title + mascotUrl:'none' to trigger max font size.",
     ].join(" "),
-    notForUseCases: "Not for in-video cards or steps[]. Do not place this card in steps[].",
+    notForUseCases: "Not for normal in-video story beats. It may appear in ep-demo/onboard gallery to preview the thumbnail surface, but production episodes should reference it through metadata.thumbnail.variants[].data rather than steps[].",
     exampleData: {
       title: "Context Window 失憶症",
       subtitle: "AI 為什麼記不住你？",
