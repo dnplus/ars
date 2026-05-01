@@ -87,6 +87,16 @@ describe('single-series workflow', () => {
     expect(fs.existsSync(path.join(repoDir, 'cli', 'lib', 'youtube-client.ts'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'cli', 'lib', 'youtube-upload.ts'))).toBe(true);
     expect(initOutput).toContain('Set TTS provider = none (audio disabled) in series-config.ts');
+    // Sync is now driven by package.json#files, so the entire cli/commands/
+    // directory ships to consumer repos. New commands no longer require an
+    // install.ts allow-list patch.
+    expect(fs.existsSync(path.join(repoDir, 'cli', 'index.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(repoDir, 'cli', 'commands', 'init.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(repoDir, 'cli', 'commands', 'update.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(repoDir, 'cli', 'commands', 'analytics.ts'))).toBe(true);
+    // Dev-only test infrastructure must NEVER leak into the consumer repo,
+    // even though it ships in the npm tarball for source-map / typecheck reasons.
+    expect(fs.existsSync(path.join(repoDir, 'cli', '__tests__'))).toBe(false);
     expect(seriesConfig).toContain('enabled: false');
     expect(seriesConfig).not.toContain('episodes/template/');
     expect(demoEpisode).not.toContain('episodes/template/');
