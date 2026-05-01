@@ -54,6 +54,7 @@ export interface RepoInitResult {
     alreadyRepo: boolean;
   };
   shellLayout: 'streaming' | 'shorts';
+  ttsProvider: 'none' | 'minimax';
 }
 
 export async function ensureRepoInitialized(options: RepoInitOptions): Promise<RepoInitResult> {
@@ -76,11 +77,13 @@ export async function ensureRepoInitialized(options: RepoInitOptions): Promise<R
   }
 
   let shellLayout: 'streaming' | 'shorts' = 'streaming';
+  let ttsProvider: 'none' | 'minimax' = 'none';
   const config = overwriteConfig
     ? interactive
       ? await (async () => {
           const result = await promptForConfig();
           shellLayout = result.shellLayout;
+          ttsProvider = result.ttsProvider;
           return result.config;
         })()
       : createDefaultConfig()
@@ -155,6 +158,7 @@ export async function ensureRepoInitialized(options: RepoInitOptions): Promise<R
     remotionSkillInstalled,
     git,
     shellLayout,
+    ttsProvider,
   };
 }
 
@@ -260,11 +264,21 @@ function hasRemotionSkill(root: string): boolean {
   return fs.readdirSync(skillsDir).some((entry) => entry.includes('remotion'));
 }
 
-async function promptForConfig(): Promise<{ config: ArsConfig; shellLayout: 'streaming' | 'shorts' }> {
+async function promptForConfig(): Promise<{
+  config: ArsConfig;
+  shellLayout: 'streaming' | 'shorts';
+  ttsProvider: 'none' | 'minimax';
+}> {
   const defaults = createDefaultConfig();
   const rl = createInterface({ input, output });
 
   try {
+    const ttsProvider = await promptChoice(
+      rl,
+      'TTS provider',
+      ['none', 'minimax'] as const,
+      'none' as const,
+    );
     const youtubeEnabled = await promptBooleanWithRl(
       rl,
       'Enable YouTube publishing?',
@@ -299,7 +313,7 @@ async function promptForConfig(): Promise<{ config: ArsConfig; shellLayout: 'str
       },
     };
 
-    return { config, shellLayout };
+    return { config, shellLayout, ttsProvider };
   } finally {
     rl.close();
   }

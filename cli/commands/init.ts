@@ -179,6 +179,14 @@ export async function run(args: string[]) {
       console.log(`✅ Set shell.layout = 'shorts' in series-config.ts`);
     }
   }
+  rewriteSpeechConfig(srcDir, result.ttsProvider);
+  if (!options.quiet) {
+    if (result.ttsProvider === 'minimax') {
+      console.log(`✅ Enabled MiniMax TTS in series-config.ts`);
+    } else {
+      console.log(`✅ Set TTS provider = none (audio disabled) in series-config.ts`);
+    }
+  }
   // Apply channel name if collected during init prompt
   if (result.config.project?.channelName) {
     rewriteChannelName(srcDir, result.config.project.channelName);
@@ -213,7 +221,7 @@ export async function run(args: string[]) {
 
   // Root.tsx 現在自動掃描 src/episodes/，不需要手動註冊
   console.log(`ℹ️  Series will be auto-discovered by Root.tsx require.context`);
-  console.log(`ℹ️  Audio/TTS starts disabled by default in series-config.ts. Enable it when you're ready to wire MiniMax.`);
+  console.log(`ℹ️  Audio/TTS selection is stored in series-config.ts. Choose minimax during init, or enable it later when you're ready to wire MiniMax.`);
 
   console.log(`
 🎉 Series "${targetSeries}" initialized!
@@ -318,6 +326,17 @@ function rewriteChannelName(seriesDir: string, channelName: string): void {
   if (!fs.existsSync(configPath)) return;
   const content = fs.readFileSync(configPath, 'utf-8');
   const updated = content.replace(/channelName:\s*'Your Channel Name'/, `channelName: '${channelName.replace(/'/g, "\\'")}'`);
+  if (updated !== content) fs.writeFileSync(configPath, updated, 'utf-8');
+}
+
+function rewriteSpeechConfig(seriesDir: string, ttsProvider: 'none' | 'minimax'): void {
+  const configPath = path.join(seriesDir, 'series-config.ts');
+  if (!fs.existsSync(configPath)) return;
+  const content = fs.readFileSync(configPath, 'utf-8');
+  const enabled = ttsProvider === 'minimax';
+  const updated = content
+    .replace(/speech:\s*{\s*enabled:\s*(true|false)/, `speech: {\n    enabled: ${String(enabled)}`)
+    .replace(/provider:\s*'minimax'/, `provider: 'minimax'`);
   if (updated !== content) fs.writeFileSync(configPath, updated, 'utf-8');
 }
 

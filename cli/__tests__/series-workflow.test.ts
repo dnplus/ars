@@ -51,7 +51,7 @@ describe('single-series workflow', () => {
   it('bootstraps a repo and infers the active series for repo-scoped episode creation', () => {
     const repoDir = makeConsumerRepo();
 
-    runCli(repoDir, ['init', 'demo-series', '--yes']);
+    const initOutput = runCli(repoDir, ['init', 'demo-series', '--yes']);
     runCli(repoDir, ['episode', 'create', 'ep001']);
 
     const config = JSON.parse(fs.readFileSync(path.join(repoDir, '.ars', 'config.json'), 'utf-8'));
@@ -80,8 +80,12 @@ describe('single-series workflow', () => {
     expect(fs.existsSync(path.join(repoDir, 'src', 'episodes', 'demo-series', 'ep001.subtitles.ts'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'public', 'episodes', 'demo-series', 'ep001', 'audio'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'eslint.config.mjs'))).toBe(true);
+    expect(fs.existsSync(path.join(repoDir, 'cli', 'lib', 'ars-config.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(repoDir, 'cli', 'lib', 'context.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(repoDir, 'cli', 'lib', 'episode-file.ts'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'cli', 'lib', 'youtube-client.ts'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'cli', 'lib', 'youtube-upload.ts'))).toBe(true);
+    expect(initOutput).toContain('Set TTS provider = none (audio disabled) in series-config.ts');
     expect(seriesConfig).toContain('enabled: false');
     expect(demoEpisode).not.toContain('episodes/template/shared/vtuber');
     expect(demoEpisode).not.toContain('channelName: "人蔘 Try Catch"');
@@ -111,6 +115,9 @@ describe('single-series workflow', () => {
     fs.rmSync(path.join(repoDir, '.github'), { recursive: true, force: true });
     fs.rmSync(path.join(repoDir, '.env.example'), { force: true });
     fs.rmSync(path.join(repoDir, 'cli', 'pronunciation_dict.yaml'), { force: true });
+    fs.rmSync(path.join(repoDir, 'cli', 'lib', 'ars-config.ts'), { force: true });
+    fs.rmSync(path.join(repoDir, 'cli', 'lib', 'context.ts'), { force: true });
+    fs.rmSync(path.join(repoDir, 'cli', 'lib', 'episode-file.ts'), { force: true });
     fs.rmSync(path.join(repoDir, 'cli', 'lib', 'youtube-client.ts'), { force: true });
     fs.rmSync(path.join(repoDir, 'cli', 'lib', 'youtube-upload.ts'), { force: true });
 
@@ -120,6 +127,9 @@ describe('single-series workflow', () => {
     expect(fs.existsSync(path.join(repoDir, '.github', 'workflows', 'ci.yml'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, '.env.example'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'cli', 'pronunciation_dict.yaml'))).toBe(true);
+    expect(fs.existsSync(path.join(repoDir, 'cli', 'lib', 'ars-config.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(repoDir, 'cli', 'lib', 'context.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(repoDir, 'cli', 'lib', 'episode-file.ts'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'cli', 'lib', 'youtube-client.ts'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'cli', 'lib', 'youtube-upload.ts'))).toBe(true);
 

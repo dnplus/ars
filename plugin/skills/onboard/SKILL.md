@@ -9,8 +9,6 @@ effort: medium
 
 ## Prereq / install
 
-If `/ars:onboard` is being invoked inside Claude Code, the repo has already been bootstrapped — skip this section.
-
 If a user is asking how to start ARS from zero (no `.ars/config.json`, no `src/engine/`, possibly no `package.json`), the canonical one-step entry is:
 
 ```bash
@@ -22,6 +20,24 @@ That single command handles everything: it runs `npm install` when needed, syncs
 Do **not** instruct the user to pre-run `npm init`, install the npm tarball manually, or `git clone` the ARS repo before init. `npx -y agentic-remotion-studio init` is the entrypoint. After it finishes, the user runs `ars` (or `npx ars`) to launch Claude Code, then types `/ars:onboard` to enter Phase 1 below.
 
 Use `--skip-series` if the user wants the bootstrap without copying the template series, and `-y` to accept defaults non-interactively.
+
+If `/ars:onboard` is invoked from an empty content repo, do not assume the repo is already bootstrapped. Run the fresh-repo bootstrap below before Phase 1 so the demo episode exists and Studio can open.
+
+## Fresh repo bootstrap
+
+Run this before re-run detection when `.ars/config.json` is missing or when `project.activeSeries` is unset.
+
+1. Ask for a series slug: lowercase, kebab-case, no spaces. If the user wants a default, derive it from the repo folder name and normalize it.
+2. Run:
+
+   ```bash
+   npx ars init <series-slug> -y
+   ```
+
+   This creates the active series, copies `ep-demo`, installs dependencies when needed, syncs engine/plugin files, and initializes git. It does not count as Phase 3 customization; it only makes the repo usable enough for the walkthrough.
+3. Tell the user that the repo is now bootstrapped with the template series and that Phase 1 will open the demo walkthrough.
+
+Do not use `npx ars init --skip-series` for the default first-run path. Phase 1 needs `src/episodes/<series>/ep-demo.ts`, so a skip-series bootstrap cannot open the walkthrough.
 
 ## Phase transitions
 
@@ -64,7 +80,7 @@ Avoid:
 
 **Do this before any workstate write or phase action.**
 
-Read `.ars/config.json` and check `project.customizedAt` and `project.onboardedAt`. Two fields exist on purpose:
+After the fresh-repo bootstrap check, read `.ars/config.json` and check `project.customizedAt` and `project.onboardedAt`. Two fields exist on purpose:
 
 - `customizedAt` is stamped at the end of Phase 3, so a Phase 4 verify failure (e.g. missing MiniMax key) does not lose the brand-interview work.
 - `onboardedAt` is stamped only after Phase 4 verify passes — it is the SSOT the statusline reads to mark onboarding complete.
@@ -106,21 +122,13 @@ Bootstrap handles **deterministic settings only** — things that don't require 
 
 1. Write workstate with stage `onboard-bootstrap`
 2. Tell the user: this phase collects basic config (series name, TTS provider, YouTube). No creative decisions yet.
-3. If `.ars/config.json` is missing or has no `project.activeSeries`, ask for a **series name** (channel slug, lowercase, no spaces) and **remember it for Phase 3**. Do NOT pass it to the bootstrap call — `--skip-series` and a series-name argument are mutually exclusive in `npx ars init` and the CLI will refuse.
+3. If `.ars/config.json` is missing or has no `project.activeSeries`, the fresh-repo bootstrap was skipped or failed. Stop and run the Fresh repo bootstrap section before continuing; do not proceed with a repo that cannot resolve `ep-demo`.
 
-   Run the bootstrap as:
-
-   ```bash
-   npx ars init --skip-series -y
-   ```
-
-   This initializes the repo (sync engine, patch CLAUDE.md, install skills) without copying the template series. `project.activeSeries` stays unset on purpose — it is written in Phase 3 when the series content is actually created (`npx ars init <series>` for "from template" / "do it later", or direct file scaffolding for "from scratch").
-
-4. Confirm **TTS provider** (minimax / none). If minimax, remind about `.env` keys (`MINIMAX_API_KEY`, `MINIMAX_GROUP_ID`).
+4. Confirm **TTS provider** (minimax / none). `ars init` stores this in `src/episodes/<activeSeries>/series-config.ts` as `speech.enabled`; if the value is missing or wrong, update that file instead of adding a non-schema field to `.ars/config.json`. If minimax, remind about `.env` keys (`MINIMAX_API_KEY`, `MINIMAX_GROUP_ID`).
 5. Confirm **YouTube publishing** (enabled / disabled). If enabled, remind about credential files.
-6. Write confirmed values to `.ars/config.json` using direct file edit (the config schema is documented in `cli/lib/ars-config.ts`).
+6. Write confirmed config-schema values to `.ars/config.json` only when needed; TTS lives in `series-config.ts` (the config schema is documented in `cli/lib/ars-config.ts`).
 
-**Do NOT copy the template series here. Do NOT ask about theme, tone, or VTuber. Those belong in Phase 3.**
+**Do NOT ask about theme, tone, or VTuber. Those belong in Phase 3.** If the fresh-repo bootstrap already copied the template series, Phase 3 can either customize it in place or defer customization; do not re-copy the same series unless the user explicitly asks to overwrite it.
 
 End with handoff: bootstrap is done, config is written, next step is customize where the series content gets created.
 

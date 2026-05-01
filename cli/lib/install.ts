@@ -347,9 +347,33 @@ export function syncEngineFiles(options: SyncEngineOptions): string[] {
     copied,
   );
 
-  // Consumer repos do not ship the full ARS CLI source tree, but the YouTube
-  // publish adapter is typechecked as part of src/. Keep its local helper
-  // surface in sync so `eslint src && tsc` works even when publish is disabled.
+  // Consumer repos do not ship the full ARS CLI source tree, but synced runtime
+  // files import a small local helper surface. Keep those files in sync so
+  // Studio, typecheck, and publish work in a generated content repo.
+  syncFileIfNeeded(
+    path.join(options.sourceRoot, 'cli', 'lib', 'ars-config.ts'),
+    path.join(options.root, 'cli', 'lib', 'ars-config.ts'),
+    options.overwriteSupportFiles,
+    'cli/lib/ars-config.ts',
+    copied,
+  );
+
+  syncFileIfNeeded(
+    path.join(options.sourceRoot, 'cli', 'lib', 'context.ts'),
+    path.join(options.root, 'cli', 'lib', 'context.ts'),
+    options.overwriteSupportFiles,
+    'cli/lib/context.ts',
+    copied,
+  );
+
+  syncFileIfNeeded(
+    path.join(options.sourceRoot, 'cli', 'lib', 'episode-file.ts'),
+    path.join(options.root, 'cli', 'lib', 'episode-file.ts'),
+    options.overwriteSupportFiles,
+    'cli/lib/episode-file.ts',
+    copied,
+  );
+
   syncFileIfNeeded(
     path.join(options.sourceRoot, 'cli', 'lib', 'youtube-client.ts'),
     path.join(options.root, 'cli', 'lib', 'youtube-client.ts'),
