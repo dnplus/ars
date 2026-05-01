@@ -59,6 +59,8 @@ type AudioRunnerProps = {
   episode: Episode;
   series: string;
   epId: string;
+  currentStepId?: string;
+  currentStepAudioExists?: boolean | null;
 };
 
 const POLL_INTERVAL_MS = 1500;
@@ -76,6 +78,8 @@ export const AudioRunner: React.FC<AudioRunnerProps> = ({
   episode,
   series,
   epId,
+  currentStepId,
+  currentStepAudioExists,
 }) => {
   const [plan, setPlan] = useState<AudioPlan | null>(null);
   const [planError, setPlanError] = useState<string | null>(null);
@@ -88,7 +92,7 @@ export const AudioRunner: React.FC<AudioRunnerProps> = ({
 
   // Derive per-step preview from the already-loaded draft episode.
   const initialSteps: StepPreview[] = useMemo(() => {
-    return episode.steps
+    const narratableSteps = episode.steps
       .filter((step) => step.id && step.narration)
       .map((step) => {
         const title =
@@ -100,7 +104,18 @@ export const AudioRunner: React.FC<AudioRunnerProps> = ({
           selected: true,
         };
       });
-  }, [episode]);
+    const shouldSelectCurrent =
+      currentStepAudioExists === true &&
+      !!currentStepId &&
+      narratableSteps.some((step) => step.id === currentStepId);
+
+    if (!shouldSelectCurrent) return narratableSteps;
+
+    return narratableSteps.map((step) => ({
+      ...step,
+      selected: step.id === currentStepId,
+    }));
+  }, [currentStepAudioExists, currentStepId, episode]);
 
   const totalSteps = initialSteps.length;
   const totalChars = useMemo(

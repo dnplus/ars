@@ -102,6 +102,7 @@ export const SlideView: React.FC<SlideViewProps> = ({ episode, episodeId, series
   const [subtitlesVisible, setSubtitlesVisible] = useState(false);
   const [canvasScale, setCanvasScale] = useState(1);
   const [showOverview, setShowOverview] = useState(false);
+  const [autoPlayAll, setAutoPlayAll] = useState(false);
   const [chromeVisible, setChromeVisible] = useState(true);
   const [timerStart, setTimerStart] = useState(() => Date.now());
   const [now, setNow] = useState(() => Date.now());
@@ -151,6 +152,22 @@ export const SlideView: React.FC<SlideViewProps> = ({ episode, episodeId, series
     : (currentStudioStep?.step.durationInSeconds ?? 5);
   const durationInFrames = Math.max(1, Math.round(stepDurationInSeconds * fps));
 
+  const toggleAutoPlayAll = useCallback(() => {
+    setAutoPlayAll((enabled) => {
+      const nextEnabled = !enabled;
+      const player = playerRef.current;
+      if (nextEnabled) {
+        if (currentIndex === totalSteps - 1) {
+          player?.seekTo(0);
+        }
+        void player?.play();
+      } else {
+        player?.pause();
+      }
+      return nextEnabled;
+    });
+  }, [currentIndex, totalSteps]);
+
   // Scale canvas to fit viewport
   useEffect(() => {
     let frame = 0;
@@ -198,19 +215,26 @@ export const SlideView: React.FC<SlideViewProps> = ({ episode, episodeId, series
     void player.play();
   }, [currentIndex]);
 
-  // Pause on last frame
+  // Auto-play can walk the episode step-by-step; otherwise pause on last frame.
   useEffect(() => {
     const player = playerRef.current;
     if (!player) return;
     const lastFrame = durationInFrames - 1;
     const handleEnded = () => {
-      player.removeEventListener('ended', handleEnded);
+      if (autoPlayAll && currentIndex < totalSteps - 1) {
+        next();
+        return;
+      }
+
       player.pause();
       player.seekTo(lastFrame);
+      if (autoPlayAll) {
+        setAutoPlayAll(false);
+      }
     };
     player.addEventListener('ended', handleEnded);
     return () => player.removeEventListener('ended', handleEnded);
-  }, [currentIndex, durationInFrames]);
+  }, [autoPlayAll, currentIndex, durationInFrames, next, totalSteps]);
 
   // Chrome auto-hide
   const idleTimerRef = useRef<number | null>(null);
@@ -369,6 +393,13 @@ export const SlideView: React.FC<SlideViewProps> = ({ episode, episodeId, series
                 title="下一張（→）"
               >
                 →
+              </button>
+              <button
+                className={`nav-btn nav-btn-autoplay${autoPlayAll ? ' active' : ''}`}
+                onClick={toggleAutoPlayAll}
+                title={autoPlayAll ? '停止自動播放整集' : '自動播放整集'}
+              >
+                {autoPlayAll ? 'STOP' : 'AUTO'}
               </button>
             </div>
 

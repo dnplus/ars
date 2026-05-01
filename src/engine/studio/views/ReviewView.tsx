@@ -187,6 +187,7 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
   const [showFixList, setShowFixList] = useState(false);
   const [showStepEditor, setShowStepEditor] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+  const [autoPlayAll, setAutoPlayAll] = useState(false);
   const [audioExists, setAudioExists] = useState<boolean | null>(null);
   const [audioJob, setAudioJob] = useState<AudioJobState>({ status: 'idle' });
   const [audioModalOpen, setAudioModalOpen] = useState(false);
@@ -386,6 +387,28 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
     ? Math.ceil(currentStudioStep.subtitles[currentStudioStep.subtitles.length - 1].endTime)
     : (currentStudioStep?.step.durationInSeconds ?? 5);
   const durationInFrames = Math.max(1, Math.round(stepDurationInSeconds * fps));
+
+  const toggleAutoPlayAll = useCallback(() => {
+    setAutoPlayAll((enabled) => {
+      const nextEnabled = !enabled;
+      const player = playerRef.current;
+      if (nextEnabled) {
+        if (currentIndex === totalSteps - 1) {
+          player?.seekTo(0);
+        }
+        void player?.play();
+      } else {
+        player?.pause();
+      }
+      return nextEnabled;
+    });
+  }, [currentIndex, totalSteps]);
+
+  const pauseAutoPlayForComment = useCallback(() => {
+    setAutoPlayAll(false);
+    playerRef.current?.pause();
+    setSelectModeActive((active) => !active);
+  }, []);
 
   const applyDraftStep = useCallback((nextStep: Step) => {
     setDraftEpisode((current) => ({
@@ -596,19 +619,26 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
     void player.play();
   }, [currentIndex]);
 
-  // Pause on last frame when animation ends
+  // Auto-play can walk the episode step-by-step; otherwise pause on last frame.
   useEffect(() => {
     const player = playerRef.current;
     if (!player) return;
     const lastFrame = durationInFrames - 1;
     const handleEnded = () => {
-      player.removeEventListener('ended', handleEnded);
+      if (autoPlayAll && currentIndex < totalSteps - 1) {
+        next();
+        return;
+      }
+
       player.pause();
       player.seekTo(lastFrame);
+      if (autoPlayAll) {
+        setAutoPlayAll(false);
+      }
     };
     player.addEventListener('ended', handleEnded);
     return () => player.removeEventListener('ended', handleEnded);
-  }, [currentIndex, durationInFrames]);
+  }, [autoPlayAll, currentIndex, durationInFrames, next, totalSteps]);
 
   // Poll fix-applied endpoint
   useEffect(() => {
@@ -866,6 +896,13 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
             >
               →
             </button>
+            <button
+              className={`nav-btn nav-btn-autoplay${autoPlayAll ? ' active' : ''}`}
+              onClick={toggleAutoPlayAll}
+              title={autoPlayAll ? '停止自動播放整集' : '自動播放整集'}
+            >
+              {autoPlayAll ? 'STOP' : 'AUTO'}
+            </button>
           </div>
 
           <div className="nav-center" />
@@ -873,7 +910,7 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
           <div className="nav-right" style={{ position: 'relative' }}>
             <button
               className={`nav-btn${selectModeActive ? ' active' : ''}`}
-              onClick={() => setSelectModeActive((v) => !v)}
+              onClick={pauseAutoPlayForComment}
               title={selectModeActive ? '退出留言模式（Esc）' : '點擊畫面元素留言'}
               style={{ padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
@@ -1034,6 +1071,8 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
           episode={draftEpisode}
           series={fallbackSeries}
           epId={fallbackEpId}
+          currentStepId={step.id}
+          currentStepAudioExists={audioExists}
         />
       )}
       {publishCapability.visible && (

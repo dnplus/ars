@@ -212,6 +212,14 @@ body {
   border-color: var(--color-primary);
 }
 
+.nav-btn-autoplay {
+  min-width: 64px;
+  font-family: var(--font-code);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
 .nav-progress {
   font-size: 14px;
   color: color-mix(in srgb, var(--color-text-on-dark, #fff) 72%, transparent);
