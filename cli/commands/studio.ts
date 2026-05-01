@@ -16,11 +16,13 @@ import {
   markAllStudioIntentsProcessed,
   markStudioIntentProcessed,
   readStudioIntent,
+  resolveStudioIntent,
   type StudioIntentRecord,
 } from '../../src/studio/studio-intents';
 import type {
   StudioIntentAnchorType,
   StudioIntentFeedback,
+  StudioIntentResolution,
   StudioIntentSource,
 } from '../../src/types/studio-intent';
 
@@ -37,6 +39,7 @@ Intent subcommands:
   intent list [--pending] [--json]        List Studio intents grouped by status
   intent show <id>                        Print a Studio intent JSON payload
   intent clear <id|all>                   Mark Studio intents as processed
+  intent resolve <id> [options]           Mark a Studio intent processed with resolution evidence
   intent create [options]                 Create a Studio intent
 
 Intent create options:
@@ -51,6 +54,15 @@ Intent create options:
   --severity <low|medium|high>
   --hash <hash>
   --screenshot-path <path>
+
+Intent resolve options:
+  --summary <text>                        Required summary of the applied fix or no-op
+  --processor <name>
+  --changed-file <path>                   Repeatable
+  --before <text>
+  --after <text>
+  --diff-path <path>
+  --validation <text>
 `;
 
 const SOURCE_UI_VALUES = new Set<StudioIntentSource['ui']>(['studio', 'plan', 'build', 'review']);
@@ -147,6 +159,8 @@ async function handleIntent(args: string[]): Promise<void> {
       return showIntent(rest);
     case 'clear':
       return clearIntent(rest);
+    case 'resolve':
+      return resolveIntent(rest);
     case 'create':
       return createIntent(rest);
     default:
@@ -235,6 +249,69 @@ async function clearIntent(args: string[]): Promise<void> {
 
   const record = markStudioIntentProcessed(target, root);
   console.log(`✅ Marked ${record.intent.id} as processed at ${record.intent.processedAt}.`);
+}
+
+interface ParsedResolveOptions {
+  id: string;
+  resolution: Omit<StudioIntentResolution, 'processedAt'>;
+}
+
+async function resolveIntent(args: string[]): Promise<void> {
+  const opts = parseResolveOptions(args);
+  const root = getRepoRoot();
+  const record = resolveStudioIntent(opts.id, opts.resolution, root);
+  console.log(`✅ Resolved studio intent ${record.intent.id} at ${record.intent.processedAt}.`);
+}
+
+function parseResolveOptions(args: string[]): ParsedResolveOptions {
+  const id = args[0];
+  if (!id || id.startsWith('--')) {
+    console.error('❌ Usage: npx ars studio intent resolve <id> --summary <text> [options]');
+    process.exit(1);
+  }
+
+  const values = new Map<string, string>();
+  const changedFiles: string[] = [];
+
+  for (let i = 1; i < args.length; i += 1) {
+    const arg = args[i];
+    if (!arg.startsWith('--')) {
+      console.error(`❌ Unexpected argument: ${arg}`);
+      process.exit(1);
+    }
+
+    const value = args[i + 1];
+    if (!value || value.startsWith('--')) {
+      console.error(`❌ Missing value for ${arg}`);
+      process.exit(1);
+    }
+
+    const key = arg.slice(2);
+    if (key === 'changed-file') {
+      changedFiles.push(value);
+    } else {
+      values.set(key, value);
+    }
+    i += 1;
+  }
+
+  const resolution: Omit<StudioIntentResolution, 'processedAt'> = {
+    summary: requiredValue(values, 'summary'),
+  };
+  const processor = optionalValue(values, 'processor');
+  const beforeExcerpt = optionalValue(values, 'before');
+  const afterExcerpt = optionalValue(values, 'after');
+  const diffPath = optionalValue(values, 'diff-path');
+  const validation = optionalValue(values, 'validation');
+
+  if (processor) resolution.processor = processor;
+  if (changedFiles.length > 0) resolution.changedFiles = changedFiles;
+  if (beforeExcerpt) resolution.beforeExcerpt = beforeExcerpt;
+  if (afterExcerpt) resolution.afterExcerpt = afterExcerpt;
+  if (diffPath) resolution.diffPath = diffPath;
+  if (validation) resolution.validation = validation;
+
+  return { id, resolution };
 }
 
 interface ParsedCreateOptions {

@@ -37,6 +37,17 @@ export interface StudioIntentAttachments {
   screenshotDataUrl?: string;
 }
 
+export interface StudioIntentResolution {
+  processedAt: string;
+  processor?: string;
+  changedFiles?: string[];
+  summary: string;
+  beforeExcerpt?: string;
+  afterExcerpt?: string;
+  diffPath?: string;
+  validation?: string;
+}
+
 export interface StudioIntent {
   version: 1;
   id: string;
@@ -45,4 +56,5 @@ export interface StudioIntent {
   feedback: StudioIntentFeedback;
   attachments?: StudioIntentAttachments;
   processedAt?: string;
+  resolution?: StudioIntentResolution;
 }

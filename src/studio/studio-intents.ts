@@ -4,6 +4,7 @@ import type {
   StudioIntent,
   StudioIntentAttachments,
   StudioIntentFeedback,
+  StudioIntentResolution,
   StudioIntentSource,
   StudioIntentTarget,
 } from '../types/studio-intent';
@@ -21,6 +22,10 @@ export interface CreateStudioIntentInput {
   rootDir?: string;
   now?: Date;
 }
+
+export type ResolveStudioIntentInput = Omit<StudioIntentResolution, 'processedAt'> & {
+  processedAt?: string;
+};
 
 /**
  * Legacy callers may pass `{ series, epId, stepId }` without `anchorType`/`anchorId`.
@@ -127,6 +132,25 @@ export function markStudioIntentProcessed(
   const updated: StudioIntent = {
     ...record.intent,
     processedAt,
+  };
+
+  return writeStudioIntent(updated, rootDir);
+}
+
+export function resolveStudioIntent(
+  id: string,
+  resolution: ResolveStudioIntentInput,
+  rootDir = process.cwd(),
+): StudioIntentRecord {
+  const processedAt = resolution.processedAt ?? new Date().toISOString();
+  const record = readStudioIntent(id, rootDir);
+  const updated: StudioIntent = {
+    ...record.intent,
+    processedAt,
+    resolution: {
+      ...resolution,
+      processedAt,
+    },
   };
 
   return writeStudioIntent(updated, rootDir);
