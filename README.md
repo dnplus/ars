@@ -169,6 +169,10 @@ Inside Claude Code:
 - MiniMax credentials if you want generated review audio
 - YouTube OAuth credentials if you want to publish from ARS
 
+## Contributing
+
+ARS is open source, but the public contract is still beta. Before opening a PR, read [CONTRIBUTING.md](./CONTRIBUTING.md) for the expected scope, checks, and compatibility rules.
+
 ## Core skills
 
 - `/ars:onboard`: interview + orchestration for first-run onboarding

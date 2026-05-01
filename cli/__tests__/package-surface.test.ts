@@ -14,7 +14,10 @@ describe('npm package surface', () => {
     const output = `${result.stdout ?? ''}\n${result.stderr ?? ''}`;
 
     expect(output).toContain('cli/bin/ars.js');
+    expect(output).toContain('CONTRIBUTING.md');
+    expect(output).toContain('docs/release-process.md');
     expect(output).toContain('plugin/skills/review/SKILL.md');
+    expect(output).toContain('plugin/skills/release/SKILL.md');
     expect(output).toContain('.github/workflows/ci.yml');
     expect(output).toContain('src/engine/Composition.tsx');
     expect(output).toContain('public/shared/fonts/NotoSansTC-Regular.otf');

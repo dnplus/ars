@@ -47,8 +47,11 @@ describe('cli bootstrap', () => {
   });
 
   it('prints package version', () => {
+    const packageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf-8')) as {
+      version: string;
+    };
     const output = runCli(['--version']).trim();
-    expect(output).toBe('1.0.0');
+    expect(output).toBe(packageJson.version);
   });
 
   it('delegates help to init subcommand', () => {

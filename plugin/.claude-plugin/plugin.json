@@ -1,7 +1,7 @@
 {
   "name": "agentic-remotion-studio",
   "description": "Claude Code plugin for Agentic Remotion Studio — Studio-first planning, review, and YouTube publishing workflow",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "author": { "name": "Dylan Lu" },
   "skills": "./skills/",
   "agents": "./agents/",

@@ -33,6 +33,43 @@ Key paths:
 
 ---
 
+## Agent PR Contract
+
+Most ARS changes are authored by coding agents. Treat every PR as an artifact that another agent and a human maintainer can audit later.
+
+Before opening or preparing a PR:
+- Confirm the exact repo is `/Users/dylan_lu/cowork-workspace/ars` or the intended ARS source checkout. Do not include dirty changes from consumer/dogfood repos such as generated episode output unless the task explicitly says so.
+- Keep one logical change per PR. If the work mixes docs, runtime behavior, generated repo support, and dogfood episode output, split it or explain why it cannot be split.
+- Read `CONTRIBUTING.md` and include its PR expectations in the PR body.
+- For any release-sensitive surface, include a migration decision: `No migration required` or concrete `ars update` work.
+- For Studio/UI changes, include screenshots, browser notes, or a concise manual verification note.
+- For package-surface changes, run and summarize `npm pack --dry-run`.
+- Never publish to npm, create public tags, or push release tags without explicit maintainer confirmation.
+
+Recommended agent-authored PR body:
+
+```markdown
+## Summary
+- ...
+
+## Compatibility / Migration
+- Release-sensitive surfaces touched:
+- Migration decision:
+
+## Verification
+- [ ] npm run lint
+- [ ] npm run build:studio
+- [ ] npm test
+- [ ] npx ars episode validate template/ep-demo
+- [ ] npm pack --dry-run (when package/release surface changed)
+
+## Notes
+- Screenshots / Studio notes:
+- Known risks:
+```
+
+---
+
 ## Card System Contract
 
 Every card type MUST follow this contract. Violating it breaks the registry-first renderer path.

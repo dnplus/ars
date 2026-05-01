@@ -1,6 +1,6 @@
 {
   "name": "agentic-remotion-studio",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Turn ideas into published video episodes — fully agentic, Claude Code native, Remotion-powered",
   "repository": {
     "type": "git",
@@ -17,7 +17,9 @@
   "files": [
     "README.md",
     "LICENSE",
+    "CONTRIBUTING.md",
     "persona.md",
+    "docs/release-process.md",
     ".env.example",
     "cli/bin/",
     "cli/commands/",

@@ -22,6 +22,7 @@ describe('plugin skill surface', () => {
       'new-card',
       'prepare-youtube',
       'publish-youtube',
+      'release',
     ]));
   });
 
