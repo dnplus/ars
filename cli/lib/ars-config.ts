@@ -31,6 +31,18 @@ export interface ArsConfig {
     visualDirection?: string;
     tone?: string;
     mascot?: string;
+    /**
+     * Stamped at the end of /ars:onboard Phase 3 (customize) so a later
+     * Phase 4 verify failure does not lose the brand-interview work.
+     * Re-run detection treats this as "skip Phase 1/2, enter Phase 3
+     * confirmation" the same way `onboardedAt` does.
+     */
+    customizedAt?: string;
+    /**
+     * Stamped only after /ars:onboard Phase 4 verify passes. Single source
+     * of truth for "the full onboarding flow is complete" — read by the
+     * statusline and other readiness checks.
+     */
     onboardedAt?: string;
     visualDensity: VisualDensityId;
     layoutBias: LayoutBiasId;
@@ -75,6 +87,7 @@ export function createDefaultConfig(): ArsConfig {
       visualDirection: undefined,
       tone: undefined,
       mascot: undefined,
+      customizedAt: undefined,
       onboardedAt: undefined,
       visualDensity: 'balanced',
       layoutBias: 'mixed',
@@ -162,6 +175,9 @@ export function parseArsConfig(input: unknown): ArsConfig {
       mascot:
         expectOptionalString(project.mascot, 'project.mascot') ??
         defaults.project.mascot,
+      customizedAt:
+        expectOptionalString(project.customizedAt, 'project.customizedAt') ??
+        defaults.project.customizedAt,
       onboardedAt:
         expectOptionalString(project.onboardedAt, 'project.onboardedAt') ??
         defaults.project.onboardedAt,

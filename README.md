@@ -104,7 +104,9 @@ If you skipped step 1 and want to initialize without the guided onboarding flow:
 npx ars init <series-name>
 ```
 
-Same behavior as `npx -y agentic-remotion-studio init` (see step 1). After it finishes, run `/ars:onboard` to fill in brand and theme settings.
+Same behavior as `npx -y agentic-remotion-studio init` (see step 1). The interactive prompt collects YouTube enable/disable, channel name, and shell layout, then copies the template series and writes `project.activeSeries`.
+
+After it finishes you can run `/ars:onboard` to refine the series. Because `npx ars init` does not stamp `project.onboardedAt`, onboard still walks Phase 1 (demo walkthrough) and Phase 2 (deterministic bootstrap, which is a no-op when init already populated `.ars/config.json`) before reaching Phase 3 — the brand interview that writes `series-config.ts` and `SERIES_GUIDE.md`. If you want to skip straight to brand customization, edit `.ars/config.json` to set `project.onboardedAt` to the current ISO timestamp; onboard will then enter Phase 3 confirmation mode on the next run.
 
 ### 5. Plan the first episode
 

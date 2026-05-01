@@ -9,7 +9,7 @@ import fs from 'fs';
 import path from 'path';
 import { getRepoRoot } from '../lib/ars-config';
 import { ensureRepoInitialized } from '../lib/repo-init';
-import { getActiveSeries, listAvailableSeries, setActiveSeries, validateSeriesName } from '../lib/context';
+import { getActiveSeries, listUserSeries, setActiveSeries, validateSeriesName } from '../lib/context';
 
 const HELP = `
 Usage: npx ars init [series-name] [options]
@@ -82,11 +82,18 @@ export async function run(args: string[]) {
   }
   validateSeriesName(targetSeries);
   const activeSeries = getActiveSeries(root);
-  const existingUserSeries = listAvailableSeries(root).filter((series) => series !== 'template');
+  const existingUserSeries = listUserSeries(root);
 
   if (activeSeries && activeSeries !== targetSeries) {
     console.error(`❌ This repo is already initialized for series "${activeSeries}".`);
     console.error('   ARS now supports one active series per repo.');
+    console.error('');
+    console.error('   To switch to a different series, choose one:');
+    console.error(`     • Keep "${activeSeries}" — re-run with the same name: npx ars init ${activeSeries}`);
+    console.error(`     • Replace it — remove the old series first, then re-run:`);
+    console.error(`         rm -rf "${path.join('src', 'episodes', activeSeries)}" "${path.join('public', 'episodes', activeSeries)}"`);
+    console.error(`         (and clear "project.activeSeries" in .ars/config.json)`);
+    console.error(`         npx ars init ${targetSeries}`);
     process.exit(1);
   }
 
@@ -94,6 +101,12 @@ export async function run(args: string[]) {
   if (conflictingSeries.length > 0) {
     console.error(`❌ Found existing user series: ${conflictingSeries.join(', ')}`);
     console.error('   ARS now supports one active series per repo.');
+    console.error('');
+    console.error(`   Remove the existing series before initializing "${targetSeries}":`);
+    for (const series of conflictingSeries) {
+      console.error(`     rm -rf "${path.join('src', 'episodes', series)}" "${path.join('public', 'episodes', series)}"`);
+    }
+    console.error(`   Then re-run: npx ars init ${targetSeries}`);
     process.exit(1);
   }
 
@@ -105,6 +118,10 @@ export async function run(args: string[]) {
   if (fs.existsSync(srcDir)) {
     if (!options.force) {
       console.error(`❌ Series "${targetSeries}" already exists at ${srcDir}`);
+      console.error('');
+      console.error('   To overwrite the existing series files, re-run with --force:');
+      console.error(`     npx ars init ${targetSeries} --force`);
+      console.error('   Note: --force removes the existing series directory before re-copying the template.');
       process.exit(1);
     }
     fs.rmSync(srcDir, { recursive: true, force: true });

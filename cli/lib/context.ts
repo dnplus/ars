@@ -174,11 +174,36 @@ export function resolveSeriesContext(series: string): SeriesContext {
 }
 
 /**
- * 列出所有可用 series
+ * Series names that ship with ARS itself and must never be treated as a
+ * user-authored series (they are scaffolding fixtures the engine ships).
+ *
+ * Use {@link isReservedSeriesName} or {@link listUserSeries} instead of
+ * sprinkling `series !== 'template'` checks at every call site — every CLI
+ * command added in the future would otherwise have to remember the same
+ * filter, and missing it is a silent bug that pollutes user-facing lists.
+ */
+export const RESERVED_SERIES_NAMES: ReadonlySet<string> = new Set(['template']);
+
+export function isReservedSeriesName(series: string): boolean {
+  return RESERVED_SERIES_NAMES.has(series);
+}
+
+/**
+ * 列出所有可用 series（包含 ARS 內建 fixture，例如 `template`）。
+ *
+ * Most user-facing commands should call {@link listUserSeries} instead so the
+ * `template` fixture does not leak into prompts or stats.
  */
 export function listAvailableSeries(root: string): string[] {
   const episodesRoot = path.join(root, 'src/episodes');
   if (!fs.existsSync(episodesRoot)) return [];
   return fs.readdirSync(episodesRoot)
     .filter(d => fs.statSync(path.join(episodesRoot, d)).isDirectory());
+}
+
+/**
+ * 列出使用者建立的 series，自動排除所有 {@link RESERVED_SERIES_NAMES}。
+ */
+export function listUserSeries(root: string): string[] {
+  return listAvailableSeries(root).filter((series) => !isReservedSeriesName(series));
 }

@@ -31,7 +31,9 @@ Do **not** run `update` to bootstrap a new repo. For first-time setup use `/ars:
 7. Patches `.claude/settings.json` so Claude Code picks up the synced hooks.
 8. Writes `.ars/version.json` with the runtime version, plugin version, config schema version, and detected install method.
 
-It does **not** touch `src/episodes/`, `public/episodes/`, `series-config.ts`, `SERIES_GUIDE.md`, `.ars/config.json`, or any user content. Only ARS-owned scaffolding is replaced.
+It does **not** touch series content — `src/episodes/`, `public/episodes/`, `series-config.ts`, `SERIES_GUIDE.md`, and `.ars/config.json` are left alone.
+
+It **does** overwrite ARS-owned scaffolding even when the user has customized it locally. Specifically, `.claude/skills/ars/`, `.claude/agents/`, and `.ars/hooks/scripts/` are synced with `overwrite: true`. Because `.claude/` is in the consumer-repo `.gitignore`, `git restore` cannot recover edits inside those directories. To make `update` reversible, the command snapshots all four asset roots into the same `.ars/backups/<timestamp>/` folder before running any sync (see Rollback below).
 
 `CLAUDE.md` is left alone unless the user passes `--force` or `--force-claude-md`. Use those flags only when the repo's CLAUDE.md ARS block is known to be stale.
 
@@ -49,26 +51,40 @@ When the user invokes `/ars:update`:
 1. Confirm the repo is initialized: check `.ars/config.json` exists. If it does not, tell the user to run `/ars:onboard` or `npx ars init <series>` instead — `update` is not a bootstrap command.
 2. Run `npx ars update` from the repo root and surface the output verbatim.
 3. After it completes, summarize:
-   - the path of the new backup under `.ars/backups/<timestamp>/engine`
+   - the path of the new backup under `.ars/backups/<timestamp>/`
    - which categories were synced (engine, skills, agents, hook scripts)
    - whether `CLAUDE.md` was patched (only when `--force` or `--force-claude-md` was passed)
+   - the list of refreshed support files printed under `ℹ️  Refreshed ARS-owned support files (NOT in the backup above ...)`. Tell the user these are NOT snapshotted; if any path looks customised in their repo (e.g. `tsconfig.json`, `eslint.config.mjs`, `.github/workflows/ci.yml`), they should diff it against `git` before committing the update.
    - the rollback hint (see below)
 4. If the user asks for a dry run or wants to see what changed, point them at `git diff` on `src/engine/` and `.claude/` after the command runs — `update` does not have a dry-run mode of its own.
 
 ## Rollback
 
-`npx ars update` does not have an `undo` subcommand. To roll back, restore the most recent backup manually. The command itself prints the exact two lines to use; reproduce them when telling the user how to revert:
+`npx ars update` does not have an `undo` subcommand. To roll back, restore the relevant snapshot manually. The command prints rollback lines for every asset it backed up — reproduce only the lines for the asset the user actually wants to revert:
 
 ```bash
+# engine
 rm -rf "<repo>/src/engine"
 cp -R "<repo>/.ars/backups/<timestamp>/engine" "<repo>/src/engine"
+
+# ARS skills (each one lives at .claude/skills/ars:<name>/, not under .claude/skills/ars/)
+find "<repo>/.claude/skills" -maxdepth 1 -type d -name 'ars:*' -exec rm -rf {} +
+cp -R "<repo>/.ars/backups/<timestamp>/claude-skills/." "<repo>/.claude/skills/"
+
+# ARS agents
+rm -rf "<repo>/.claude/agents"
+cp -R "<repo>/.ars/backups/<timestamp>/claude-agents" "<repo>/.claude/agents"
+
+# Hook scripts
+rm -rf "<repo>/.ars/hooks/scripts"
+cp -R "<repo>/.ars/backups/<timestamp>/hook-scripts" "<repo>/.ars/hooks/scripts"
 ```
 
 Notes:
 
-- Only `src/engine/` is backed up. Skills, agents, hook scripts, support files (e.g. `vite.studio.config.ts`), and `.ars/version.json` are **not** snapshotted before update. If the user needs to revert those, recover them from git history (`git restore` / `git checkout <ref> -- <path>`).
-- Backups older than the latest 3 are deleted automatically on each `update` run. Tell the user to copy a backup elsewhere if they want to keep it long-term.
-- Rollback only restores engine code on disk. The installed npm package version does not change — if the user wants to also pin to the previous package version, they must run `npm i agentic-remotion-studio@<previous-version>` themselves.
+- Engine, ARS skills, ARS agents, and hook scripts are snapshotted into the same `.ars/backups/<timestamp>/` folder before update runs. Other support files (`vite.studio.config.ts`, `tsconfig.json`, `eslint.config.mjs`, `src/studio/**`, `.github/workflows/ci.yml`, etc.) are **not** snapshotted — recover them from git history (`git restore` / `git checkout <ref> -- <path>`).
+- Backups older than the latest 3 timestamp folders are deleted automatically on each `update` run. Tell the user to copy a backup elsewhere if they want to keep it long-term.
+- Rollback only restores files on disk. The installed npm package version does not change — if the user wants to also pin to the previous package version, they must run `npm i agentic-remotion-studio@<previous-version>` themselves.
 
 ## Common follow-ups
 

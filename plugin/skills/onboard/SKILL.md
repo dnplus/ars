@@ -64,10 +64,16 @@ Avoid:
 
 **Do this before any workstate write or phase action.**
 
-Read `.ars/config.json` and check `project.onboardedAt`.
+Read `.ars/config.json` and check `project.customizedAt` and `project.onboardedAt`. Two fields exist on purpose:
 
-- If `onboardedAt` is **not set** → first onboard run, proceed normally from Phase 1
-- If `onboardedAt` **is set** → onboard already completed; **skip Phase 1 and Phase 2 entirely**, write workstate `onboard-customize`, enter Phase 3 confirmation mode, then continue to Phase 4 normally
+- `customizedAt` is stamped at the end of Phase 3, so a Phase 4 verify failure (e.g. missing MiniMax key) does not lose the brand-interview work.
+- `onboardedAt` is stamped only after Phase 4 verify passes — it is the SSOT the statusline reads to mark onboarding complete.
+
+Re-run logic:
+
+- If **neither** is set → first onboard run, proceed normally from Phase 1.
+- If `customizedAt` is set but `onboardedAt` is not → Phase 3 already ran but Phase 4 verify never finished. Skip Phase 1 and Phase 2, write workstate `onboard-verify`, and resume directly at Phase 4 (the user wants to clear the verify failure that blocked the previous run).
+- If `onboardedAt` is set → onboard already completed; **skip Phase 1 and Phase 2 entirely**, write workstate `onboard-customize`, enter Phase 3 confirmation mode, then continue to Phase 4 normally.
 
 ## Phase 1 — walkthrough
 
@@ -100,13 +106,15 @@ Bootstrap handles **deterministic settings only** — things that don't require 
 
 1. Write workstate with stage `onboard-bootstrap`
 2. Tell the user: this phase collects basic config (series name, TTS provider, YouTube). No creative decisions yet.
-3. If `.ars/config.json` is missing or has no `project.activeSeries`, ask for a **series name** (channel slug, lowercase, no spaces), then run:
+3. If `.ars/config.json` is missing or has no `project.activeSeries`, ask for a **series name** (channel slug, lowercase, no spaces) and **remember it for Phase 3**. Do NOT pass it to the bootstrap call — `--skip-series` and a series-name argument are mutually exclusive in `npx ars init` and the CLI will refuse.
 
-```bash
-npx ars init <series> --skip-series -y
-```
+   Run the bootstrap as:
 
-   This initializes the repo (sync engine, patch CLAUDE.md, install skills) without copying the template series.
+   ```bash
+   npx ars init --skip-series -y
+   ```
+
+   This initializes the repo (sync engine, patch CLAUDE.md, install skills) without copying the template series. `project.activeSeries` stays unset on purpose — it is written in Phase 3 when the series content is actually created (`npx ars init <series>` for "from template" / "do it later", or direct file scaffolding for "from scratch").
 
 4. Confirm **TTS provider** (minimax / none). If minimax, remind about `.env` keys (`MINIMAX_API_KEY`, `MINIMAX_GROUP_ID`).
 5. Confirm **YouTube publishing** (enabled / disabled). If enabled, remind about credential files.
@@ -188,6 +196,14 @@ At the end of this path, summarize the concrete outputs:
 - that `SERIES_GUIDE.md` now exists and will be read by later skills
 - that the next step is Phase 4 verify
 
+Then run:
+
+```bash
+npx ars workstate stamp --field customized
+```
+
+This stamps `project.customizedAt` so a later Phase 4 verify failure (e.g. missing MiniMax keys) does not lose the brand-interview work — re-running `/ars:onboard` will resume directly at Phase 4 instead of restarting from Phase 1.
+
 ### from scratch
 
 1. Create minimal series directory at `src/episodes/<series>/`:
@@ -202,6 +218,14 @@ At the end of this path, summarize the concrete outputs:
 
 At the end of this path, explicitly say that a clean series skeleton was created (no demo content), and the next step is Phase 4 verify.
 
+Then run:
+
+```bash
+npx ars workstate stamp --field customized
+```
+
+This stamps `project.customizedAt` so a later Phase 4 verify failure does not force the user to redo the brand interview on the next `/ars:onboard` run.
+
 ### do it later
 
 1. Run `npx ars init <series>` (without `--skip-series`) to copy the full template series — this ensures the repo is immediately usable
@@ -215,6 +239,14 @@ At the end of this path, explicitly say that a clean series skeleton was created
    - `public/episodes/<series>/shared/vtuber/` (VTuber images)
 
 Frame this as a deferred customize state, not a completed customize state.
+
+Then run:
+
+```bash
+npx ars workstate stamp --field customized
+```
+
+Even though branding is deferred, stamping `customizedAt` records that Phase 3 was reached on purpose. A subsequent Phase 4 verify failure does not push the user back to the Phase 1 walkthrough on re-run.
 
 ## Stage 2 voice deep-dive
 
@@ -254,7 +286,7 @@ After writing, tell the user which sections were added and that `/ars:build` wil
 
 ## Phase 3 confirmation mode
 
-Use this mode only when re-run detection shows `project.onboardedAt` is already set.
+Use this mode only when re-run detection shows `project.onboardedAt` is already set (the previous onboard finished cleanly). If only `project.customizedAt` is set without `onboardedAt`, re-run detection sends the flow directly to Phase 4 instead — Phase 3 should not run again, the user already finished it.
 
 Do NOT offer the three-way choice here — the series already has customizations. Destroying them (especially via "from scratch") would lose user work.
 

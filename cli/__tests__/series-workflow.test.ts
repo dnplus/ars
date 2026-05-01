@@ -114,7 +114,7 @@ describe('single-series workflow', () => {
     fs.rmSync(path.join(repoDir, 'cli', 'lib', 'youtube-client.ts'), { force: true });
     fs.rmSync(path.join(repoDir, 'cli', 'lib', 'youtube-upload.ts'), { force: true });
 
-    runCli(repoDir, ['update']);
+    const updateStdout = runCli(repoDir, ['update']);
 
     expect(fs.existsSync(path.join(repoDir, 'eslint.config.mjs'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, '.github', 'workflows', 'ci.yml'))).toBe(true);
@@ -122,6 +122,27 @@ describe('single-series workflow', () => {
     expect(fs.existsSync(path.join(repoDir, 'cli', 'pronunciation_dict.yaml'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'cli', 'lib', 'youtube-client.ts'))).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'cli', 'lib', 'youtube-upload.ts'))).toBe(true);
+
+    // Update output must surface every asset the user might want to roll back.
+    // P0b: snapshot summaries for every backed-up asset root.
+    expect(updateStdout).toMatch(/Backed up engine to .*\.ars\/backups\//);
+    expect(updateStdout).toMatch(/Backed up ARS skills to .*\/claude-skills/);
+    expect(updateStdout).toMatch(/Backed up ARS agents to .*\/claude-agents/);
+    expect(updateStdout).toMatch(/Backed up hook scripts to .*\/hook-scripts/);
+
+    // P1a: refreshed support files (NOT in backup) listed explicitly so the
+    // user knows which paths to inspect with `git diff`.
+    expect(updateStdout).toContain('Refreshed ARS-owned support files');
+    expect(updateStdout).toContain('eslint.config.mjs');
+    expect(updateStdout).toContain('.github/workflows/ci.yml');
+    expect(updateStdout).not.toMatch(/^\s*-\s+engine\//m); // engine is in the backup, not in this list
+
+    // Rollback hints cover the snapshotted assets.
+    expect(updateStdout).toContain('Rollback hints (snapshotted assets):');
+    expect(updateStdout).toMatch(/cp -R "[^"]*\/engine"/);
+    // The skills hint copies the snapshot's contents (`claude-skills/.`) into
+    // the consumer's `.claude/skills/` so each ars:<name> dir lands in place.
+    expect(updateStdout).toMatch(/cp -R "[^"]*\/claude-skills\/\."/);
   });
 
   it('rejects initializing a second series in the same repo', () => {
@@ -143,6 +164,13 @@ describe('single-series workflow', () => {
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('already initialized for series "demo-series"');
+    // P1c: error message must show actionable next steps so the user is not
+    // left guessing whether to delete the old series, use --force, or edit
+    // .ars/config.json.
+    expect(result.stderr).toContain('To switch to a different series');
+    expect(result.stderr).toContain('npx ars init other-series');
+    expect(result.stderr).toContain(path.join('src', 'episodes', 'demo-series'));
+    expect(result.stderr).toContain('project.activeSeries');
     expect(fs.existsSync(path.join(repoDir, 'src', 'episodes', 'other-series'))).toBe(false);
   });
 });
