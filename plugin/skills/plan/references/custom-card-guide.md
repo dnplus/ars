@@ -64,7 +64,7 @@ agentHints: {
 ```ts
 agentHints: {
   whenToUse: "Use when showing a live comparison between two ranked lists that change order — e.g. benchmark results, before/after rankings",
-  notForUseCases: "Not for static A-vs-B comparisons with no ordering — use the built-in 'compare' card instead",
+  notForUseCases: "Not for static A-vs-B comparisons with no ordering — use a markdown table or generated SVG image instead",
   exampleData: {
     leftLabel: "Before", rightLabel: "After",
     items: [{ name: "Redis", before: 1, after: 3 }],

@@ -94,7 +94,7 @@ export function requireActiveSeries(root = getRepoRoot()): string {
   const activeSeries = getActiveSeries(root);
   if (!activeSeries) {
     console.error('❌ This repo has no active series configured.');
-    console.error('   Run /ars:onboard for guided onboarding or `npx ars init <series>` first.');
+    console.error('   Run `npx ars init <series>` to set the active series. /ars:onboard runs after init.');
     process.exit(1);
   }
 

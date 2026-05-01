@@ -10,7 +10,7 @@ Use `.ars/episodes/<epId>/plan.md` as the implementation contract.
 
 References:
 - See `references/card-primitives.md` for `BaseSlide`, `WindowSlide`, and `ScrollSlide` props API.
-- See `references/card-selection.md` for cross-card selection heuristics (mockApp combos, mermaid vs flowchart, common misuses).
+- See `references/card-selection.md` for cross-card selection heuristics (built-in cards, SVG vs markdown, Mermaid vs generated SVG, common misuses).
 
 Behavior:
 - Read `SERIES_GUIDE.md` at the repo root before doing anything else. It is the canonical voice / visual / pacing brief for this series and overrides any default in this SKILL when it specifies something concrete.
@@ -48,7 +48,7 @@ npx ars workstate set --stage "failed:<epId>"
 Before writing `ep.ts`, read the `## New card` table in `.ars/episodes/<epId>/plan.md`.
 If the table contains real entries, build each card inline using the rules below — do NOT ask the user to run `/ars:new-card` separately.
 
-Before choosing built-in cards for non-new-card steps, also read `references/card-selection.md` for cross-card heuristics. If `SERIES_GUIDE.md` defines its own card preferences (e.g. `mockApp > image > timeline`, `mermaid > flowchart`), the series ordering wins over the defaults in that reference.
+Before choosing built-in cards for non-new-card steps, also read `references/card-selection.md` for cross-card heuristics. If `SERIES_GUIDE.md` defines its own card preferences (e.g. `markdown > image > mermaid`), the series ordering wins over the defaults in that reference. Only use custom card names when `ars card list` shows they exist for the active series.
 
 If the approved plan names `markdown` but the row's Visual / Goal is really a before-after, prompt-to-result, input-output, relationship mock, or abstract concept diagram, you may refine the implementation to `image` with a generated SVG asset. This is a card-selection refinement, not a narrative change. Keep the beat's meaning identical and update the plan's Card / Notes if the change is material.
 
@@ -93,13 +93,27 @@ For each new-card row:
 
 Visual assets shape narration, not the other way around. Resolve every image / thumbnail / browser-screenshot asset the plan implies **before** drafting `ep.ts`, so narration can describe what's actually on screen.
 
-For each visual asset the plan calls for:
+For each `image` / `thumbnail` / browser-screenshot asset the plan calls for, classify the beat first: is it **claim-bearing evidence** (the actual artifact must be shown — real UI screenshot, published chart, primary-source document, real-world photo) or is it a **conceptual / hero / brand visual** (the idea matters, not photographic fidelity)?
 
-1. **Check the plan's `## References`** for a matching URL. If found, download it to `public/episodes/<series>/<asset-name>.<ext>` using `curl -sSL -o ...`. Prefer local paths over URLs — URLs rot and Remotion render is offline.
-2. **If the step is a live product / site / dashboard and no static image suffices**, open Playwright, capture the exact frame you need (login / navigate / wait / screenshot), save to `public/episodes/<series>/<asset-name>.png`.
-3. **If the step needs counter-examples / "bad" references** that plan did not source (common for A-vs-B hero visuals), run a targeted WebSearch image query and pick a usable result. Download it.
-4. **If no external asset exists but the visual is abstract / symbolic / diagram-like**, generate a small SVG image asset under `public/episodes/<series>/<asset-name>.svg` and use the `image` card. Keep it contentful and simple: labels, shapes, arrows, icons, or a branded composition that clarifies the beat. Do not use this to fake real screenshots, people, products, logos, or sourced evidence.
-5. **Only if none of the above yields an asset** — reserve a `PLACEHOLDER_<descriptive-name>.<ext>` filename to use later. Mark the step now in your session todos so you remember to set the `caption` field during Phase 3.
+Preserve the plan's `Card` choice. Do not convert a `markdown`, `mermaid`, or other non-image row into an `image` card just because SVG generation is available. Only change the card type when implementation proves the planned card cannot express the beat; if you do, update `plan.md` and explain the reason in your completion note.
+
+**Conceptual / hero / brand visuals — default path for `image` beats:**
+
+1. **Generate a branded SVG asset** under `public/episodes/<series>/<asset-name>.svg` and use the `image` card. Use the series palette, fonts from `series-config.ts`, and 1920x1080 (or shell-appropriate) canvas. Make it contentful: labels, shapes, arrows, icons, callouts, branded composition that clarifies the beat in one frame.
+   - Use SVG when spatial composition matters: hero metaphor, relationship map, before/after frame, branded diagram, or a chapter anchor viewers should remember.
+   - If the SVG would mostly be bullets, definitions, or a table drawn by hand, switch back to the planned text-friendly card (`markdown`) instead of making a text poster.
+   - Vary composition across the episode. A typical medium episode should have a few strong SVG anchor frames, not a full run of near-identical two-column posters.
+2. Do NOT generate SVGs that fake real screenshots, real people, product logos, or sourced evidence — that's claim-bearing material, see below.
+
+**Claim-bearing evidence beats — only when the actual artifact must be shown:**
+
+3. **Check the plan's `## References`** for a matching URL. If found, download it to `public/episodes/<series>/<asset-name>.<ext>` using `curl -sSL -o ...`. Prefer local paths over URLs — URLs rot and Remotion render is offline.
+4. **If the step is a live product / site / dashboard and the surface itself is the claim**, open Playwright, capture the exact frame you need (login / navigate / wait / screenshot), save to `public/episodes/<series>/<asset-name>.png`.
+5. **If the step needs counter-examples / "bad" references** that plan did not source (common for A-vs-B hero visuals where one side must be the real-world bad pattern), run a targeted WebSearch image query and pick a usable result. Download it.
+
+**Last resort — placeholder:**
+
+6. **Only if a claim-bearing beat needs evidence the above three steps cannot find** — reserve a `PLACEHOLDER_<descriptive-name>.<ext>` filename to use later. Mark the step now in your session todos so you remember to set the `caption` field during Phase 3. Conceptual beats should never reach this step — generate the SVG instead.
 
 Record the resolved asset paths (or placeholder names) so Phase 3 can wire them into `ep.ts` directly.
 

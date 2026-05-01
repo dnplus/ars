@@ -500,7 +500,7 @@ export function buildSessionStartContext(root = process.cwd(), sessionId) {
   const messages = [];
 
   if (!config) {
-    messages.push('ARS: .ars/config.json not found. Run /ars:onboard or npx ars init <series> to initialize this repo.');
+    messages.push('ARS: .ars/config.json not found. Run `npx ars init <series>` in the terminal to initialize this repo, then re-launch with `ars` and run /ars:onboard.');
     return messages;
   }
 

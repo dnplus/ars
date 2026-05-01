@@ -90,7 +90,7 @@ These sections are read by `/ars:build` Phase 4 (Voice self-check) directly. Qua
 
 ## Card / Layout Heuristics
 
-- **Primary visual cards**: <e.g. "markdown > compare > mermaid">
+- **Primary visual cards**: <e.g. "markdown > image > mermaid">
 - **Reuse bias**: prefer existing series-scoped cards before creating new ones
 - `markdown` over `text` for most new content
 - Use specialized cards when they make the point clearer in one glance than a generic card would
@@ -144,9 +144,9 @@ Built-in AI cliché blacklist (applied when policy is "apply" or "extend"):
 
 ## Card Preferences (Authoring Heuristics)
 
-- **App-like content**: <mockApp > image > timeline / image > mockApp > timeline / mixed>
-- **Diagrams**: <mermaid > flowchart / flowchart > mermaid / mixed>
-- **`compare`**: <用得勤 / 用得省 / mixed>
+- **App-like content**: <image screenshot > generated UI SVG > markdown / generated UI SVG > image screenshot > markdown / mixed>
+- **Diagrams**: <mermaid > generated SVG image / generated SVG image > mermaid / mixed>
+- **A/B framing**: <用得勤 / 用得省 / mixed>
 
 ## Step Duration Cap
 

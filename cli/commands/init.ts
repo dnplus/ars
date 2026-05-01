@@ -86,7 +86,7 @@ export async function run(args: string[]) {
         console.log(`✅ Patched ${result.claudeMdPath}`);
       }
       if (result.installedSkills.length > 0) {
-        console.log(`✅ Installed ${result.installedSkills.length} ARS skills into .claude/skills/ars/`);
+        console.log(`✅ Installed ${result.installedSkills.length} ARS skills into .claude/skills/ars:<name>/`);
       }
       console.log(`✅ Wrote ${result.versionPath}`);
       if (result.usedDefaults) {
@@ -180,7 +180,7 @@ export async function run(args: string[]) {
       console.log(`✅ Patched ${result.claudeMdPath}`);
     }
     if (result.installedSkills.length > 0) {
-      console.log(`✅ Installed ${result.installedSkills.length} ARS skills into .claude/skills/ars/`);
+      console.log(`✅ Installed ${result.installedSkills.length} ARS skills into .claude/skills/ars:<name>/`);
     }
     console.log(`✅ Wrote ${result.versionPath}`);
     if (result.usedDefaults) {

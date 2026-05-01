@@ -222,7 +222,7 @@ function validateConfigSchema(
       id: 'config.active-series',
       status: 'warn',
       detail: 'project.activeSeries is not set.',
-      fixHint: 'Use /ars:onboard for guided onboarding or run npx ars init <series>.',
+      fixHint: 'Run `npx ars init <series>` to set the active series. /ars:onboard runs after init, not as a substitute.',
     });
     return;
   }

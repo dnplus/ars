@@ -31,7 +31,7 @@ async function main() {
       continue: true,
       hookSpecificOutput: {
         hookEventName: 'SessionStart',
-        additionalContext: 'ARS: .ars/config.json not found. Run /ars:onboard or npx ars init <series> to initialize this repo.',
+        additionalContext: 'ARS: .ars/config.json not found. Run `npx ars init <series>` in the terminal to initialize this repo, then re-launch with `ars` and run /ars:onboard.',
       },
     }));
     return;
@@ -71,7 +71,7 @@ async function main() {
   }
 
   if (!activeSeries) {
-    warnings.push('project.activeSeries is missing; run /ars:onboard or npx ars init <series>');
+    warnings.push('project.activeSeries is missing; run `npx ars init <series>` to set the active series before /ars:onboard');
   } else {
     const seriesConfigPath = path.join(root, 'src', 'episodes', activeSeries, 'series-config.ts');
     if (!fs.existsSync(seriesConfigPath)) {

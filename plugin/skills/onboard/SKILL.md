@@ -279,6 +279,8 @@ Instead:
 
 Stage name: `onboard-verify`
 
+Verify is a **report card, not a gate**. Onboard's job is "user has seen the demo, set their brand, and seen the environment health report" — not "the environment is fully wired for every downstream feature." Provider credentials (MiniMax, YouTube) are needed only at audio/publish time; we surface gaps now so the user knows, but we do not block onboarding completion on them.
+
 1. Write workstate with stage `onboard-verify`.
 2. Run:
 
@@ -286,36 +288,71 @@ Stage name: `onboard-verify`
 npx ars doctor
 ```
 
-3. Surface every `fail` result together with its `fixHint`.
-4. Especially flag:
-   - YouTube enabled but no auth
-   - MiniMax selected but no API key
+3. Classify the results into two buckets:
+
+   **Structural fails (block onboard completion)** — the repo itself is broken and downstream skills cannot run:
+   - `engine.*` (engine root / registry / template / Composition missing)
+   - `plugin.*` (plugin manifest / hooks / skills missing)
+   - `config.schema` failure
+   - `config.active-series` fail (activeSeries set but series-config.ts missing)
+   - `provider.speech-config` fail (speech.provider missing or invalid in series-config.ts)
+
+   **Provider gaps (do NOT block onboard completion)** — the env is healthy but a future feature is unwired:
+   - `provider.minimax` fail/warn (MiniMax enabled but missing API key / Group ID / voice)
+   - `provider.youtube-credentials` fail (YouTube enabled but missing OAuth env)
+   - `provider.audio-review` fail (review timing capability mismatch)
+
+4. If any structural fail is present, do NOT stamp `onboardedAt`. Show the failing items with their `fixHint` and stop. The user must repair the repo (usually `npx ars init <series> --force-engine` or `--force-config`) before re-running `/ars:onboard`.
+
+5. If only provider gaps are present (or everything passes), reframe the report. Do not paste raw doctor output. Group it into:
+   - `Series context`
+   - `Studio`
+   - `Audio / TTS`
+   - `YouTube publish`
+   - `Analytics`
+
+   For each non-pass item, say what is missing, why it matters, and the immediate next fix. Especially flag:
+   - YouTube enabled but no auth → user needs `npx ars auth youtube` before `/ars:publish-youtube`
+   - MiniMax enabled but no API key → user needs `MINIMAX_API_KEY` / `MINIMAX_GROUP_ID` in `.env` before `/ars:audio` or full `/ars:build` with audio
    - any non-MiniMax speech provider, because ARS beta audio support is MiniMax-only
-5. Keep the Studio tab open during verify. If the user leaves preview comments while verify is running, handle them before closing onboard.
-6. If all checks pass, run:
+
+6. **Conditional gating for explicitly-requested providers.** If the user actively opted in during `npx ars init` (i.e. `publish.youtube.enabled === true` in `.ars/config.json`, or `speech.enabled === true` in series-config.ts) AND that provider has a fail, ask before continuing:
+
+   ```text
+   你在 init 時開啟了 YouTube publishing / MiniMax audio，但目前還沒設好 credentials。
+   要先補設嗎？
+
+     1. 現在補設 — 我帶你跑 npx ars auth youtube / 設 .env，完成後再回來 verify
+     2. 先跳過 — 我會記下 onboard 已完成，你要用到時 doctor 會再提醒
+   ```
+
+   - Choice 1: stay in verify; coach the user through the credential setup; re-run `npx ars doctor`; once the explicit-opt-in provider passes, fall through to step 7.
+   - Choice 2: proceed to step 7. Do NOT toggle `publish.youtube.enabled` or `speech.enabled` back to false — leave the user's intent intact so doctor keeps reminding them later.
+
+   If the user did NOT opt in (default `none` / `disabled`), skip this prompt entirely. Provider gaps in that case are expected and not actionable now.
+
+7. Keep the Studio tab open during verify. If the user leaves preview comments while verify is running, handle them before closing onboard.
+
+8. Stamp completion:
 
 ```bash
 npx ars workstate clear --onboarded
 ```
 
-This clears the workstate and stamps `project.onboardedAt` in `.ars/config.json`.
+This clears the workstate and stamps `project.onboardedAt` in `.ars/config.json`. Run this regardless of whether provider gaps remain — onboarding is "demo seen + brand set + report delivered", not "every credential wired."
 
-7. Before the final handoff, run one last pending-intent drain. Then stop the background Studio intent monitor and stop the background `npx ars studio ...` process.
-8. In the completion handoff, explicitly tell the user that the onboard preview session is closed and the Studio tab can be closed.
-9. Suggest next steps:
-   - `/ars:plan <topic>`
-   - `/ars:build <epId>`
-10. Remind the user that `SERIES_GUIDE.md` is not locked: at any time they can directly tell the agent to change tone, banned phrases, card preferences, pacing, or other series rules in `SERIES_GUIDE.md`.
+9. Before the final handoff, run one last pending-intent drain. Then stop the background Studio intent monitor and stop the background `npx ars studio ...` process.
 
-Do not paste raw doctor output alone. Reframe it into:
+10. In the completion handoff:
+    - Explicitly tell the user the onboard preview session is closed and the Studio tab can be closed.
+    - If any provider gaps remain, restate the deferred items in one short list, with the exact command/file they need when the time comes (e.g. `MiniMax: add MINIMAX_API_KEY to .env before /ars:audio`). Frame these as deferred, not failures.
+    - Tell the user `npx ars doctor` is the way to re-check at any time.
 
-- `Series context`
-- `Studio`
-- `Audio / TTS`
-- `YouTube publish`
-- `Analytics`
+11. Suggest next steps:
+    - `/ars:plan <topic>`
+    - `/ars:build <epId>`
 
-For each failed item, say what is missing, why it matters, and the immediate next fix.
+12. Remind the user that `SERIES_GUIDE.md` is not locked: at any time they can directly tell the agent to change tone, banned phrases, card preferences, pacing, or other series rules in `SERIES_GUIDE.md`.
 
 ## Phase Boundaries
 

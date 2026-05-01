@@ -31,121 +31,106 @@ For normal narrated long-form episodes, one `ep.ts` step is usually a 30-60 seco
 |----------|----------|-------------|
 | `id` | ✅ | Unique step ID — used for audio filenames, must be stable |
 | `contentType` | ✅ | Card type (see below) |
-| `narration` | ❌ | TTS narration text |
-| `durationInSeconds` | ❌ | Placeholder duration; overwritten by audio generation |
+| `data` | ✅ | Card payload resolved by the `CardSpec` for this `contentType` |
+| `narration` | ✅ | TTS narration text |
+| `durationInSeconds` | ✅ | Placeholder duration; overwritten by audio generation |
 | `layoutMode` | ❌ | `'title-card'`(default) \| `'card-only'` \| `'fullscreen'` |
 | `title` | ❌ | Header title (title-card mode only) |
 | `description` | ❌ | Header subtitle |
 | `phase` | ❌ | Chapter label shown at top of screen |
-| `background` | ❌ | `'aurora'` \| `'none'` |
+| `background` | ❌ | `'default'` \| `'gradient-mesh'` \| `'aurora'` \| `'spotlight'` \| `'minimal'` |
 | `effect` | ❌ | `'fadeIn'`(default) \| `'none'` \| `'slideUp'` \| `'springIn'` \| `'blurIn'` \| `'scaleIn'` |
 | `effectConfig` | ❌ | `{ durationSec?, delaySec?, direction? }` |
 | `speech` | ❌ | Override TTS settings for this step, e.g. `{ voice, rate, pitch }` |
 
 ## contentType reference
 
+All card-specific fields live under `step.data`. Do not put legacy fields such as `cardContent`, `imageSrc`, or `summaryPoints` at the top level.
+
 ### `cover`
+`data`:
+
 | Property | Required | Description |
 |----------|----------|-------------|
+| `title` | ❌ | Override episode title on the cover |
+| `subtitle` | ❌ | Override episode subtitle on the cover |
+| `channelName` | ❌ | Override episode channel name |
+| `episodeTag` | ❌ | Override episode tag |
 | `animation` | ❌ | `'matrix'` \| `'none'` |
 
 ### `ticker`
+`data`:
+
 | Property | Required | Description |
 |----------|----------|-------------|
-| `cardContent` | ✅ | Ticker text (big display text) |
-| `tickerStyle` | ❌ | `'flash'`(default) \| `'kinetic'` |
+| `content` | ✅ | Ticker text (big display text) |
+| `title` | ❌ | Small heading above ticker text |
+| `scale` | ❌ | Numeric size multiplier |
+| `style` | ❌ | `'flash'`(default) \| `'kinetic'` |
 
 ### `markdown`
+`data`:
+
 | Property | Required | Description |
 |----------|----------|-------------|
-| `cardContent` | ✅ | Markdown string (bold, lists, tables, inline code) |
 | `cardTitle` | ❌ | Card header title |
+| `content` | ✅ | Markdown string (bold, lists, tables, inline code) |
+| `frame` | ❌ | `'mac'`(default) \| `'terminal'` \| `'browser'` \| `'simple'` \| `'none'` |
 
 ### `code`
+`data`:
+
 | Property | Required | Description |
 |----------|----------|-------------|
 | `code` | ✅ | Code string |
 | `language` | ❌ | Syntax highlight language |
-| `windowTitle` | ❌ | Terminal/editor title bar |
+| `title` | ❌ | Terminal/editor title bar |
+| `showLineNumbers` | ❌ | Show line numbers (default true) |
+| `frame` | ❌ | Window frame kind |
 
 ### `image`
+`data`:
+
 | Property | Required | Description |
 |----------|----------|-------------|
-| `imageSrc` | ✅ | Path relative to `public/` |
-| `imageTitle` | ❌ | Title above image |
-| `imageCaption` | ❌ | Caption below image |
+| `src` | ✅ | Path relative to `public/`, or absolute `/episodes/...`, `http...`, or `data:` |
+| `title` | ❌ | Title above image or window title when framed |
+| `caption` | ❌ | Placeholder caption; rendered only when `src` points to `PLACEHOLDER_...` |
+| `objectFit` | ❌ | `'contain'`(default) \| `'cover'` |
+| `frame` | ❌ | Optional window chrome; omit for fullscreen image |
+| `animate` | ❌ | Set `false` to skip image enter animation |
 
 ### `mermaid`
-| Property | Required | Description |
-|----------|----------|-------------|
-| `mermaidChart` | ✅ | Mermaid syntax string |
-| `mermaidTitle` | ❌ | Title above diagram |
+`data`:
 
-### `flowchart`
 | Property | Required | Description |
 |----------|----------|-------------|
-| `flowchartNodes` | ✅ | `{ id, label, icon? }[]` |
-| `flowchartEdges` | ✅ | `{ from, to, label? }[]` |
-| `flowchartDirection` | ❌ | `'TB'`(default) \| `'LR'` — use `'LR'` for 3+ layers |
-| `flowchartFocusOrder` | ❌ | `string[]` — node reveal sequence |
-| `cardTitle` | ❌ | Card header title |
-
-### `compare`
-| Property | Required | Description |
-|----------|----------|-------------|
-| `compareLeftItems` | ✅ | Left column bullet points `string[]` |
-| `compareRightItems` | ✅ | Right column bullet points `string[]` |
-| `compareLeftTitle` | ❌ | Left column heading (default: "Before") |
-| `compareRightTitle` | ❌ | Right column heading (default: "After") |
-| `compareLeftColor` | ❌ | Override left header color |
-| `compareRightColor` | ❌ | Override right header color |
-
-### `stats`
-| Property | Required | Description |
-|----------|----------|-------------|
-| `stats` | ✅ | `{ value, label, prefix?, suffix? }[]` — animated count-up |
-| `cardTitle` | ❌ | Card header title |
-
-### `timeline`
-| Property | Required | Description |
-|----------|----------|-------------|
-| `timelineItems` | ✅ | `{ title, description?, icon? }[]` |
-| `cardTitle` | ❌ | Card header title |
+| `chart` | ✅ | Mermaid syntax string |
+| `title` | ❌ | Window title above diagram |
+| `frame` | ❌ | Window frame kind |
 
 ### `summary`
-| Property | Required | Description |
-|----------|----------|-------------|
-| `summaryTitle` | ❌ | Summary heading |
-| `summaryPoints` | ❌ | Bullet points `string[]` (2–4, thesis not chapter list) |
-| `summaryCtaButtons` | ❌ | `{ label, icon? }[]` |
-| `summaryQrCodes` | ❌ | `{ url, title?, subtitle? }[]` |
+`data`:
 
-### `mockApp`
 | Property | Required | Description |
 |----------|----------|-------------|
-| `appDevice` | ✅ | `'desktop'` \| `'mobile'` |
-| `appType` | ✅ | `'chat'` \| `'terminal'` \| `'browser'` \| `'dashboard'` |
-| `appName` | ❌ | App/window name |
-| `appMessages` | chat | `{ role, text, pauseAfter? }[]` |
-| `terminalLines` | terminal | `{ type, text, pauseAfter? }[]` |
-| `terminalTitle` | terminal | Terminal window title |
-| `appUrl` | browser | URL shown in address bar |
-| `appImageSrc` | browser | Screenshot path (relative to `public/`). Run `npx ars episode bake <epId>` if only `appUrl` is set. |
-| `appBrowserMode` | ❌ | `'meta'` \| `'snapshot'` |
-| `chartType` / `chartData` | dashboard | Chart primitive |
-| `appInsight` | ❌ | Bottom takeaway callout |
-| `stats` | dashboard | Reuse stats array for KPI row |
+| `title` | ✅ | Summary heading |
+| `points` | ✅ | Bullet points `string[]` (2–4, thesis not chapter list) |
+| `cta` | ❌ | Single CTA text |
+| `ctaButtons` | ❌ | `(string \| { label: string; icon?: string })[]` |
+| `qrCodes` | ❌ | `{ url, title?, subtitle? }[]` |
+| `showCta` | ❌ | Whether CTA/QR section renders (default true) |
 
 ## Card selection guide
 
 | Situation | Use |
 |-----------|-----|
-| A vs B comparison | `compare` |
+| A vs B comparison | `markdown` table, or generated SVG `image` if visual contrast matters |
 | Flow / relationships | `mermaid` |
-| Step-by-step process with animation | `flowchart` with `flowchartFocusOrder` |
-| Sequence / layers / 3-5 big concepts | `timeline` |
-| Numbers / KPIs | `stats` |
-| App UI / chat / terminal / dashboard | `mockApp` |
+| Step-by-step process with animation | custom card, or `mermaid` if static reveal is enough |
+| Sequence / layers / 3-5 big concepts | `markdown` list/table, `mermaid`, or generated SVG `image` |
+| Numbers / KPIs | `markdown`, `ticker`, or generated SVG `image` |
+| App UI / chat / terminal / dashboard | `image` screenshot / generated UI SVG |
 | Code with syntax highlighting | `code` (always `card-only`) |
 | Impact moment / chapter transition | `ticker` |
 | General text / lists / tables | `markdown` |

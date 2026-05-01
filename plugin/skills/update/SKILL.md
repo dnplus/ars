@@ -13,7 +13,7 @@ Run `npx ars update` when any of these are true:
 
 - The user upgraded the npm package (`npm i agentic-remotion-studio@latest` or equivalent global install).
 - A new ARS release adds engine files, support files, skills, agents, or hook scripts that the repo does not have yet.
-- `npx ars doctor` reports the version metadata in `.ars/version.json` is stale relative to the installed runtime.
+- `npx ars doctor` reports the version metadata in `.ars/.ars-version.json` is stale relative to the installed runtime.
 - The user reports the engine, studio, or plugin skills feel out of sync with the current package.
 
 Do **not** run `update` to bootstrap a new repo. For first-time setup use `/ars:onboard` (interactive) or `npx ars init <series>` / `npx -y agentic-remotion-studio init <series>` (deterministic). `update` requires a repo that has already been initialized.
@@ -29,7 +29,7 @@ Do **not** run `update` to bootstrap a new repo. For first-time setup use `/ars:
 5. Syncs agents into `.claude/agents/`.
 6. Syncs hook scripts into `.ars/hooks/scripts/`.
 7. Patches `.claude/settings.json` so Claude Code picks up the synced hooks.
-8. Writes `.ars/version.json` with the runtime version, plugin version, config schema version, and detected install method.
+8. Writes `.ars/.ars-version.json` with the runtime version, plugin version, config schema version, and detected install method.
 
 It does **not** touch series content — `src/episodes/<series>/`, `public/episodes/<series>/`, `series-config.ts`, `SERIES_GUIDE.md`, and `.ars/config.json` are left alone (`src/episodes/template/` ships with ARS and is refreshed). The template public assets at `public/episodes/template/` are also refreshed.
 

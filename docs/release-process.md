@@ -48,7 +48,7 @@ Prereleases:
 Treat these as release-sensitive:
 
 - `ars init`, `ars update`, `ars studio`, `ars prepare`, `ars publish`
-- `.ars/config.json`, `.ars/version.json`, workstate, and Studio intent schemas
+- `.ars/config.json`, `.ars/.ars-version.json`, workstate, and Studio intent schemas
 - `src/engine/shared/types.ts`
 - card `spec.ts` and registry contracts
 - generated support files copied by `syncEngineFiles`
@@ -129,7 +129,7 @@ Use `ars update` for:
 
 - refreshing engine, Studio, skills, agents, hook scripts, and support files
 - normalizing old workstate or Studio intent data
-- writing `.ars/version.json`
+- writing `.ars/.ars-version.json`
 - printing rollback instructions for snapshotted assets
 
 Do not rely on release notes alone when a deterministic migration can be implemented safely.

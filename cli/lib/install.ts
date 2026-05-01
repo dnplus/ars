@@ -627,11 +627,11 @@ export function detectInstallMethod(
 }
 
 /**
- * Copy ARS plugin skills into the repo's .claude/skills/ars/ directory so that
+ * Copy ARS plugin skills into the repo's .claude/skills/ars:<name>/ directories so that
  * Claude Code can discover them without requiring --plugin-dir at launch time.
  *
  * Each skill lives at plugin/skills/<name>/SKILL.md and is copied to
- * .claude/skills/ars/<name>/SKILL.md in the target repo.
+ * .claude/skills/ars:<name>/SKILL.md in the target repo.
  *
  * Returns the list of skill names that were installed.
  */

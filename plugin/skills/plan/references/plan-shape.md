@@ -63,7 +63,11 @@ Column rules:
 - `Card` — card name only. Must come from `ars card list`, OR be prefixed `(NEW)` with a matching entry in `## New card`
 - `Notes` — one phrase of direction or constraint. No narration, no per-beat timings
 
-For abstract visual relationships that do not need a new runtime card, use `image` and say `generated SVG` in `Visual` or `Notes` (for example: prompt→result mock, before/after concept, input→output system sketch). Do this when markdown would become a wall of text; keep `markdown` for compact editable wording, simple tables, and exact lists.
+When the row picks `image`, **default conceptual / hero / brand visuals to a generated branded SVG asset** — say `generated SVG` in `Visual` or `Notes`. This is the first choice for `image`, not a fallback. Use SVG for prompt→result mocks, before/after concepts, input→output system sketches, hero conceptual visuals, branded diagrams, and any beat where a single memorable frame matters more than photographic accuracy.
+
+Pick a real screenshot, photo, or downloaded asset for `image` when the beat is **claim-bearing evidence** (the source must be the actual artifact — a real UI screenshot, a published chart, a primary-source document, a real-world photo). When the row is conceptual and already uses `image`, plan for SVG; the user can swap in a real screenshot during Studio review if they decide the actual artifact reads better.
+
+Do not choose `image` only because SVG is available. Keep `markdown` for compact editable wording, simple tables, exact lists, staged progression, and direct A/B framing. For static diagrams (architecture, sequence-of-concepts, layered relationships), default to `mermaid`; promote to `image` with generated SVG only when the diagram is a load-bearing hero/anchor frame or needs a visual metaphor. Use `mermaid` whenever Mermaid grammar is the point (sequenceDiagram / classDiagram / ER / gantt).
 
 If a cell needs more than one sentence, either trim it or drop that row out of the table and write it as a numbered block under the table — don't pack paragraphs into cells.
 

@@ -2,8 +2,8 @@
  * @command review
  * @deprecated Phase 1 turned `review` into a thin shim that forwards to
  *             `ars studio` (open) and `ars studio intent` (intent subcommands).
- *             `review close` is preserved verbatim — workstate stage handling
- *             is out of scope for the studio rename.
+ *             `review close` is preserved as a compatibility marker for
+ *             review → prepare handoff.
  */
 import { resolveEpisodeTarget } from '../lib/context';
 import { getRepoRoot } from '../lib/ars-config';
@@ -14,7 +14,7 @@ Usage: npx ars review <subcommand> [options]   (deprecated — use ars studio)
 Subcommands:
   open <epId>             → forwards to: ars studio <epId> --phase review
   intent <sub> ...        → forwards to: ars studio intent <sub> ...
-  close <epId>            Mark review as done and advance stage to audio
+  close <epId>            Mark review as done and hand off to prepare-youtube
 `;
 
 let warnedThisProcess = false;
@@ -69,5 +69,5 @@ async function closeReview(args: string[]): Promise<void> {
   }
 
   const { epId } = resolveEpisodeTarget(target, root);
-  console.log(`✅ Review closed for ${epId}. Stage advanced to audio.`);
+  console.log(`✅ Review closed for ${epId}. Next step: npx ars prepare youtube ${epId}.`);
 }

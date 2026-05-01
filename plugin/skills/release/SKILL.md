@@ -44,7 +44,7 @@ Also inspect:
    - `prerelease`: beta or release candidate, usually published with `--tag next`.
 4. Check whether `ars update` needs a migration:
    - generated support files changed
-   - `.ars/config.json`, workstate, Studio intent, or `.ars/version.json` shape changed
+   - `.ars/config.json`, workstate, Studio intent, or `.ars/.ars-version.json` shape changed
    - copied engine/Studio/skill/hook files need consumer repo refresh
 5. For merged contributor PRs, confirm the PR met `CONTRIBUTING.md` expectations or document the maintainer follow-up:
    - focused scope

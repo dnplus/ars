@@ -108,17 +108,17 @@ Then map the answer to the fields below. Ask at most 3 follow-up questions total
 These three questions set the default card ordering for `/ars:build`. The series guide overrides the defaults in `references/card-selection.md`. Use compact options:
 
 17. **App-like content priority** — when a segment is about a product surface, prefer:
-    - `mockApp > image > timeline` (default — product texture wins)
-    - `image > mockApp > timeline` (real screenshots preferred)
+    - `image screenshot > generated UI SVG > markdown` (default — truthfulness first)
+    - `generated UI SVG > image screenshot > markdown` (branded abstraction first)
     - `mixed / depends` (let build decide per segment)
 
 18. **Diagram default** — when showing static structure or process:
-    - `mermaid > flowchart` (default — static structure first, animation only when reveal matters)
-    - `flowchart > mermaid` (you favor the spring-animated reveals)
+    - `mermaid > generated SVG image` (default — editable structure first)
+    - `generated SVG image > mermaid` (you favor branded visual anchors)
     - `mixed / depends`
 
-19. **`compare` density** — for A vs B segments:
-    - 用得勤 (use compare aggressively for any 2-sided contrast)
+19. **A/B framing density** — for comparison segments:
+    - 用得勤 (use A/B markdown tables or visual contrast frames aggressively)
     - 用得省 (default — only true head-to-head; multi-column → markdown table)
     - `mixed`
 
