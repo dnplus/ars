@@ -50,6 +50,8 @@ type PinLayerProps = {
   epId: string;
   stepId: string;
   source?: StudioIntentSource['ui'];
+  sourceHash?: string;
+  placeholder?: string;
   scale: number;
   pins: CommittedPin[];
   /** When true, the whole layer becomes pointer-transparent so another overlay
@@ -71,6 +73,8 @@ export const PinLayer: React.FC<PinLayerProps> = ({
   epId,
   stepId,
   source = 'review',
+  sourceHash,
+  placeholder = '這一點想怎麼改？',
   scale,
   pins,
   disabled = false,
@@ -112,6 +116,7 @@ export const PinLayer: React.FC<PinLayerProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           from: source,
+          hash: sourceHash,
           series,
           epId,
           anchorType: 'step',
@@ -132,7 +137,7 @@ export const PinLayer: React.FC<PinLayerProps> = ({
     } finally {
       setSubmitting(false);
     }
-  }, [draft, series, epId, stepId, source]);
+  }, [draft, series, epId, stepId, source, sourceHash]);
 
   // Counter-scale pins so they stay a constant size on screen regardless of
   // canvas transform. Children pins are rendered at native 1:1 but multiplied
@@ -200,7 +205,7 @@ export const PinLayer: React.FC<PinLayerProps> = ({
                 if (e.key === 'Escape') setDraft(null);
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void commit();
               }}
-              placeholder="這一點想怎麼改？"
+              placeholder={placeholder}
             />
             <div className="studio-pin-popover-row">
               <select

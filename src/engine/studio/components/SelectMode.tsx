@@ -52,6 +52,8 @@ type SelectModeProps = {
   series: string;
   epId: string;
   source?: StudioIntentSource['ui'];
+  sourceHash?: string;
+  placeholder?: (label: string) => string;
 };
 
 type PickedElement = {
@@ -139,6 +141,8 @@ export const SelectMode: React.FC<SelectModeProps> = ({
   series,
   epId,
   source = 'review',
+  sourceHash,
+  placeholder,
 }) => {
   const [hover, setHover] = useState<PickedElement | null>(null);
   const [frozen, setFrozen] = useState<PickedElement | null>(null);
@@ -243,6 +247,7 @@ export const SelectMode: React.FC<SelectModeProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           from: source,
+          hash: sourceHash,
           series,
           epId,
           anchorType: 'step',
@@ -267,7 +272,7 @@ export const SelectMode: React.FC<SelectModeProps> = ({
     } finally {
       setSubmitting(false);
     }
-  }, [frozen, note, attachment, source, series, epId, stepId, onExit]);
+  }, [frozen, note, attachment, source, sourceHash, series, epId, stepId, onExit]);
 
   const handlePaste = useCallback((event: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const items = Array.from(event.clipboardData.items);
@@ -418,7 +423,7 @@ export const SelectMode: React.FC<SelectModeProps> = ({
               if (e.key === 'Escape') setFrozen(null);
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void commit();
             }}
-            placeholder={`對「${frozen.label}」留言… 可直接貼圖（⌘↵ 送出）`}
+            placeholder={placeholder ? placeholder(frozen.label) : `對「${frozen.label}」留言… 可直接貼圖（⌘↵ 送出）`}
           />
           {attachment && (
             <div className="studio-select-attachment">

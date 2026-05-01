@@ -38,6 +38,17 @@ export type EpisodeOption = {
   title: string;
 };
 
+type OnboardStatus = {
+  active: boolean;
+  stage?: 'onboard-walkthrough' | 'onboard-customize' | 'onboard-verify';
+  phaseLabel?: string;
+};
+
+type OnboardStatusResponse = {
+  ok: boolean;
+  status?: OnboardStatus;
+};
+
 type StudioShellProps = {
   episodes: Record<string, Episode>;
   episodeOptions: EpisodeOption[];
@@ -55,6 +66,7 @@ export const StudioShell: React.FC<StudioShellProps> = ({
   const [episodeId, setEpisodeId] = useState<string>(() => readEpisodeFromUrl(initialEpisodeId));
   const [buildOverlayOpen, setBuildOverlayOpen] = useState(false);
   const [planDirtyByEpisode, setPlanDirtyByEpisode] = useState<Record<string, boolean>>({});
+  const [onboardStatus, setOnboardStatus] = useState<OnboardStatus>({ active: false });
 
   useEffect(() => {
     const onPopState = () => {
@@ -109,9 +121,35 @@ export const StudioShell: React.FC<StudioShellProps> = ({
   }, []);
 
   const episode = episodes[episodeId] ?? null;
+  const onboardActive = onboardStatus.active;
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadOnboardStatus = async () => {
+      try {
+        const params = new URLSearchParams();
+        params.set('series', seriesId);
+        params.set('ep', episodeId);
+        const res = await fetch(`/__ars/onboard-status?${params.toString()}`);
+        const payload = (await res.json()) as OnboardStatusResponse;
+        if (!cancelled && res.ok && payload.status) {
+          setOnboardStatus(payload.status);
+        }
+      } catch {
+        if (!cancelled) setOnboardStatus({ active: false });
+      }
+    };
+
+    void loadOnboardStatus();
+    const timer = window.setInterval(() => void loadOnboardStatus(), 3000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [episodeId, seriesId]);
 
   let body: React.ReactNode;
-  if (phase === 'review') {
+  if (onboardActive || phase === 'review') {
     if (!episode) {
       body = (
         <EpisodeNotFound
@@ -167,18 +205,28 @@ export const StudioShell: React.FC<StudioShellProps> = ({
     <div className="studio-shell">
       <div className="studio-shell-tabs">
         <div style={{ display: 'flex', gap: 4 }}>
-          {KNOWN_PHASES.map((p) => (
+          {onboardActive ? (
             <button
-              key={p}
               type="button"
-              className={`studio-shell-tab${p === phase ? ' active' : ''}`}
-              onClick={() => switchPhase(p)}
+              className="studio-shell-tab active"
+              title={`Onboard ${onboardStatus.phaseLabel?.toLowerCase() ?? 'active'}`}
             >
-              {p}
+              Onboard
             </button>
-          ))}
+          ) : (
+            KNOWN_PHASES.map((p) => (
+              <button
+                key={p}
+                type="button"
+                className={`studio-shell-tab${p === phase ? ' active' : ''}`}
+                onClick={() => switchPhase(p)}
+              >
+                {p}
+              </button>
+            ))
+          )}
         </div>
-        {episodeOptions.length > 0 && (
+        {!onboardActive && episodeOptions.length > 0 && (
           <EpisodeSwitcher
             current={episodeId}
             options={episodeOptions}

@@ -477,10 +477,15 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
     }
     if (onboardStatus.active) {
       setStatusState('watching');
+      const modeHint = onboardStatus.stage === 'onboard-customize'
+        ? 'series defaults'
+        : onboardStatus.stage === 'onboard-walkthrough'
+          ? 'demo walkthrough'
+          : 'readiness check';
       setStatusDetail(
         `onboard ${onboardStatus.phaseLabel?.toLowerCase() ?? 'active'} · ${
           onboardStatus.sessionActive ? 'monitor active' : 'session reconnecting'
-        } · ${onboardStatus.pendingIntents} pending`,
+        } · ${modeHint} · ${onboardStatus.pendingIntents} pending`,
       );
       return;
     }
@@ -492,6 +497,7 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
     onboardStatus.pendingIntents,
     onboardStatus.phaseLabel,
     onboardStatus.sessionActive,
+    onboardStatus.stage,
   ]);
 
   // Applying flash: whenever a new fix-applied banner arrives, flip to
@@ -715,6 +721,22 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
       : audioCapability.enabled
         ? '為整集生成語音與字幕'
         : (audioCapability.reason ?? '目前無法生成音訊');
+  const onboardMode = onboardStatus.active;
+  const onboardSourceHash = onboardMode
+    ? `onboard:${onboardStatus.stage ?? 'active'}`
+    : undefined;
+  const intentSource = onboardMode ? 'onboard' : 'review';
+  const commentTitle = onboardMode
+    ? '留言調整系列視覺、語氣、VTuber、卡片偏好；若只修 demo 請明講'
+    : (selectModeActive ? '退出留言模式（Esc）' : '點擊畫面元素留言');
+  const pinPlaceholder = onboardMode
+    ? '調整系列預設、視覺、語氣或這張 demo？若只修 demo 請明講。'
+    : '這一點想怎麼改？';
+  const selectPlaceholder = (label: string) => (
+    onboardMode
+      ? `對「${label}」留言… 預設會當成系列設定；若只修 demo 請明講（⌘↵ 送出）`
+      : `對「${label}」留言… 可直接貼圖（⌘↵ 送出）`
+  );
 
   return (
     <ThemeProvider theme={theme}>
@@ -767,7 +789,9 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
                   series={fallbackSeries}
                   epId={fallbackEpId}
                   stepId={step.id}
-                  source="review"
+                  source={intentSource}
+                  sourceHash={onboardSourceHash}
+                  placeholder={pinPlaceholder}
                   scale={canvasOverlay?.scale ?? 1}
                   pins={pinsForStep}
                   disabled={selectModeActive}
@@ -861,7 +885,7 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
             <button
               className={`nav-btn${selectModeActive ? ' active' : ''}`}
               onClick={pauseAutoPlayForComment}
-              title={selectModeActive ? '退出留言模式（Esc）' : '點擊畫面元素留言'}
+              title={commentTitle}
               style={{ padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
               <span style={{ fontSize: 16, lineHeight: 1 }}>💬</span>
@@ -873,7 +897,7 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
             {/* Always openable: the modal surfaces capability problems in its
                 own preview so the user can see why they're blocked. Running
                 state is visually hinted via `active`. */}
-            {audioCapability.visible && (
+            {!onboardMode && audioCapability.visible && (
               <button
                 className={`nav-btn${audioJob.status === 'running' ? ' active' : ''}`}
                 onClick={() => setAudioModalOpen(true)}
@@ -882,7 +906,7 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
                 {audioButtonLabel}
               </button>
             )}
-            {publishCapability.visible && (
+            {!onboardMode && publishCapability.visible && (
               <button
                 className={`nav-btn${prepareModalOpen ? ' active' : ''}`}
                 onClick={() => setPrepareModalOpen(true)}
@@ -891,7 +915,7 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
                 📝 Prepare
               </button>
             )}
-            {publishCapability.visible && (
+            {!onboardMode && publishCapability.visible && (
               <button
                 className={`nav-btn${publishModalOpen ? ' active' : ''}`}
                 onClick={() => setPublishModalOpen(true)}
@@ -900,13 +924,15 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
                 🚀 Publish
               </button>
             )}
-            <button
-              className={`nav-btn${showStepEditor ? ' active' : ''}`}
-              onClick={() => setShowStepEditor((v) => !v)}
-              title="Step 編輯器"
-            >
-              ✎
-            </button>
+            {!onboardMode && (
+              <button
+                className={`nav-btn${showStepEditor ? ' active' : ''}`}
+                onClick={() => setShowStepEditor((v) => !v)}
+                title="Step 編輯器"
+              >
+                ✎
+              </button>
+            )}
             <button
               className={`nav-btn${showInfo ? ' active' : ''}`}
               onClick={() => setShowInfo((v) => !v)}
@@ -1000,9 +1026,11 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
           stepId={step.id}
           series={fallbackSeries}
           epId={fallbackEpId}
-          source="review"
+          source={intentSource}
+          sourceHash={onboardSourceHash}
+          placeholder={selectPlaceholder}
         />
-        {showStepEditor && sourceStep && (
+        {!onboardMode && showStepEditor && sourceStep && (
           <StepEditorPanel
             step={step}
             sourceStep={sourceStep}
@@ -1014,7 +1042,7 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
           />
         )}
       </div>
-      {audioCapability.visible && (
+      {!onboardMode && audioCapability.visible && (
         <AudioRunner
           open={audioModalOpen}
           onClose={() => setAudioModalOpen(false)}
@@ -1025,7 +1053,7 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
           currentStepAudioExists={audioExists}
         />
       )}
-      {publishCapability.visible && (
+      {!onboardMode && publishCapability.visible && (
         <PrepareRunner
           open={prepareModalOpen}
           onClose={() => setPrepareModalOpen(false)}
@@ -1034,7 +1062,7 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
           episodeYoutube={draftEpisode.metadata.youtube}
         />
       )}
-      {publishCapability.visible && (
+      {!onboardMode && publishCapability.visible && (
         <PublishRunner
           open={publishModalOpen}
           onClose={() => setPublishModalOpen(false)}

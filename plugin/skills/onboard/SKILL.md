@@ -136,24 +136,31 @@ When presenting the paths, explain the outcome of each one in one sentence.
 Before the interview begins, align Studio with the current series:
 
 - Tell the user to keep the Studio tab on `?series=<activeSeries>&ep=ep-demo&phase=review`.
-- During customize, treat Studio as the live preview surface. Ask the user to leave comments/feedback there if they want visual tweaks while branding changes are applied.
+- During customize, treat Studio as the live preview surface for series defaults. Tell the user comments on the demo are normally interpreted as brand/series-level requests (theme, typography, density, VTuber/assets, tone, title style, card preference, pacing). If they only want to patch the demo card/step, they should say "只修這張 demo" in the comment.
 - Confirm the Studio intent Monitor from Phase 1 is still running. If not, restart it immediately using `## Studio Intent Monitor` before asking customize questions.
 
 ## Studio Intent Monitor
 
-Whenever Studio is opened or reused during onboarding, register an event-driven watch over `.ars/studio-intents/` **using the `Monitor` tool**:
+Whenever Studio is opened or reused during onboarding, register an event-driven watch over `.ars/studio-intents/`.
+
+Claude Code agents should use the Claude Code `Monitor` tool around:
 
 ```bash
 npx ars studio intent watch
 ```
+
+Other agents (Codex, OpenCode, shell-only runners, or any environment without Claude Code's `Monitor` tool) must still keep an active intent watcher. Start `npx ars studio intent watch` as a long-running background/terminal process and react to each stdout line, or poll `npx ars studio intent list --pending --json` every few seconds if long-running process handling is unavailable. Preserve the same stage guard, routing, and resolution rules below; lack of the `Monitor` tool is not a reason to ignore Studio comments or ask the user to mention them in chat.
 
 Each stdout line is a notification. On every notification:
 
 1. Stage guard: check `.ars/state/workstate.json`. If the current stage is not `onboard-walkthrough`, `onboard-customize`, or `onboard-verify`, stop the Monitor cleanly.
 2. Run `npx ars studio intent list --pending --json`.
 3. For each pending intent targeting the active preview episode:
-   - If it is a step-scoped preview fix, delegate to `/ars:apply-review <intent.id>`.
-   - If it is a series-level branding/default request, patch the owning files directly (`series-config.ts`, `SERIES_GUIDE.md`, shared assets when needed), then resolve the intent with evidence.
+   - Treat intents with `source.ui === "onboard"` or `source.hash` starting with `onboard:` as onboarding feedback, not ordinary episode review.
+   - During `onboard-walkthrough`, do not patch files from Studio comments. Leave actionable comments pending and tell the user they will be handled in customize, unless the user explicitly asks to skip them.
+   - During `onboard-customize`, default Studio comments to series-level customization. Comments about color, typography, visual density, layout feel, VTuber/avatar/logo/assets, tone, narration style, title style, card preference, pacing, or recurring defaults should patch `series-config.ts`, `SERIES_GUIDE.md`, or shared assets directly, then resolve the intent with evidence.
+   - Only delegate to `/ars:apply-review <intent.id>` when the user explicitly says the issue is local to this demo card/step (for example "只修這張 demo") or the comment is clearly a factual/content bug in the demo episode.
+   - During `onboard-verify`, handle only blocker comments or final polish that prevents onboarding completion; otherwise resolve/defer with a clear summary.
 4. After any series-level change, tell the user to refresh the Studio tab and keep the monitor loop running.
 
 Monitor rules:

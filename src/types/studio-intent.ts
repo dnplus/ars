@@ -22,7 +22,7 @@ export interface StudioIntentTarget {
 }
 
 export interface StudioIntentSource {
-  ui: 'studio' | 'plan' | 'build' | 'review' | 'prepare';
+  ui: 'studio' | 'plan' | 'build' | 'review' | 'prepare' | 'onboard';
   hash?: string;
 }
 

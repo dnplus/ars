@@ -45,7 +45,7 @@ Intent subcommands:
   intent watch                            Stream new intent filenames to stdout (one per line)
 
 Intent create options:
-  --from <studio|plan|build|review|prepare>
+  --from <studio|plan|build|review|prepare|onboard>
   --series <series>
   --ep <epId>
   --anchor-type <step|card|markdown-section|plan|episode>
@@ -67,7 +67,7 @@ Intent resolve options:
   --validation <text>
 `;
 
-const SOURCE_UI_VALUES = new Set<StudioIntentSource['ui']>(['studio', 'plan', 'build', 'review', 'prepare']);
+const SOURCE_UI_VALUES = new Set<StudioIntentSource['ui']>(['studio', 'plan', 'build', 'review', 'prepare', 'onboard']);
 const ANCHOR_TYPE_VALUES = new Set<StudioIntentAnchorType>(['step', 'card', 'markdown-section', 'plan', 'episode']);
 const FEEDBACK_KIND_VALUES = new Set<StudioIntentFeedback['kind']>([
   'visual',

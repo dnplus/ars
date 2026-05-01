@@ -1297,8 +1297,8 @@ function sanitizePathToken(value: string): string {
   return normalized.replace(/^-|-$/g, '') || 'attachment';
 }
 
-function asStudioUi(value: unknown): 'studio' | 'plan' | 'build' | 'review' | 'prepare' {
-  if (value === 'studio' || value === 'plan' || value === 'build' || value === 'review' || value === 'prepare') {
+function asStudioUi(value: unknown): 'studio' | 'plan' | 'build' | 'review' | 'prepare' | 'onboard' {
+  if (value === 'studio' || value === 'plan' || value === 'build' || value === 'review' || value === 'prepare' || value === 'onboard') {
     return value;
   }
   if (value === 'slides') {
