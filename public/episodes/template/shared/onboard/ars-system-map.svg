@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <rect width="1920" height="1080" fill="#211d19"/>
+  <text x="130" y="132" fill="#f5f0e8" font-family="Noto Sans TC, Arial, sans-serif" font-size="64" font-weight="900">ARS 是 agentic 影片製作工作流</text>
+  <text x="130" y="202" fill="#d4b896" font-family="Noto Sans TC, Arial, sans-serif" font-size="40" font-weight="800">先做出你的自訂風格模板，之後反覆用 agent 產生影片</text>
+
+  <g font-family="Noto Sans TC, Arial, sans-serif">
+    <!-- custom template -->
+    <rect x="120" y="315" width="500" height="350" rx="36" fill="#2d2823" stroke="#d4b896" stroke-width="4"/>
+    <text x="170" y="395" fill="#d4b896" font-size="36" font-weight="900">你的風格模板</text>
+    <text x="170" y="470" fill="#f5f0e8" font-size="32" font-weight="850">SERIES_GUIDE.md</text>
+    <text x="170" y="523" fill="#f5f0e8" font-size="32" font-weight="850">series-config.ts</text>
+    <text x="170" y="576" fill="#f5f0e8" font-size="32" font-weight="850">視覺、語氣、VTuber</text>
+
+    <rect x="690" y="315" width="540" height="350" rx="36" fill="#f5f0e8"/>
+    <text x="750" y="395" fill="#211d19" font-size="36" font-weight="900">每一集交給 agent 跑</text>
+    <text x="750" y="470" fill="#3a3530" font-size="32" font-weight="850">plan → build → review</text>
+    <text x="750" y="523" fill="#3a3530" font-size="32" font-weight="850">把素材變成 Remotion steps</text>
+    <text x="750" y="576" fill="#3a3530" font-size="32" font-weight="850">Studio 留言後再 patch</text>
+
+    <rect x="1300" y="315" width="500" height="350" rx="36" fill="#2d2823" stroke="#d4b896" stroke-width="4"/>
+    <text x="1350" y="395" fill="#d4b896" font-size="36" font-weight="900">完整發佈鏈</text>
+    <text x="1350" y="470" fill="#f5f0e8" font-size="32" font-weight="850">audio / subtitles</text>
+    <text x="1350" y="523" fill="#f5f0e8" font-size="32" font-weight="850">YouTube metadata</text>
+    <text x="1350" y="576" fill="#f5f0e8" font-size="32" font-weight="850">publish / analytics 回流</text>
+
+    <rect x="250" y="765" width="1420" height="118" rx="30" fill="#0d0a08" stroke="#d4b896" stroke-width="4"/>
+    <text x="960" y="838" text-anchor="middle" fill="#f5f0e8" font-size="39" font-weight="900">重點：一次 onboard 建立模板，之後每支影片都沿用你的風格自動製作。</text>
+  </g>
+</svg>

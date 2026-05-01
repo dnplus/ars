@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <rect width="1920" height="1080" fill="#211d19"/>
+  <text x="130" y="132" fill="#f5f0e8" font-family="Noto Sans TC, Arial, sans-serif" font-size="64" font-weight="900">開始使用有三大步</text>
+  <text x="130" y="202" fill="#d4b896" font-family="Noto Sans TC, Arial, sans-serif" font-size="40" font-weight="800">先讓 Claude Code 跑得起來，再建立系列模板，最後反覆製作影片</text>
+
+  <g font-family="Noto Sans TC, Arial, sans-serif">
+    <rect x="120" y="325" width="500" height="390" rx="36" fill="#2d2823" stroke="#d4b896" stroke-width="4"/>
+    <text x="170" y="405" fill="#d4b896" font-size="32" font-weight="900">1 / 準備執行環境</text>
+    <text x="170" y="478" fill="#f5f0e8" font-size="54" font-weight="900">ars init</text>
+    <text x="170" y="560" fill="#f5f0e8" font-size="31" font-weight="800">讓 Claude Code</text>
+    <text x="170" y="615" fill="#f5f0e8" font-size="31" font-weight="800">可以在此專案執行 ARS</text>
+
+    <rect x="710" y="325" width="500" height="390" rx="36" fill="#f5f0e8"/>
+    <text x="760" y="405" fill="#9a6f3d" font-size="32" font-weight="900">2 / 建立系列模板</text>
+    <text x="760" y="478" fill="#211d19" font-size="54" font-weight="900">/ars:onboard</text>
+    <text x="760" y="560" fill="#3a3530" font-size="31" font-weight="800">用 demo 預覽風格</text>
+    <text x="760" y="615" fill="#3a3530" font-size="31" font-weight="800">調語氣、視覺、VTuber</text>
+
+    <rect x="1300" y="325" width="500" height="390" rx="36" fill="#2d2823" stroke="#d4b896" stroke-width="4"/>
+    <text x="1350" y="405" fill="#d4b896" font-size="32" font-weight="900">3 / 重複製作影片</text>
+    <text x="1350" y="478" fill="#f5f0e8" font-size="54" font-weight="900">episode loop</text>
+    <text x="1350" y="560" fill="#f5f0e8" font-size="31" font-weight="800">plan / build / review</text>
+    <text x="1350" y="615" fill="#f5f0e8" font-size="31" font-weight="800">audio / YouTube / analytics</text>
+  </g>
+
+  <rect x="642" y="513" width="42" height="14" rx="7" fill="#d4b896"/>
+  <polygon points="684,488 724,520 684,552" fill="#d4b896"/>
+  <rect x="1218" y="513" width="42" height="14" rx="7" fill="#d4b896"/>
+  <polygon points="1260,488 1300,520 1260,552" fill="#d4b896"/>
+
+</svg>

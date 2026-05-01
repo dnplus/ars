@@ -16,7 +16,6 @@ describe('plugin skill surface', () => {
       'plan',
       'build',
       'apply-review',
-      'polish',
       'reflect',
       'review',
       'new-card',

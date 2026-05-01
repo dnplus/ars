@@ -122,7 +122,7 @@ Stage name: `onboard-customize`
 2. Read `.ars/config.json` and resolve `project.activeSeries`.
 3. Brief the user before asking any questions. Keep it to 4-6 bullets and say this phase will:
    - tune `series-config.ts` for visible defaults such as channel name, tone, colors, layout bias, and VTuber/image settings
-   - create or update `SERIES_GUIDE.md`, which future `/ars:plan`, `/ars:build`, `/ars:polish`, and `/ars:reflect` runs will read
+   - create or update `SERIES_GUIDE.md`, which future `/ars:plan`, `/ars:build`, Studio review fixes, and `/ars:reflect` runs will read
    - keep `ep-demo` as the preview surface so they can see the style evolve in Studio
    - avoid production/publish setup; YouTube and TTS were already handled by `ars init` and can be revisited later
    - take the short path by default, with an optional deeper voice/card-preference pass at the end
@@ -160,7 +160,7 @@ Each stdout line is a notification. On every notification:
    - During `onboard-walkthrough`, do not patch files from Studio comments. Leave actionable comments pending and tell the user they will be handled in customize, unless the user explicitly asks to skip them.
    - During `onboard-customize`, default Studio comments to series-level customization. Comments about color, typography, visual density, layout feel, VTuber/avatar/logo/assets, tone, narration style, title style, card preference, pacing, or recurring defaults should patch `series-config.ts`, `SERIES_GUIDE.md`, or shared assets directly, then resolve the intent with evidence.
    - Only delegate to `/ars:apply-review <intent.id>` when the user explicitly says the issue is local to this demo card/step (for example "只修這張 demo") or the comment is clearly a factual/content bug in the demo episode.
-   - During `onboard-verify`, handle only blocker comments or final polish that prevents onboarding completion; otherwise resolve/defer with a clear summary.
+   - During `onboard-verify`, handle only blocker comments or final review fixes that prevent onboarding completion; otherwise resolve/defer with a clear summary.
 4. After any series-level change, tell the user to refresh the Studio tab and keep the monitor loop running.
 
 Monitor rules:

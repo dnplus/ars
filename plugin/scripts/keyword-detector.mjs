@@ -63,17 +63,6 @@ const TRIGGER_RULES = [
   },
   {
     patterns: [
-      /\bars:polish\b/,
-      /\bscene polish\b/,
-      /\bpolish episode\b/,
-      /潤稿這集/,
-      /精修這集/,
-    ],
-    suggestion:
-      'ARS: Detected polish intent. Use /ars:polish <epId> and limit changes to tier B refinements only.',
-  },
-  {
-    patterns: [
       /\bars:apply-review\b/,
       /\bscene fix\b/,
       /\bapply review\b/,

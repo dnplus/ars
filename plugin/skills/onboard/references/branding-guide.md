@@ -11,7 +11,7 @@ Channel name, YouTube publishing, and layout are already handled by `npx ars ini
 
 ## Interview Rules
 
-Brief the user before asking questions. Say customize will tune visible defaults and write `SERIES_GUIDE.md`, which future plan/build/polish/reflect runs will read.
+Brief the user before asking questions. Say customize will tune visible defaults and write `SERIES_GUIDE.md`, which future plan/build/review-fix/reflect runs will read.
 
 Prefer free-form answers over a rigid questionnaire. Ask one broad prompt first. Wait for the user's reply, extract as much as possible, then ask targeted follow-ups only for missing fields that would otherwise force invention.
 

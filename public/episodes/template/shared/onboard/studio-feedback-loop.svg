@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <rect width="1920" height="1080" fill="#211d19"/>
+  <text x="130" y="132" fill="#f5f0e8" font-family="Noto Sans TC, Arial, sans-serif" font-size="64" font-weight="900">Studio 留言會變成修改意圖</text>
+  <text x="130" y="202" fill="#d4b896" font-family="Noto Sans TC, Arial, sans-serif" font-size="40" font-weight="800">不是單純聊天，而是寫入一個 agent 會監控的 intent 目錄</text>
+
+  <g font-family="Noto Sans TC, Arial, sans-serif">
+    <!-- Studio mock -->
+    <rect x="120" y="320" width="470" height="430" rx="34" fill="#0d0a08" stroke="#d4b896" stroke-width="4"/>
+    <rect x="120" y="320" width="470" height="68" rx="34" fill="#2d2823"/>
+    <circle cx="168" cy="354" r="11" fill="#ef4444"/>
+    <circle cx="204" cy="354" r="11" fill="#fbbf24"/>
+    <circle cx="240" cy="354" r="11" fill="#22c55e"/>
+    <text x="285" y="365" fill="#a39b91" font-family="JetBrains Mono, monospace" font-size="22">Studio</text>
+    <rect x="170" y="455" width="170" height="150" rx="20" fill="#f5f0e8"/>
+    <text x="255" y="540" text-anchor="middle" fill="#211d19" font-size="31" font-weight="900">Preview</text>
+    <rect x="375" y="455" width="150" height="56" rx="15" fill="#d4b896"/>
+    <text x="450" y="493" text-anchor="middle" fill="#211d19" font-size="25" font-weight="900">留言</text>
+    <rect x="375" y="535" width="150" height="92" rx="18" fill="#2d2823" stroke="#d4b896" stroke-width="3"/>
+    <text x="397" y="575" fill="#f5f0e8" font-size="22" font-weight="800">想更像...</text>
+    <text x="397" y="608" fill="#a39b91" font-size="20">onboard</text>
+    <text x="170" y="695" fill="#f5f0e8" font-size="32" font-weight="900">畫面上的回饋</text>
+
+    <!-- Intent file -->
+    <rect x="720" y="320" width="480" height="430" rx="34" fill="#f5f0e8"/>
+    <text x="780" y="405" fill="#211d19" font-size="36" font-weight="900">寫入 StudioIntent</text>
+    <rect x="780" y="455" width="360" height="70" rx="14" fill="#2d2823"/>
+    <text x="810" y="501" fill="#d4b896" font-family="JetBrains Mono, monospace" font-size="25" font-weight="900">.ars/studio-intents/</text>
+    <text x="780" y="585" fill="#3a3530" font-size="29" font-weight="850">包含 target、message</text>
+    <text x="780" y="638" fill="#3a3530" font-size="29" font-weight="850">以及 source.ui = onboard</text>
+
+    <!-- Agent watcher -->
+    <rect x="1330" y="320" width="470" height="430" rx="34" fill="#2d2823" stroke="#d4b896" stroke-width="4"/>
+    <text x="1390" y="405" fill="#d4b896" font-size="36" font-weight="900">Agent 監控 intent</text>
+    <text x="1390" y="485" fill="#f5f0e8" font-size="31" font-weight="850">watch / polling</text>
+    <text x="1390" y="538" fill="#f5f0e8" font-size="31" font-weight="850">讀 pending intents</text>
+    <text x="1390" y="591" fill="#f5f0e8" font-size="31" font-weight="850">修改檔案後 resolve</text>
+    <rect x="1390" y="640" width="300" height="68" rx="18" fill="#d4b896"/>
+    <text x="1540" y="685" text-anchor="middle" fill="#211d19" font-size="28" font-weight="900">refresh Studio</text>
+  </g>
+
+  <!-- stable arrows -->
+  <rect x="620" y="520" width="68" height="14" rx="7" fill="#d4b896"/>
+  <polygon points="688,492 728,527 688,562" fill="#d4b896"/>
+  <rect x="1232" y="520" width="68" height="14" rx="7" fill="#d4b896"/>
+  <polygon points="1300,492 1340,527 1300,562" fill="#d4b896"/>
+</svg>
