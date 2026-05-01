@@ -457,3 +457,241 @@ export function rowsToObjects(
     return obj;
   });
 }
+
+// ── Data API: Search Videos ──
+
+export interface SearchOptions {
+  q: string;
+  maxResults?: number;        // 1–50, default 20
+  order?: 'relevance' | 'viewCount' | 'date' | 'rating';
+  regionCode?: string;        // e.g. 'TW'
+  relevanceLanguage?: string; // e.g. 'zh-Hant'
+  videoDuration?: 'any' | 'short' | 'medium' | 'long';
+  publishedAfter?: string;    // ISO 8601, e.g. '2025-01-01T00:00:00Z'
+}
+
+export interface SearchResult {
+  videoId: string;
+  title: string;
+  description: string;
+  channelId: string;
+  channelTitle: string;
+  publishedAt: string;
+  thumbnailUrl: string;
+}
+
+export async function searchVideos(
+  creds: YouTubeCredentials,
+  options: SearchOptions,
+  fresh = false,
+): Promise<SearchResult[]> {
+  const ck = cacheKey('search', options as unknown as Record<string, string | number | undefined>);
+  if (!fresh) {
+    const cached = readCache<SearchResult[]>(ck);
+    if (cached) return cached;
+  }
+
+  const token = await getAccessToken(creds);
+  const url = new URL(`${DATA_API_BASE}/search`);
+  url.searchParams.set('part', 'snippet');
+  url.searchParams.set('type', 'video');
+  url.searchParams.set('q', options.q);
+  url.searchParams.set('maxResults', String(Math.min(options.maxResults ?? 20, 50)));
+  if (options.order) url.searchParams.set('order', options.order);
+  if (options.regionCode) url.searchParams.set('regionCode', options.regionCode);
+  if (options.relevanceLanguage) url.searchParams.set('relevanceLanguage', options.relevanceLanguage);
+  if (options.videoDuration) url.searchParams.set('videoDuration', options.videoDuration);
+  if (options.publishedAfter) url.searchParams.set('publishedAfter', options.publishedAfter);
+
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    const errBody = await res.text();
+    throw new Error(`Data API search error (${res.status}): ${errBody}`);
+  }
+
+  const data = (await res.json()) as {
+    items: Array<{
+      id: { videoId: string };
+      snippet: {
+        title: string;
+        description: string;
+        channelId: string;
+        channelTitle: string;
+        publishedAt: string;
+        thumbnails?: { medium?: { url: string } };
+      };
+    }>;
+  };
+
+  const results: SearchResult[] = (data.items ?? []).map((item) => ({
+    videoId: item.id.videoId,
+    title: item.snippet.title,
+    description: item.snippet.description,
+    channelId: item.snippet.channelId,
+    channelTitle: item.snippet.channelTitle,
+    publishedAt: item.snippet.publishedAt,
+    thumbnailUrl: item.snippet.thumbnails?.medium?.url ?? '',
+  }));
+
+  writeCache(ck, results);
+  return results;
+}
+
+// ── Data API: Channel Videos ──
+
+export interface ChannelVideosOptions {
+  channelId: string;
+  maxResults?: number;  // 1–50, default 30
+  order?: 'viewCount' | 'date' | 'relevance' | 'rating';
+  publishedAfter?: string;
+}
+
+export async function getChannelVideos(
+  creds: YouTubeCredentials,
+  options: ChannelVideosOptions,
+  fresh = false,
+): Promise<SearchResult[]> {
+  const ck = cacheKey('chvideos', options as unknown as Record<string, string | number | undefined>);
+  if (!fresh) {
+    const cached = readCache<SearchResult[]>(ck);
+    if (cached) return cached;
+  }
+
+  const token = await getAccessToken(creds);
+
+  // Step 1: resolve uploads playlist ID (channelId UC... → UU...)
+  // This is more reliable than search.list?channelId which often returns 0 results
+  const chUrl = new URL(`${DATA_API_BASE}/channels`);
+  chUrl.searchParams.set('part', 'contentDetails,snippet');
+  chUrl.searchParams.set('id', options.channelId);
+  const chRes = await fetch(chUrl.toString(), { headers: { Authorization: `Bearer ${token}` } });
+  if (!chRes.ok) throw new Error(`channels.list error (${chRes.status})`);
+  const chData = (await chRes.json()) as {
+    items: Array<{
+      snippet: { title: string };
+      contentDetails: { relatedPlaylists: { uploads: string } };
+    }>;
+  };
+  const uploadsPlaylistId = chData.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
+  if (!uploadsPlaylistId) throw new Error(`No uploads playlist found for channel ${options.channelId}`);
+
+  // Step 2: fetch video IDs from the uploads playlist
+  const maxResults = Math.min(options.maxResults ?? 30, 50);
+  const plUrl = new URL(`${DATA_API_BASE}/playlistItems`);
+  plUrl.searchParams.set('part', 'snippet,contentDetails');
+  plUrl.searchParams.set('playlistId', uploadsPlaylistId);
+  plUrl.searchParams.set('maxResults', String(maxResults));
+  const plRes = await fetch(plUrl.toString(), { headers: { Authorization: `Bearer ${token}` } });
+  if (!plRes.ok) {
+    const errBody = await plRes.text();
+    throw new Error(`playlistItems.list error (${plRes.status}): ${errBody}`);
+  }
+  const plData = (await plRes.json()) as {
+    items: Array<{
+      snippet: {
+        title: string;
+        description: string;
+        channelId: string;
+        channelTitle: string;
+        publishedAt: string;
+        thumbnails?: { medium?: { url: string } };
+      };
+      contentDetails: { videoId: string; videoPublishedAt?: string };
+    }>;
+  };
+
+  let items = plData.items ?? [];
+
+  // Filter by publishedAfter if requested
+  if (options.publishedAfter) {
+    const cutoff = new Date(options.publishedAfter).getTime();
+    items = items.filter((item) => {
+      const pub = item.contentDetails.videoPublishedAt ?? item.snippet.publishedAt;
+      return new Date(pub).getTime() >= cutoff;
+    });
+  }
+
+  const results: SearchResult[] = items.map((item) => ({
+    videoId: item.contentDetails.videoId,
+    title: item.snippet.title,
+    description: item.snippet.description,
+    channelId: item.snippet.channelId,
+    channelTitle: item.snippet.channelTitle,
+    publishedAt: item.contentDetails.videoPublishedAt ?? item.snippet.publishedAt,
+    thumbnailUrl: item.snippet.thumbnails?.medium?.url ?? '',
+  }));
+
+  writeCache(ck, results);
+  return results;
+}
+
+// ── Transcript (youtube-transcript) ──
+
+export interface TranscriptSegment {
+  text: string;
+  start: number;    // seconds
+  duration: number; // seconds
+  lang: string;
+}
+
+export interface TranscriptResult {
+  videoId: string;
+  lang: string;
+  segments: TranscriptSegment[];
+  text: string;
+}
+
+export async function fetchTranscript(
+  videoId: string,
+  preferredLangs: string[] = ['zh-Hant', 'zh-TW', 'zh', 'zh-Hans', 'en'],
+): Promise<TranscriptResult | { error: string }> {
+  const ck = cacheKey('transcript', { videoId, langs: preferredLangs.join(',') });
+  const cached = readCache<TranscriptResult | { error: string }>(ck);
+  if (cached) return cached;
+
+  try {
+    const { YoutubeTranscript } = await import('youtube-transcript');
+    let segments: TranscriptSegment[] = [];
+    let usedLang = 'unknown';
+
+    for (const lang of preferredLangs) {
+      try {
+        const raw = await YoutubeTranscript.fetchTranscript(videoId, { lang });
+        if (raw && raw.length > 0) {
+          segments = raw.map((s) => ({
+            text: s.text,
+            start: Math.round(s.offset / 10) / 100,      // ms → s
+            duration: Math.round(s.duration / 10) / 100,
+            lang: s.lang ?? lang,
+          }));
+          usedLang = raw[0]?.lang ?? lang;
+          break;
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    if (segments.length === 0) {
+      const result = { error: 'no_transcript_found' };
+      writeCache(ck, result);
+      return result;
+    }
+
+    const result: TranscriptResult = {
+      videoId,
+      lang: usedLang,
+      segments,
+      text: segments.map((s) => s.text.replace(/\n/g, ' ')).join(' '),
+    };
+    writeCache(ck, result);
+    return result;
+  } catch (e) {
+    const result = { error: String(e) };
+    writeCache(ck, result);
+    return result;
+  }
+}

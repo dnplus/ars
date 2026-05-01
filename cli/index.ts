@@ -20,6 +20,7 @@ const KNOWN_COMMANDS = new Set([
   'audio',
   'auth',
   'card',
+  'competitor',
   'doctor',
   'episode',
   'export',
@@ -65,6 +66,7 @@ Commands:
   upload <subcommand> [...]        Upload to YouTube
   workstate <subcommand> [...]     Read or write workstate stage
   analytics <subcommand> [...]     Query YouTube analytics (JSON snapshot for tooling)
+  competitor <subcommand> [...]    Search YouTube for competitor/topic videos with enriched stats
 
 Root options:
   -h, --help                       Show root help
@@ -77,6 +79,8 @@ async function loadCommandModule(command: string): Promise<CommandModule> {
       return import('./commands/analytics');
     case 'audio':
       return import('./commands/audio');
+    case 'competitor':
+      return import('./commands/competitor');
     case 'auth':
       return import('./commands/auth');
     case 'config':
