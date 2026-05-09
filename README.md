@@ -41,6 +41,7 @@ ars doctor            # 檢查環境、credentials、檔案結構
 ## 可選 credentials
 
 - **MiniMax TTS**：`MINIMAX_API_KEY`、`MINIMAX_GROUP_ID` 寫進 `.env`
+- **VoxCPM TTS**（自架，Apache-2.0）：自己跑一個 OpenAI 相容 server（例：`vllm serve openbmb/VoxCPM2 --omni --port 8000`），把 `VOXCPM_API_BASE` 寫進 `.env`。沒有 native subtitle timing，要在 `series-config.ts` 把 `reviewRequiresNativeTiming` 設成 `false`
 - **YouTube 上傳**：`ars auth youtube` 走 OAuth
 
 兩個都不設也能跑 demo，只是不會有語音、不能上傳。

@@ -411,6 +411,20 @@ function validateProviders(
         detail: 'ElevenLabs is configured but adapter is not implemented yet.',
         fixHint: 'Switch SERIES_CONFIG.speech.provider back to minimax for now.',
       });
+    } else if (speechConfig.provider === 'voxcpm') {
+      const envApiBase = process.env.VOXCPM_API_BASE?.trim();
+      const apiBase = envApiBase || speechConfig.voxcpmApiBase || '';
+      const ok = !!apiBase;
+      results.push({
+        id: 'provider.voxcpm',
+        status: ok ? 'pass' : 'fail',
+        detail: ok
+          ? `VoxCPM endpoint configured (${apiBase}).`
+          : 'VoxCPM enabled but no API base URL configured.',
+        fixHint: ok
+          ? undefined
+          : 'Set VOXCPM_API_BASE in .env (e.g. http://localhost:8000/v1) or speech.providerOptions.voxcpm.apiBase in series-config.ts. Run an OpenAI-compatible VoxCPM server such as vLLM-Omni: `vllm serve openbmb/VoxCPM2 --omni --port 8000`.',
+      });
     } else {
       const hasApiKey = !!process.env.MINIMAX_API_KEY;
       const hasGroupId = !!process.env.MINIMAX_GROUP_ID;
@@ -518,6 +532,7 @@ function readSeriesSpeechSummary(root: string, series: string): {
   provider: SpeechProviderId | null;
   hasDefaultVoice: boolean;
   reviewRequiresNativeTiming: boolean;
+  voxcpmApiBase: string | null;
 } {
   const seriesConfigPath = path.join(root, 'src', 'episodes', series, 'series-config.ts');
   if (!fs.existsSync(seriesConfigPath)) {
@@ -526,19 +541,22 @@ function readSeriesSpeechSummary(root: string, series: string): {
       provider: null,
       hasDefaultVoice: false,
       reviewRequiresNativeTiming: true,
+      voxcpmApiBase: null,
     };
   }
 
   try {
     const content = fs.readFileSync(seriesConfigPath, 'utf-8');
     const enabledMatch = content.match(/speech:\s*{[\s\S]*?enabled:\s*(true|false)/);
-    const providerMatch = content.match(/speech:\s*{[\s\S]*?provider:\s*['"](minimax|elevenlabs)['"]/);
+    const providerMatch = content.match(/speech:\s*{[\s\S]*?provider:\s*['"](minimax|elevenlabs|voxcpm)['"]/);
     const reviewMatch = content.match(/speech:\s*{[\s\S]*?reviewRequiresNativeTiming:\s*(true|false)/);
+    const voxcpmApiBaseMatch = content.match(/voxcpm:\s*{[\s\S]*?apiBase:\s*['"]([^'"]+)['"]/);
     return {
       enabled: enabledMatch?.[1] !== 'false',
       provider: (providerMatch?.[1] as SpeechProviderId | undefined) ?? null,
       hasDefaultVoice: /voice:\s*['"][^'"]+['"]/.test(content),
       reviewRequiresNativeTiming: reviewMatch?.[1] !== 'false',
+      voxcpmApiBase: voxcpmApiBaseMatch?.[1] ?? null,
     };
   } catch {
     return {
@@ -546,6 +564,7 @@ function readSeriesSpeechSummary(root: string, series: string): {
       provider: null,
       hasDefaultVoice: false,
       reviewRequiresNativeTiming: true,
+      voxcpmApiBase: null,
     };
   }
 }

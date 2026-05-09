@@ -1,8 +1,10 @@
 import type { SpeechProviderId } from '../../engine/shared/types';
 import type { ITTSAdapter, TTSProviderCapabilities } from '../types';
 import { MiniMaxTTSAdapter } from './minimax';
+import { VoxCpmTTSAdapter } from './voxcpm';
 
 const MINIMAX_ADAPTER = new MiniMaxTTSAdapter();
+const VOXCPM_ADAPTER = new VoxCpmTTSAdapter();
 
 const ELEVENLABS_CAPABILITIES: TTSProviderCapabilities = {
   syncSynthesis: true,
@@ -18,6 +20,8 @@ export function createTTSAdapter(providerId: SpeechProviderId): ITTSAdapter {
   switch (providerId) {
     case 'minimax':
       return MINIMAX_ADAPTER;
+    case 'voxcpm':
+      return VOXCPM_ADAPTER;
     case 'elevenlabs':
       throw new Error('TTS provider "elevenlabs" is configured but adapter is not implemented yet.');
     default:
@@ -29,6 +33,8 @@ export function getTTSProviderCapabilities(providerId: SpeechProviderId): TTSPro
   switch (providerId) {
     case 'minimax':
       return MINIMAX_ADAPTER.getCapabilities();
+    case 'voxcpm':
+      return VOXCPM_ADAPTER.getCapabilities();
     case 'elevenlabs':
       return ELEVENLABS_CAPABILITIES;
     default:

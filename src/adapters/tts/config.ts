@@ -28,6 +28,10 @@ export function mergeSpeechSpecs(
           ...merged.providerOptions?.elevenlabs,
           ...spec.providerOptions?.elevenlabs,
         },
+        voxcpm: {
+          ...merged.providerOptions?.voxcpm,
+          ...spec.providerOptions?.voxcpm,
+        },
       },
     };
   }, {});

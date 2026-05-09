@@ -1,6 +1,6 @@
 ---
 name: ars:audio
-description: Usage guide for generating MiniMax TTS audio and subtitles for an episode.
+description: Usage guide for generating TTS audio (MiniMax or VoxCPM) and subtitles for an episode.
 argument-hint: "[epId] [--steps <id1,id2,...>] [--step <id>] [--speed <0.5-2.0>] [--no-subtitle]"
 model: claude-haiku-4-5-20251001
 effort: low
@@ -10,7 +10,7 @@ Audio is not a standalone workflow stage in ARS. It happens inside the review ph
 
 Use this skill as an execution guide for TTS audio generation and subtitle refresh on the target episode.
 The provider is resolved from `src/episodes/<activeSeries>/series-config.ts` via `SERIES_CONFIG.speech.provider`.
-ARS beta currently supports MiniMax only.
+ARS supports `minimax` (hosted, native subtitle timing) and `voxcpm` (self-hosted via an OpenAI-compatible server like vLLM-Omni; no native subtitle timing).
 
 ## Command
 
@@ -27,8 +27,10 @@ npx ars audio generate <epId> [options]
 - If no epId is provided, infer it from recent context or ask.
 - Run the command in the background so the review flow stays responsive.
 - When the command completes, report: how many steps succeeded/failed, total audio duration, and whether subtitles were updated.
-- If `SERIES_CONFIG.speech.provider` is not `minimax`, stop and tell the user ARS beta currently supports MiniMax only.
-- If `MINIMAX_API_KEY` or `MINIMAX_GROUP_ID` is missing, tell the user to add them to `.env` and stop.
+- If `SERIES_CONFIG.speech.provider` is `minimax` and `MINIMAX_API_KEY` or `MINIMAX_GROUP_ID` is missing, tell the user to add them to `.env` and stop.
+- If `SERIES_CONFIG.speech.provider` is `voxcpm` and `VOXCPM_API_BASE` is missing (and `speech.providerOptions.voxcpm.apiBase` is not set), tell the user to point it at a running OpenAI-compatible VoxCPM server (e.g. `vllm serve openbmb/VoxCPM2 --omni --port 8000`) and stop.
+- For `voxcpm`, also pass `--no-subtitle` because the provider does not return native timing. The skill must NOT try to merge subtitles for VoxCPM runs.
+- If `SERIES_CONFIG.speech.provider` is anything else (e.g. `elevenlabs`), stop and tell the user the adapter is not implemented yet.
 
 ## Post-generation validation (MANDATORY)
 

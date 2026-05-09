@@ -19,7 +19,7 @@ import type { StreamingLayoutConfig } from "../layouts/StreamingLayout";
 import type { StepEffect, EffectConfig } from "./effects/CardEffect";
 import type { Theme } from "./theme";
 
-export type SpeechProviderId = "minimax" | "elevenlabs";
+export type SpeechProviderId = "minimax" | "elevenlabs" | "voxcpm";
 
 export type SpeechAudioFormat = "mp3" | "wav" | "pcm" | "flac" | "ogg_opus";
 
@@ -48,6 +48,18 @@ export type SpeechSpec = {
       modelId?: string;
       voiceId?: string;
       outputFormat?: string;
+    };
+    voxcpm?: {
+      /** Base URL of an OpenAI-compatible server (e.g. vLLM-Omni). Falls back to VOXCPM_API_BASE. */
+      apiBase?: string;
+      /** Server-side model identifier; falls back to speech.model or 'openbmb/VoxCPM2'. */
+      modelId?: string;
+      /** Path (relative to repo root) of a reference WAV for zero-shot voice cloning. */
+      promptWavPath?: string;
+      /** Transcript that matches promptWavPath; required when promptWavPath is set. */
+      promptText?: string;
+      /** Override response sample rate (Hz). Defaults to provider default. */
+      sampleRate?: number;
     };
   };
 };
