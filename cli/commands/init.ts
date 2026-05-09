@@ -213,6 +213,8 @@ export async function run(args: string[]) {
   if (!options.quiet) {
     if (result.ttsProvider === 'minimax') {
       console.log(`✅ Enabled MiniMax TTS in series-config.ts`);
+    } else if (result.ttsProvider === 'voxcpm') {
+      console.log(`✅ Enabled VoxCPM TTS in series-config.ts (set reviewRequiresNativeTiming = false)`);
     } else {
       console.log(`✅ Set TTS provider = none (audio disabled) in series-config.ts`);
     }
@@ -251,12 +253,14 @@ export async function run(args: string[]) {
 
   // Root.tsx 現在自動掃描 src/episodes/，不需要手動註冊
   console.log(`ℹ️  Series will be auto-discovered by Root.tsx require.context`);
-  console.log(`ℹ️  Audio/TTS selection is stored in series-config.ts. Choose minimax during init, or enable it later when you're ready to wire MiniMax.`);
+  console.log(`ℹ️  Audio/TTS selection is stored in series-config.ts. Choose minimax or voxcpm during init, or enable it later by editing the series-config.`);
 
   const channelLabel = result.config.project?.channelName ?? 'template default';
   const ttsLabel = result.ttsProvider === 'minimax'
     ? 'MiniMax enabled'
-    : 'disabled for now';
+    : result.ttsProvider === 'voxcpm'
+      ? 'VoxCPM enabled (self-hosted; subtitles require post-processing)'
+      : 'disabled for now';
   const youtubeLabel = result.config.publish.youtube.enabled
     ? 'enabled'
     : 'disabled for now';
@@ -384,14 +388,44 @@ function rewriteChannelName(seriesDir: string, channelName: string): void {
   if (updated !== content) fs.writeFileSync(configPath, updated, 'utf-8');
 }
 
-function rewriteSpeechConfig(seriesDir: string, ttsProvider: 'none' | 'minimax'): void {
+function rewriteSpeechConfig(seriesDir: string, ttsProvider: 'none' | 'minimax' | 'voxcpm'): void {
   const configPath = path.join(seriesDir, 'series-config.ts');
   if (!fs.existsSync(configPath)) return;
   const content = fs.readFileSync(configPath, 'utf-8');
-  const enabled = ttsProvider === 'minimax';
-  const updated = content
-    .replace(/speech:\s*{\s*enabled:\s*(true|false)/, `speech: {\n    enabled: ${String(enabled)}`)
-    .replace(/provider:\s*'minimax'/, `provider: 'minimax'`);
+  const enabled = ttsProvider !== 'none';
+  let updated = content.replace(
+    /speech:\s*{\s*enabled:\s*(true|false)/,
+    `speech: {\n    enabled: ${String(enabled)}`,
+  );
+
+  if (ttsProvider === 'voxcpm') {
+    updated = updated
+      .replace(/provider:\s*'minimax'/, `provider: 'voxcpm'`)
+      // VoxCPM has no native timing, so flip the review gate so doctor passes.
+      .replace(/reviewRequiresNativeTiming:\s*true/, `reviewRequiresNativeTiming: false`)
+      // Replace the minimax defaults block with a VoxCPM equivalent.
+      .replace(
+        /defaults:\s*{[\s\S]*?providerOptions:\s*{[\s\S]*?},\s*},\s*},/,
+        `defaults: {
+      model: 'openbmb/VoxCPM2',
+      rate: 1,
+      pitch: 0,
+      volume: 1,
+      format: 'wav',
+      providerOptions: {
+        voxcpm: {
+          // Server URL of an OpenAI-compatible VoxCPM endpoint (e.g. vLLM-Omni).
+          // Falls back to VOXCPM_API_BASE env var when omitted.
+          // apiBase: 'http://localhost:8000/v1',
+          // Optional zero-shot voice cloning. Both fields are required together.
+          // promptWavPath: 'public/episodes/<series>/shared/voice/sample.wav',
+          // promptText: 'Reference transcript matching the WAV file.',
+        },
+      },
+    },`,
+      );
+  }
+
   if (updated !== content) fs.writeFileSync(configPath, updated, 'utf-8');
 }
 

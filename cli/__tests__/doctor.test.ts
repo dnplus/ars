@@ -176,6 +176,161 @@ describe('doctor bootstrap checks', () => {
     );
   });
 
+  it('flags missing VOXCPM_API_BASE when voxcpm is enabled', async () => {
+    const repoRoot = makeTempRoot('ars-doctor-voxcpm-missing-');
+    const pluginRoot = makePluginRoot();
+    writeMinimalArsRepo(repoRoot);
+    process.chdir(repoRoot);
+    fs.writeFileSync(
+      path.join(repoRoot, 'src', 'episodes', 'demo-series', 'series-config.ts'),
+      `export const SERIES_CONFIG = {
+  speech: {
+    enabled: true,
+    provider: 'voxcpm',
+    reviewRequiresNativeTiming: false,
+    defaults: {
+      model: 'openbmb/VoxCPM2',
+    },
+  },
+};
+`,
+      'utf-8',
+    );
+
+    spawnSync.mockImplementation((command: string, args?: string[]) => {
+      if (command === 'claude') return { status: 0, stdout: 'claude 1.0.0\n' };
+      if (command === 'git' && args?.[0] === '--version') return { status: 0, stdout: 'git version 2.39.0\n' };
+      if (command === 'git' && args?.[0] === 'rev-parse') return { status: 0, stdout: 'true\n' };
+      return { status: 1, stdout: '', stderr: '' };
+    });
+    vi.stubEnv('VOXCPM_API_BASE', '');
+
+    vi.doMock('../lib/runtime-package', () => ({
+      getRuntimePackageInfo: () => ({
+        name: 'agentic-remotion-studio',
+        version: '1.0.0',
+        packageRoot: '/tmp/pkg',
+        pluginRoot,
+      }),
+    }));
+
+    const { runDoctor } = await import('../commands/doctor');
+    const results = runDoctor({ json: false, strict: false });
+
+    expect(results).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'provider.voxcpm',
+          status: 'fail',
+        }),
+        expect.objectContaining({
+          id: 'provider.audio-review',
+          status: 'pass',
+        }),
+      ]),
+    );
+  });
+
+  it('passes voxcpm provider check when VOXCPM_API_BASE is set', async () => {
+    const repoRoot = makeTempRoot('ars-doctor-voxcpm-ok-');
+    const pluginRoot = makePluginRoot();
+    writeMinimalArsRepo(repoRoot);
+    process.chdir(repoRoot);
+    fs.writeFileSync(
+      path.join(repoRoot, 'src', 'episodes', 'demo-series', 'series-config.ts'),
+      `export const SERIES_CONFIG = {
+  speech: {
+    enabled: true,
+    provider: 'voxcpm',
+    reviewRequiresNativeTiming: false,
+    defaults: {
+      model: 'openbmb/VoxCPM2',
+    },
+  },
+};
+`,
+      'utf-8',
+    );
+
+    spawnSync.mockImplementation((command: string, args?: string[]) => {
+      if (command === 'claude') return { status: 0, stdout: 'claude 1.0.0\n' };
+      if (command === 'git' && args?.[0] === '--version') return { status: 0, stdout: 'git version 2.39.0\n' };
+      if (command === 'git' && args?.[0] === 'rev-parse') return { status: 0, stdout: 'true\n' };
+      return { status: 1, stdout: '', stderr: '' };
+    });
+    vi.stubEnv('VOXCPM_API_BASE', 'http://localhost:8000/v1');
+
+    vi.doMock('../lib/runtime-package', () => ({
+      getRuntimePackageInfo: () => ({
+        name: 'agentic-remotion-studio',
+        version: '1.0.0',
+        packageRoot: '/tmp/pkg',
+        pluginRoot,
+      }),
+    }));
+
+    const { runDoctor } = await import('../commands/doctor');
+    const results = runDoctor({ json: false, strict: false });
+
+    expect(results).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'provider.voxcpm',
+          status: 'pass',
+        }),
+      ]),
+    );
+  });
+
+  it('fails audio-review when voxcpm runs with reviewRequiresNativeTiming: true', async () => {
+    const repoRoot = makeTempRoot('ars-doctor-voxcpm-review-');
+    const pluginRoot = makePluginRoot();
+    writeMinimalArsRepo(repoRoot);
+    process.chdir(repoRoot);
+    fs.writeFileSync(
+      path.join(repoRoot, 'src', 'episodes', 'demo-series', 'series-config.ts'),
+      `export const SERIES_CONFIG = {
+  speech: {
+    enabled: true,
+    provider: 'voxcpm',
+    reviewRequiresNativeTiming: true,
+    defaults: {},
+  },
+};
+`,
+      'utf-8',
+    );
+
+    spawnSync.mockImplementation((command: string, args?: string[]) => {
+      if (command === 'claude') return { status: 0, stdout: 'claude 1.0.0\n' };
+      if (command === 'git' && args?.[0] === '--version') return { status: 0, stdout: 'git version 2.39.0\n' };
+      if (command === 'git' && args?.[0] === 'rev-parse') return { status: 0, stdout: 'true\n' };
+      return { status: 1, stdout: '', stderr: '' };
+    });
+    vi.stubEnv('VOXCPM_API_BASE', 'http://localhost:8000/v1');
+
+    vi.doMock('../lib/runtime-package', () => ({
+      getRuntimePackageInfo: () => ({
+        name: 'agentic-remotion-studio',
+        version: '1.0.0',
+        packageRoot: '/tmp/pkg',
+        pluginRoot,
+      }),
+    }));
+
+    const { runDoctor } = await import('../commands/doctor');
+    const results = runDoctor({ json: false, strict: false });
+
+    expect(results).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'provider.audio-review',
+          status: 'fail',
+        }),
+      ]),
+    );
+  });
+
   it('does not fail provider checks when audio is explicitly disabled', async () => {
     const repoRoot = makeTempRoot('ars-doctor-audio-disabled-');
     const pluginRoot = makePluginRoot();

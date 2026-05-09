@@ -55,7 +55,7 @@ export interface RepoInitResult {
     alreadyRepo: boolean;
   };
   shellLayout: 'streaming' | 'shorts';
-  ttsProvider: 'none' | 'minimax';
+  ttsProvider: 'none' | 'minimax' | 'voxcpm';
 }
 
 export async function ensureRepoInitialized(options: RepoInitOptions): Promise<RepoInitResult> {
@@ -78,7 +78,7 @@ export async function ensureRepoInitialized(options: RepoInitOptions): Promise<R
   }
 
   let shellLayout: 'streaming' | 'shorts' = 'streaming';
-  let ttsProvider: 'none' | 'minimax' = 'none';
+  let ttsProvider: 'none' | 'minimax' | 'voxcpm' = 'none';
   const config = overwriteConfig
     ? interactive
       ? await (async () => {
@@ -279,7 +279,7 @@ function hasRemotionSkill(root: string): boolean {
 async function promptForConfig(): Promise<{
   config: ArsConfig;
   shellLayout: 'streaming' | 'shorts';
-  ttsProvider: 'none' | 'minimax';
+  ttsProvider: 'none' | 'minimax' | 'voxcpm';
 }> {
   const defaults = createDefaultConfig();
   const rl = createInterface({ input, output });
@@ -293,11 +293,11 @@ These are not the branding interview. Choose the defaults if you are unsure;
 demo opens in Studio.
 `.trim());
 
-    console.log('\nAudio/TTS controls whether Studio shows audio tools and whether doctor checks MiniMax credentials. Choose none if you want to start with the demo first.');
+    console.log('\nAudio/TTS controls whether Studio shows audio tools and whether doctor checks provider credentials.\n  - minimax: hosted SaaS, native subtitle timing\n  - voxcpm: self-hosted (Apache-2.0 OpenBMB/VoxCPM via vLLM-Omni); no native timing — review subtitles need to be turned off\n  - none: start with the demo first');
     const ttsProvider = await promptChoice(
       rl,
       'TTS provider',
-      ['none', 'minimax'] as const,
+      ['none', 'minimax', 'voxcpm'] as const,
       'none' as const,
     );
     console.log('\nYouTube publishing controls whether prepare/publish checks are part of this repo. You can leave it off and enable it later.');
