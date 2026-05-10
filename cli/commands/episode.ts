@@ -78,6 +78,11 @@ async function create(args: string[]) {
   fs.mkdirSync(path.join(publicEpDir, 'demos'), { recursive: true });
   console.log(`📁 Created: public/episodes/${series}/${epId}/`);
 
+  // 建立 .ars 規劃目錄（供 /ars:plan 寫入 plan.md 用）
+  const arsEpDir = path.join(root, '.ars', 'episodes', epId);
+  fs.mkdirSync(arsEpDir, { recursive: true });
+  console.log(`📁 Created: .ars/episodes/${epId}/`);
+
   // 複製 template（統一從 src/episodes/template/ 讀取）
   const templatePath = path.join(root, 'src/episodes/template/episode.template.ts');
   if (!fs.existsSync(templatePath)) {
