@@ -30,6 +30,25 @@ npx ars audio generate <epId> [options]
 - If `SERIES_CONFIG.speech.provider` is not `minimax`, stop and tell the user ARS beta currently supports MiniMax only.
 - If `MINIMAX_API_KEY` or `MINIMAX_GROUP_ID` is missing, tell the user to add them to `.env` and stop.
 
+## 發音字典預備（TTS 前）
+
+在執行 `npx ars audio generate` 之前，先確認 `cli/pronunciation_dict.yaml` 是否需要補充。審查原則如下：
+
+**優先處理（主動補充）：**
+- 中文多音字／異讀字（例：「長」讀 cháng 或 zhǎng、「行」讀 háng 或 xíng）
+- MiniMax 容易誤讀的中文專有名詞或縮寫（例：英文縮寫被當作逐字拼讀的中文詞）
+- 本集特定的術語，且有明確理由相信 TTS 會讀錯
+
+**不要主動補充：**
+- 英文技術名詞、產品名稱、框架名稱（如 React、Docker、PostgreSQL）
+- 英文縮寫（如 API、CPU、CI/CD）
+- 任何你「猜測」MiniMax 可能讀錯但未有實際聽到問題的項目
+
+**原則：**
+- 每次只為本集加入有必要的少量條目，避免讓字典膨脹成通用詞庫。
+- 英文發音問題留給聆聽輪（listening round）實際發現後再修正；ars:apply-review 會把發音修正 intent 路由到字典。
+- 如果使用者未明確要求，不要批量加入英文詞條。
+
 ## Post-generation validation (MANDATORY)
 
 After audio succeeds, run `npx ars episode validate <epId>` and act on its output.
@@ -47,7 +66,7 @@ Other validation issues (missing summary CTA, long points, deprecated cards) are
 
 ## After success
 
-After success (and any auto-fix), guide the user back into the listening round of review. Pronunciation issues are the common follow-up, and the studio is the place to catch them.
+After success (and any auto-fix), guide the user back into the listening round of review. The listening round is the right place to catch pronunciation issues — especially English terms and product names that were intentionally left out of the pre-TTS dictionary pass.
 
 Suggest in this order:
 1. Open (or return to) Studio review with a Monitor attached. Before running `npx ars studio <epId> --phase review`, check whether this Claude session already has Studio and the Studio intent Monitor running for the same `<epId>`. Reuse them if present. If Studio is open but the Monitor is missing, start the Monitor immediately. If another episode's Monitor is running, stop it, run `npx ars workstate switch <epId> --stage review`, then open/reuse Studio for this episode. Never leave the user in Studio without an intent Monitor.
