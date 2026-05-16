@@ -15,6 +15,7 @@ describe('plugin skill surface', () => {
     expect(skillDirs).toEqual(expect.arrayContaining([
       'plan',
       'build',
+      'episode-check',
       'apply-review',
       'reflect',
       'review',

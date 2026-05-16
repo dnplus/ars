@@ -2,7 +2,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { backupArsAssets, patchClaudeSettings } from '../lib/install';
+import { backupArsAssets, patchClaudeSettings, syncSkills } from '../lib/install';
 
 const tempRoots: string[] = [];
 
@@ -91,6 +91,23 @@ describe('patchClaudeSettings', () => {
         { type: 'command', command: 'node ".ars/hooks/scripts/studio-intent-stop.mjs"', timeout: 3 },
       ],
     });
+  });
+});
+
+describe('syncSkills', () => {
+  it('syncs episode-check into the repo-scoped Claude Code skill namespace', () => {
+    const root = makeTempRoot('ars-sync-skills-');
+    const pluginRoot = path.join(path.resolve(__dirname, '../..'), 'plugin');
+
+    const installed = syncSkills({ root, pluginRoot, overwrite: true });
+
+    expect(installed).toContain('episode-check');
+    expect(
+      fs.readFileSync(
+        path.join(root, '.claude', 'skills', 'ars:episode-check', 'SKILL.md'),
+        'utf-8',
+      ),
+    ).toContain('name: ars:episode-check');
   });
 });
 
