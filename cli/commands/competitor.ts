@@ -1,3 +1,5 @@
+import { mkdir, writeFile, access } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import {
   loadCredentials,
   searchVideos,
@@ -32,6 +34,7 @@ search options:
   --duration       any (default) | short (<4m) | medium (4–20m) | long (>20m)
   --after          Published after YYYY-MM-DD
   --captions       Also fetch captions for top N results (default 3 if flag present)
+  --covers <dir>   Also download cover thumbnails for all results into <dir>
 
 channel options:
   --id <channelId> Channel ID, e.g. UCxxxxxxx (required)
@@ -39,6 +42,7 @@ channel options:
   --order          viewCount (default) | date | relevance | rating
   --after          Published after YYYY-MM-DD
   --captions       Also fetch captions for top N results (default 3)
+  --covers <dir>   Also download cover thumbnails for all results into <dir>
 
 captions options:
   --video-id <id>  YouTube video ID (required)
@@ -119,6 +123,41 @@ function parseDescSections(description: string): DescSection[] {
 
 async function getCaptions(videoId: string, langs: string[]) {
   return fetchTranscript(videoId, langs);
+}
+
+async function downloadCovers(
+  videos: { videoId: string; thumbnailUrl: string }[],
+  dir: string,
+): Promise<{ saved: number; skipped: number; failed: number }> {
+  const outDir = resolve(dir);
+  await mkdir(outDir, { recursive: true });
+
+  let saved = 0;
+  let skipped = 0;
+  let failed = 0;
+
+  await Promise.all(videos.map(async (v) => {
+    if (!v.thumbnailUrl) { failed += 1; return; }
+    const dest = resolve(outDir, `${v.videoId}.jpg`);
+    try {
+      await access(dest);
+      skipped += 1;
+      return;
+    } catch {
+      // not exist, fall through to download
+    }
+    try {
+      const res = await fetch(v.thumbnailUrl);
+      if (!res.ok) { failed += 1; return; }
+      const buf = Buffer.from(await res.arrayBuffer());
+      await writeFile(dest, buf);
+      saved += 1;
+    } catch {
+      failed += 1;
+    }
+  }));
+
+  return { saved, skipped, failed };
 }
 
 function buildVideo(
@@ -212,10 +251,14 @@ async function runSearch(args: string[]): Promise<void> {
     return buildVideo({ ...d, channelId: channelMap.get(d.videoId) }, caps);
   }));
 
+  const coversDir = getFlag(args, '--covers');
+  const covers = coversDir ? await downloadCovers(results, coversDir) : undefined;
+
   process.stdout.write(JSON.stringify({
     query: q,
     fetchedAt: new Date().toISOString().slice(0, 10),
     options: { order: options.order, region: options.regionCode, lang: options.relevanceLanguage, duration: options.videoDuration },
+    ...(covers ? { covers: { dir: resolve(coversDir!), ...covers } } : {}),
     results,
   }, null, 2) + '\n');
 }
@@ -257,11 +300,15 @@ async function runChannel(args: string[]): Promise<void> {
     return buildVideo({ ...d, channelId }, caps);
   }));
 
+  const coversDir = getFlag(args, '--covers');
+  const covers = coversDir ? await downloadCovers(results, coversDir) : undefined;
+
   process.stdout.write(JSON.stringify({
     channelId,
     channelTitle,
     fetchedAt: new Date().toISOString().slice(0, 10),
     options: { order, maxResults: results.length },
+    ...(covers ? { covers: { dir: resolve(coversDir!), ...covers } } : {}),
     results,
   }, null, 2) + '\n');
 }
