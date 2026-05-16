@@ -2,7 +2,10 @@ import fs from 'fs';
 import path from 'path';
 import { pathToFileURL } from 'url';
 import { listStudioIntentRecords, writeStudioIntent } from '../../src/studio/studio-intents';
-import { readPrepareArtifact } from '../../src/studio/prepare-youtube-artifact';
+import {
+  readPrepareArtifact,
+  youtubeMetadataMatchesSelection,
+} from '../../src/studio/prepare-youtube-artifact';
 import type { StudioIntent } from '../../src/types/studio-intent';
 import type { EpisodeMetadata } from '../../src/engine/shared/types';
 
@@ -117,7 +120,7 @@ async function readEpisodeContext(rootDir: string, series: string, epId: string)
   const metadata = await tryLoadEpisodeMetadata(rootDir, series, epId);
   return {
     prepareReady: artifact?.status === 'ready',
-    metadataApplied: !!metadata?.youtube,
+    metadataApplied: youtubeMetadataMatchesSelection(artifact, metadata?.youtube),
   };
 }
 

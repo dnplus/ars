@@ -48,6 +48,12 @@ export type YoutubePrepareArtifact = {
   note: string;
 };
 
+export type PreparedYoutubeMetadata = {
+  title: string;
+  description: string;
+  tags: string[];
+};
+
 function previewText(text: string, max: number): string {
   const normalized = text.replace(/\s+/g, ' ').trim();
   if (normalized.length <= max) return normalized;
@@ -241,4 +247,46 @@ export function selectPreparedYoutubeCandidate(
       tags: [...selected.tags],
     },
   };
+}
+
+export function getSelectedPreparedYoutubeMetadata(
+  artifact: YoutubePrepareArtifact | null,
+): PreparedYoutubeMetadata | null {
+  if (!artifact?.youtube.selected) {
+    return null;
+  }
+
+  const selected = artifact.youtube.candidates.find((candidate) => candidate.id === artifact.youtube.selected);
+  const title = artifact.youtube.title ?? selected?.title;
+  const description = artifact.youtube.description ?? selected?.description;
+  const tags = artifact.youtube.tags.length > 0 ? artifact.youtube.tags : selected?.tags;
+
+  if (!title || !description || !tags) {
+    return null;
+  }
+
+  return {
+    title,
+    description,
+    tags: [...tags],
+  };
+}
+
+export function youtubeMetadataMatchesSelection(
+  artifact: YoutubePrepareArtifact | null,
+  metadata: PreparedYoutubeMetadata | null | undefined,
+): boolean {
+  if (!metadata) {
+    return false;
+  }
+
+  const selected = getSelectedPreparedYoutubeMetadata(artifact);
+  if (!selected) {
+    return false;
+  }
+
+  return metadata.title === selected.title
+    && metadata.description === selected.description
+    && metadata.tags.length === selected.tags.length
+    && metadata.tags.every((tag, index) => tag === selected.tags[index]);
 }

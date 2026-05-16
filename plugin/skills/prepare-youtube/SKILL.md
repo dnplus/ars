@@ -62,7 +62,7 @@ Triggered when the user replies with a candidate id (or "選 1" / "用 2" / simi
    - `status: "ready"`
    - `youtube.selected: "<chosen id>"`
    - `youtube.title`, `youtube.description`, `youtube.tags` = flattened fields from the selected candidate, matching the episode source metadata
-4. Update `src/episodes/<activeSeries>/<epId>.ts` so `metadata.youtube.title`, `metadata.youtube.description`, and `metadata.youtube.tags` match the selected candidate. The episode source is the applied metadata source of truth shown by Studio after selection.
+4. Update `src/episodes/<activeSeries>/<epId>.ts` so the exported `Episode` object's `metadata` object contains `youtube: { title, description, tags }`, and those three fields exactly match the selected candidate. This must be nested under `metadata` (the same object that already contains `title` / `subtitle`), not written as a top-level `youtube` field and not left only in `prepare-youtube.json`. The episode source is the applied metadata source of truth shown by Studio after selection.
 5. Update the markdown: prepend a `## Selected` block near the top showing which candidate is chosen. Keep the full candidates section below for audit.
 6. Run `npx ars episode validate <epId>`.
 7. Report to the user: chosen id, final title, and remind them `/ars:publish-youtube <epId>` is next. Do not auto-publish.

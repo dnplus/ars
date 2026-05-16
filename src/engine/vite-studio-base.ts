@@ -22,10 +22,12 @@ import {
   generatePreparedYoutubeCandidates,
   getPrepareArtifactPath,
   getPrepareMarkdownPath,
+  getSelectedPreparedYoutubeMetadata,
   readPrepareArtifact,
   selectPreparedYoutubeCandidate,
   writePrepareArtifact,
   type YoutubePrepareArtifact,
+  youtubeMetadataMatchesSelection,
 } from '../studio/prepare-youtube-artifact';
 import type { StudioIntentAnchorType, StudioIntentTarget } from '../types/studio-intent';
 import { extractSections } from './shared/markdown-anchor';
@@ -773,6 +775,7 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
                 const epId = asRequiredString(url.searchParams.get('ep'), 'ep');
                 const preparedArtifact = readPrepareArtifact(rootDir, series, epId);
                 const episodeMetadata = await tryLoadEpisodeMetadata(rootDir, series, epId);
+                const metadataApplied = youtubeMetadataMatchesSelection(preparedArtifact, episodeMetadata?.youtube);
                 const pendingPrepareIntents = getPendingPrepareIntents(rootDir, series, epId, {
                   preparedArtifact,
                   episodeMetadata,
@@ -790,7 +793,7 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
                     requiresPrepared: true,
                     preparedExists: preparedArtifact !== null,
                     preparedReady: preparedArtifact?.status === 'ready',
-                    metadataApplied: !!episodeMetadata?.youtube,
+                    metadataApplied,
                     pendingPrepareIntents: pendingPrepareIntents.length,
                     pendingPrepareIntentIds: pendingPrepareIntents
                       .map((intent) => intent.id)
@@ -836,6 +839,7 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
                 const target = `${series}/${epId}`;
                 const preparedArtifact = readPrepareArtifact(rootDir, series, epId);
                 const episodeMetadata = await tryLoadEpisodeMetadata(rootDir, series, epId);
+                const metadataApplied = youtubeMetadataMatchesSelection(preparedArtifact, episodeMetadata?.youtube);
                 const pendingPrepareIntents = getPendingPrepareIntents(rootDir, series, epId, {
                   preparedArtifact,
                   episodeMetadata,
@@ -849,8 +853,8 @@ export function createStudioConfig(options: StudioConfigOptions): UserConfig {
                   writeJson(res, 409, { ok: false, error: 'Prepare is not ready yet. Select a candidate first.' });
                   return;
                 }
-                if (!episodeMetadata?.youtube) {
-                  writeJson(res, 409, { ok: false, error: 'Prepare is ready but not applied to episode metadata.youtube yet.' });
+                if (!metadataApplied) {
+                  writeJson(res, 409, { ok: false, error: 'Prepare is ready but not applied to episode metadata.youtube yet, or metadata.youtube does not match the selected candidate.' });
                   return;
                 }
                 if (pendingPrepareIntents.length > 0) {
@@ -1370,7 +1374,10 @@ function isPrepareIntentSatisfied(
   },
 ): boolean {
   const preparedReady = context?.preparedArtifact?.status === 'ready';
-  const metadataApplied = !!context?.episodeMetadata?.youtube;
+  const metadataApplied = youtubeMetadataMatchesSelection(
+    context?.preparedArtifact ?? null,
+    context?.episodeMetadata?.youtube,
+  );
   const kind = intent.feedback?.kind;
   const hash = intent.target?.anchorMeta?.hash ?? '';
 
@@ -1488,6 +1495,7 @@ function resolvePublishPreview(artifact: YoutubePrepareArtifact | null, episodeY
   selected: string | null;
   source: string | null;
 } {
+  const selectedYoutube = getSelectedPreparedYoutubeMetadata(artifact);
   if (episodeYoutube) {
     return {
       title: episodeYoutube.title,
@@ -1495,6 +1503,16 @@ function resolvePublishPreview(artifact: YoutubePrepareArtifact | null, episodeY
       tags: episodeYoutube.tags,
       selected: artifact?.youtube.selected ?? null,
       source: 'metadata.youtube',
+    };
+  }
+
+  if (selectedYoutube) {
+    return {
+      title: selectedYoutube.title,
+      description: selectedYoutube.description,
+      tags: selectedYoutube.tags,
+      selected: artifact?.youtube.selected ?? null,
+      source: 'prepare-youtube.json',
     };
   }
 
