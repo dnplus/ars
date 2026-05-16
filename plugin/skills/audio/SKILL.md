@@ -25,6 +25,8 @@ npx ars audio generate <epId> [options]
 
 - If the user provides an epId as the skill argument, use it directly.
 - If no epId is provided, infer it from recent context or ask.
+- Before generating audio, inspect the target narration for likely pronunciation hazards and compare them with `cli/pronunciation_dict.yaml`. Prioritize Traditional Chinese / Taiwan-context polyphones and technical terms first (for example `重`, `長`, `調`, `行`, `著`, `量`, `為`, `得`, `載`, and domain-specific Chinese compounds). Add or fix missing dictionary entries before the first generation when the correct reading is clear from context.
+- Treat English acronym fixes as secondary. Use English dictionary entries such as `"API/A P I"` only when the narration actually contains the acronym or the issue is clearly English pronunciation; do not let the English acronym section become the default first pass for Chinese narration.
 - Run the command in the background so the review flow stays responsive.
 - When the command completes, report: how many steps succeeded/failed, total audio duration, and whether subtitles were updated.
 - If `SERIES_CONFIG.speech.provider` is not `minimax`, stop and tell the user ARS beta currently supports MiniMax only.

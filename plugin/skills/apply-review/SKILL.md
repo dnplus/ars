@@ -38,11 +38,12 @@ Classify prepare intents first by reading `target.anchorMeta.hash`, then use `fe
   3. After `/ars:build` returns, resolve the intent with a summary and validation evidence. Skip the rest of this classification — build-trigger intents do not route to episode / plan edits.
 - **Pronunciation fix** — `feedback.kind === 'other'` (or unspecified) AND message describes a TTS reading error ("XX 念錯"、"讀成了 YY"、"發音不對"、"斷句怪"、specific wrong pinyin). Do NOT edit the episode source. Instead:
   1. Open `cli/pronunciation_dict.yaml`.
-  2. Decide the correct pinyin yourself from the word/context (tone numbers 1-5; 5 = neutral). For English acronyms, decide between letter-by-letter `"GB/G B"` or full word `"GB/Gigabyte"` based on the feedback.
-  3. Append a new entry like `- "詞組/(pinyin1)(pinyin2)"` in a sensible section. Check the file first — the word may already be there with a wrong pinyin; fix it in place instead of duplicating.
-  4. Regenerate just the affected step: `npx ars audio generate <epId> --step <stepId>`. Do not regenerate the whole episode.
-  5. If the feedback mentions multiple words across several steps, batch the dict edits first, then re-generate each affected step.
-  6. Skip `npx ars episode validate` for pronunciation-only fixes — the Episode schema did not change. Verify instead that `public/episodes/<series>/<epId>/audio/<stepId>.mp3` was rewritten (newer mtime).
+  2. Decide the correct reading from the actual narration context. Prioritize Traditional Chinese / Taiwan-context polyphones and common TTS traps first, especially words involving `重`, `長`, `調`, `行`, `著`, `量`, `為`, `得`, `載`, neutral-tone particles, and domain-specific Chinese compounds. Use tone numbers 1-5; 5 = neutral.
+  3. Only use English acronym / brand entries when the reported issue is actually English text. For acronyms, decide between letter-by-letter `"GB/G B"` or full word `"GB/Gigabyte"` based on the feedback.
+  4. Append a new entry like `- "詞組/(pinyin1)(pinyin2)"` in a sensible Chinese section. Check the file first — the word may already be there with a wrong pinyin; fix it in place instead of duplicating. Keep English entries in the English sections.
+  5. Regenerate just the affected step: `npx ars audio generate <epId> --step <stepId>`. Do not regenerate the whole episode.
+  6. If the feedback mentions multiple words across several steps, batch the dict edits first, then re-generate each affected step.
+  7. Skip `npx ars episode validate` for pronunciation-only fixes — the Episode schema did not change. Verify instead that `public/episodes/<series>/<epId>/audio/<stepId>.mp3` was rewritten (newer mtime).
 - **Content / visual fix** — everything else (wrong fact, visual glitch, missing slide, layout). Classify the attachment by reading `feedback.message` together with the screenshot:
   - **Asset to place** (use `image` card): feedback says "插這張"、"放這個畫面"、"加一頁"、"insert"、"add a slide" — the screenshot IS the content. Copy it to `public/episodes/<series>/<epId>/` and use an `image` card with `src` pointing to it.
   - **Visual reference**: feedback describes a desired look but the screenshot is just a reference — do not place the screenshot, adjust the step's style/content instead.
